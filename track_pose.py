@@ -2,7 +2,7 @@ import cv2
 import mediapipe as mp
 
 # CHANGE THIS to your video's filename
-INPUT_VIDEO = "/Users/macuswu/Desktop/Scholars Math 26-27/skeletontestvid.mp4"
+INPUT_VIDEO = "/Users/macuswu/Desktop/Scholars Math 26-27/testskeleton2.mp4"
 OUTPUT_VIDEO = "output/tracked_jump.mp4"
 
 mp_pose = mp.solutions.pose
