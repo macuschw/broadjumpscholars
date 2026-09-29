@@ -1,4 +1,8 @@
-mediapipe
+# Newer mediapipe versions removed the mp.solutions.pose API this project uses.
+# 0.10.14 has wheels for Python 3.9-3.12.
+mediapipe==0.10.14
 opencv-python
 numpy
+scipy
 matplotlib
+pytest
