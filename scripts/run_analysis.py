@@ -14,7 +14,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 from jumplab.calibration import load_calibration  # noqa: E402
 from jumplab.events import NoJumpFound  # noqa: E402
-from jumplab.pipeline import EVENT_METHODS, AnalysisConfig, analyze_video  # noqa: E402
+from jumplab.center_of_mass import MODES  # noqa: E402
+from jumplab.pipeline import EVENT_METHODS, TRAJECTORY_POINTS, AnalysisConfig, analyze_video  # noqa: E402
 from jumplab.report import format_report, save_csv, save_json  # noqa: E402
 
 
@@ -33,6 +34,11 @@ def main():
                    help="fraction of foot rise that counts as airborne (default 0.15)")
     p.add_argument("--cutoff", type=float, default=10.0, help="smoothing cutoff in Hz (default 10)")
     p.add_argument("--side", choices=["LEFT", "RIGHT"], help="force a body side")
+    p.add_argument("--trajectory-point", choices=TRAJECTORY_POINTS, default="com",
+                   help="fit the parabola to the whole-body center of mass (default) or the hip")
+    p.add_argument("--com-mode", choices=MODES, default="symmetric",
+                   help="symmetric (default): camera-side limbs count for both sides; "
+                        "both: use MediaPipe's guess for the hidden far-side limbs")
     p.add_argument("--no-skeleton", action="store_true", help="don't write the skeleton video")
     p.add_argument("--retrack", action="store_true", help="re-run MediaPipe even if cached")
     p.add_argument("--show", action="store_true", help="show plots in a window")
@@ -47,11 +53,14 @@ def main():
     if args.calibration:
         c = load_calibration(args.calibration)
         scale = c.m_per_px
-        print(f"Calibration: {c.distance_m} m = {c.pixel_distance:.1f} px -> {scale:.5f} m/px")
+        print(f"Calibration: {c.distance_m} m = {c.pixel_distance:.1f} px -> {scale:.5f} m/px"
+              + (f" (includes depth correction x{c.depth_correction:.3f})"
+                 if c.depth_correction != 1.0 else ""))
 
     config = AnalysisConfig(cutoff_hz=args.cutoff, event_method=args.events,
                             threshold_fraction=args.threshold, start_s=args.start,
-                            end_s=args.end, side=args.side)
+                            end_s=args.end, side=args.side,
+                            trajectory_point=args.trajectory_point, com_mode=args.com_mode)
     print(f"Analyzing {args.video} ...")
     try:
         r = analyze_video(args.video, scale, config, args.output,

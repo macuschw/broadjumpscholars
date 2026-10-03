@@ -9,12 +9,22 @@ and vector geometry do the rest.
 1. Install Python 3.9-3.12
 2. `pip install -r requirements.txt` (mediapipe is pinned to 0.10.14 on purpose)
 3. Run the tests: `python -m pytest tests`
+   - `tests/test_real_footage.py` is the **accuracy benchmark**: it runs the pipeline on
+     keypoints from a real 120 fps jump (`tests/data/`) and checks takeoff/landing against
+     frames labelled by eye (+/-2 frames). Add more labelled jumps with
+     `tests/data/make_benchmark_clip.py`.
+   - Tests marked `xfail` are known, documented inaccuracies (e.g. the default ankle
+     method's early takeoff), not broken tests.
 
 ## Recording tips
 - Camera on a tripod, side-on, perpendicular to the jump, whole jump in frame. Don't zoom or move it.
 - Record at **120-240 fps** (slow-mo). At 30 fps every event time is only good to +/-33 ms.
 - For calibration, film a tape measure or two floor marks a known distance apart,
   **along the line of the jump** (same distance from the camera as the athlete).
+  If the reference has to be somewhere else (e.g. in front of the jump line), measure the
+  camera->reference and camera->jump line distances and pass both to `calibrate.py`
+  (`--camera-to-reference 4.0 --camera-to-jump 5.0`); the scale is corrected for depth,
+  because things twice as far away look half as big.
 
 ## Usage
 ```
@@ -48,9 +58,12 @@ re-running with a different window or calibration is instant. Outputs in `output
 | `jumplab/angles.py` | trunk and shin angle from vertical, joint angle from 3 points |
 | `jumplab/events.py` | takeoff, landing, countermovement bottom, movement onset |
 | `jumplab/physics.py` | projectile fit (vx, vy, launch angle, g check), flight-time formulas |
+| `jumplab/center_of_mass.py` | whole-body center of mass from body segments (Dempster/Winter table) |
 | `jumplab/ball_tracking.py` | tracks a ball, for the ball-toss physics check |
 | `jumplab/pipeline.py` | video / keypoints in -> results dict out |
 | `jumplab/report.py`, `plotting.py` | printed table, CSV, JSON, plots |
+| `jumplab/checks.py` | sanity checks: stops on an incomplete jump, warns (with severity and affected results) about anything suspicious |
+| `jumplab/summary.py` | plain-language summary by category with reliability ratings (`scripts/summarize.py`) |
 
 ## Conventions and physics notes
 - Coordinates: image y is flipped so **up is positive**.
@@ -63,10 +76,16 @@ re-running with a different window or calibration is instant. Outputs in `output
 - Ground contact time = movement onset -> takeoff; push-off time = countermovement bottom -> takeoff.
 - Jump distance is measured like the real test: takeoff toe -> landing heel.
 - Trajectory: `x = x0 + vx t`, `y = y0 + vy t - g t^2 / 2`, least-squares fitted to the
-  (unsmoothed) hip during flight. With calibration, g is fixed at 9.81 and a free fit's g is
-  reported as a check. Without calibration, the free fit's g in px/s^2 gives a
-  gravity-implied scale (m/px) to compare with your tape measure.
-- The hip is an approximation of the center of mass.
+  (unsmoothed) whole-body **center of mass** during flight (`--trajectory-point hip` for the
+  old behaviour). CoM = sum(m_i r_i) / sum(m_i) over 14 body segments, using segment mass
+  fractions and CoM locations from Dempster via Winter. By default the camera-side limbs
+  are used for both sides (`--com-mode symmetric`), because MediaPipe mostly guesses the
+  hidden far-side limbs. One free fit (g is fitted, not forced to 9.81) gives every
+  trajectory number, read at the estimated takeoff instant (half a frame before the first
+  airborne frame), so calibrated and uncalibrated runs report the same launch angle. With
+  calibration, the fitted g in m/s^2 is the quality check; without it, the fitted g in
+  px/s^2 gives a gravity-implied scale (m/px) to compare with your tape measure.
+- The segment table is for an average (mostly male) adult body, so the CoM is an estimate.
 - Flight-time-only formulas `vy = gT/2`, `h = gT^2/8` assume equal takeoff and landing height.
 
 ### Takeoff/landing detection (`--events`)
@@ -79,3 +98,14 @@ re-running with a different window or calibration is instant. Outputs in `output
   Within 1 frame on synthetic data, but it depends on MediaPipe's foot markers, which
   can glitch at 30 fps. Check the skeleton video and the foot panel of the events plot.
 - Both flight times are printed so you can compare.
+- On the real-footage benchmark: `toe_heel` is within the +/-2 frame tolerance; the default
+  `ankle` method finds takeoff ~7 frames early (heel lift). The default stays until the
+  accuracy study.
+
+### Warnings
+The analysis **stops** if the jump isn't fully inside the clip (starts or ends mid-air, or
+no landing is found). Anything else suspicious - frames where the person wasn't detected,
+landmarks MediaPipe is unsure of or that leave the frame, an implausible flight time or
+distance, a jump that isn't side-on, a moving start, uneven frame timing - is listed under
+Warnings, marked caution or serious. The summary lowers the rating of each result the
+warning affects.

@@ -1,0 +1,10 @@
+{
+  "source_video": "caliberationtestvid(120fps).mp4",
+  "first_frame": 150,
+  "last_frame": 559,
+  "fps": 119.94762112614579,
+  "true_takeoff_frame": 384,
+  "true_landing_frame": 431,
+  "m_per_px": 0.0012598847715044733,
+  "note": "Standing broad jump, 120 fps, 4K, side-on, camera ~4.1 m from the tape and roughly level. Labels read by eye from fixed full-resolution crops (see real_jump_120fps_takeoff.jpg / _landing.jpg): takeoff 384 = first frame the toe is clearly off the floor (383 marginal, ~3 px); landing 431 = first frame the heel touches (foot flat at 433). Uncertainty about +/-1 frame. The athlete tape-measured the jump at about 51.5 in (1.31 m). The calibration tape was about 0.25-0.45 m in front of the jump line (audit B1), so metre values here are NOT ground truth."
+}

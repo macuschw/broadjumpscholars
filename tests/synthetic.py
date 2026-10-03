@@ -1,6 +1,7 @@
 """Synthetic data with KNOWN answers, for testing the analysis without real video."""
 import numpy as np
 
+from jumplab.center_of_mass import whole_body_com
 from jumplab.physics import G
 from jumplab.pose_tracking import LANDMARKS, N_LANDMARKS, Keypoints
 
@@ -34,9 +35,16 @@ class Truth:
         return (self.vx * self.flight_time + self.heel_dx) - self.toe_dx
 
 
-def jumper_keypoints(direction=1, noise_px=0.0, seed=0, duration=2.2, truth=None):
+def jumper_keypoints(direction=1, noise_px=0.0, seed=0, duration=2.2, truth=None,
+                     arm_swing_deg=0.0, heel_lift_deg=0.0, heel_lift_s=0.12):
     """A stick-figure broad jump: stand, countermovement, takeoff, symmetric flight, land.
-    direction=+1 jumps toward the right of the image, -1 toward the left."""
+    direction=+1 jumps toward the right of the image, -1 toward the left.
+    arm_swing_deg > 0: the arms swing forward/up and back during flight. The body is then
+    shifted so that the CENTER OF MASS follows the true parabola and the hip doesn't, as in
+    a real jump.
+    heel_lift_deg > 0: in the last heel_lift_s before takeoff the foot rotates about the
+    planted toe (heel and ankle rise, toe stays down), as in a real push-off; the foot
+    flattens again by mid-flight."""
     T = truth or Truth()
     t = np.arange(int(duration * T.fps)) / T.fps
     n = len(t)
@@ -60,9 +68,40 @@ def jumper_keypoints(direction=1, noise_px=0.0, seed=0, duration=2.2, truth=None
         "HEEL": (hip_x + T.heel_dx, foot_y + 0.02),
         "FOOT_INDEX": (hip_x + T.toe_dx, foot_y + 0.02),
     }
+    if heel_lift_deg:
+        # Foot angle: ramps up before takeoff, back to flat by mid-flight
+        theta = np.zeros(n)
+        lift = (t > T.t_takeoff - heel_lift_s) & (t <= T.t_takeoff)
+        theta[lift] = (t[lift] - (T.t_takeoff - heel_lift_s)) / heel_lift_s
+        theta[air] = np.clip(1 - tau[air] / (0.5 * T.flight_time), 0, 1)
+        theta *= np.radians(heel_lift_deg)
+        px, py = parts["FOOT_INDEX"]                       # rotate about the toe
+        c, s_ = np.cos(theta), np.sin(theta)
+        for name in ("ANKLE", "HEEL"):
+            dx, dy = parts[name][0] - px, parts[name][1] - py
+            parts[name] = (px + dx * c + dy * s_, py - dx * s_ + dy * c)
     a, s = np.radians(T.shin_deg), np.radians(T.trunk_deg)
     parts["KNEE"] = (parts["ANKLE"][0] + 0.45 * np.sin(a), parts["ANKLE"][1] + 0.45 * np.cos(a))
     parts["SHOULDER"] = (hip_x + 0.5 * np.sin(s), hip_y + 0.5 * np.cos(s))
+
+    # Arms hang from the shoulder (rotating forward by phi during flight); head above shoulder
+    sx, sy = parts["SHOULDER"]
+    phi = np.zeros(n)
+    phi[air] = np.radians(arm_swing_deg) * np.sin(np.pi * tau[air] / T.flight_time)
+    ux, uy = np.sin(phi), -np.cos(phi)
+    parts["ELBOW"] = (sx + 0.30 * ux, sy + 0.30 * uy)
+    parts["WRIST"] = (sx + 0.55 * ux, sy + 0.55 * uy)
+    parts["INDEX"] = (sx + 0.63 * ux, sy + 0.63 * uy)
+    parts["EAR"] = (sx + 0.02, sy + 0.22)
+
+    # Shift the whole body in flight by however much the moving arms move the center of
+    # mass, so the CoM (not the hip) follows the parabola. No-op when the arms don't move.
+    cx, cy = whole_body_com(parts, parts, "symmetric")
+    off_x, off_y = cx - hip_x, cy - hip_y
+    k = int(np.flatnonzero(air)[0]) - 1          # last ground frame (arms still hanging)
+    dx = np.where(air, off_x[k] - off_x, 0.0)
+    dy = np.where(air, off_y[k] - off_y, 0.0)
+    parts = {name: (x + dx, y + dy) for name, (x, y) in parts.items()}
 
     rng = np.random.default_rng(seed)
     xyv = np.full((n, N_LANDMARKS, 3), np.nan)

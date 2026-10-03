@@ -6,9 +6,12 @@ import os
 
 import numpy as np
 
+from .checks import as_warning
+from .pipeline import POINT_NAMES
+
 CSV_COLUMNS = ["hip_x_px", "hip_y_px_up", "ankle_x_px", "ankle_y_px_up", "trunk_angle_deg",
                "shin_angle_deg", "toe_x_px", "toe_y_px_up", "heel_x_px", "heel_y_px_up",
-               "knee_angle_deg", "hip_angle_deg"]
+               "knee_angle_deg", "hip_angle_deg", "com_x_px_raw", "com_y_px_up_raw"]
 
 
 def _fmt(v, spec, unit=""):
@@ -54,20 +57,23 @@ def format_report(r):
         lines.append(f"  {label:<24}{a['trunk']:8.1f}{a['shin']:8.1f}{a['knee']:8.1f}{a['hip']:8.1f}")
 
     tr, d, px = r["trajectory"], r["distance"], r["pixels"]
-    lines.append("\nTrajectory (parabola fit to the hip during flight)")
+    point = POINT_NAMES[tr.get("point", "hip")]
+    lines.append(f"\nTrajectory (parabola fit to the {point} during flight)")
     row("Launch angle", _fmt(tr.get("launch_angle_deg"), ".1f", " deg"))
     if r["scale_m_per_px"]:
         row("Horizontal velocity vx", _fmt(tr.get("vx_m_s"), ".2f", " m/s"))
         row("Vertical velocity vy", _fmt(tr.get("vy_m_s"), ".2f", " m/s"))
         row("Takeoff speed", _fmt(tr.get("speed_m_s"), ".2f", " m/s"))
-        row("Peak hip rise above takeoff", _fmt(tr.get("peak_rise_m"), ".3f", " m"))
+        row(f"Peak {point} rise above takeoff", _fmt(tr.get("peak_rise_m"), ".3f", " m"))
         row("g from free fit (check, expect ~9.81)", _fmt(tr.get("g_fit_m_s2"), ".2f", " m/s^2"))
+        if "g_fit_hip_m_s2" in tr:
+            row("  (same check using the hip instead)", f"{tr['g_fit_hip_m_s2']:.2f} m/s^2")
     row("Fit points", _fmt(tr.get("fit_points"), "d"))
 
     lines.append("\nFrom flight time + gravity only (no calibration; assumes equal")
     lines.append("takeoff and landing height, so usually an over-estimate)")
     row("Takeoff vertical speed vy", f"{tr['vy_from_flight_time_m_s']:.2f} m/s")
-    row("Peak hip rise", f"{tr['peak_rise_from_flight_time_m']:.3f} m")
+    row("Peak rise (center of mass)", f"{tr['peak_rise_from_flight_time_m']:.3f} m")
 
     lines.append("\nDistances")
     if r["scale_m_per_px"]:
@@ -83,7 +89,8 @@ def format_report(r):
 
     if r["warnings"]:
         lines.append("\nWarnings")
-        lines.extend(f"  - {w}" for w in r["warnings"])
+        for w in map(as_warning, r["warnings"]):
+            lines.append(f"  - [{w['severity']}] {w['message']}")
     lines.append("================================")
     return "\n".join(lines)
 

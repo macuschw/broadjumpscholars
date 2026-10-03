@@ -45,18 +45,21 @@ def plot_events(r, path=None, show=False):
 
 
 def plot_trajectory(r, path=None, show=False):
-    """Hip path (image x vs height) with the fitted parabola over the flight phase."""
+    """Path of the fitted point (center of mass or hip; image x vs height) with the
+    fitted parabola over the flight phase."""
     import matplotlib.pyplot as plt
 
     s, tr = r["series"], r["trajectory"]
+    point = tr.get("point", "hip")
+    label = "center of mass" if point == "com" else "hip"
+    x, y = s[f"{point}_x_px_raw"], s[f"{point}_y_px_up_raw"]
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(s["hip_x_px_raw"], s["hip_y_px_up_raw"], ".", color="lightgray", label="hip (all frames)")
+    ax.plot(x, y, ".", color="lightgray", label=f"{label} (all frames)")
     to, la = r["events"]["takeoff"]["frame"], r["events"]["landing"]["frame"]
-    ax.plot(s["hip_x_px_raw"][to:la], s["hip_y_px_up_raw"][to:la], "o", color="tab:orange",
-            label="hip in flight")
+    ax.plot(x[to:la], y[to:la], "o", color="tab:orange", label=f"{label} in flight")
     if "fit_px" in tr:
         f = tr["fit_px"]
-        tt = np.linspace(0, s["time_s"][la] - s["time_s"][to], 100)
+        tt = np.linspace(0, s["time_s"][la] - f.get("t0_s", s["time_s"][to]), 100)
         ax.plot(f["x0"] + f["vx"] * tt, f["y0"] + f["vy"] * tt - 0.5 * f["g"] * tt ** 2, "-",
                 color="k", label=f"parabola fit (launch {tr.get('launch_angle_deg', float('nan')):.1f} deg)")
     ax.set_xlabel("x (px)")

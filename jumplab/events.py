@@ -15,6 +15,14 @@ Two takeoff/landing methods:
      for takeoff - the last point to leave the ground - and the heel for landing - the
      first point to touch down. The ankle is a poor takeoff marker because it rises
      during heel lift, before the toes leave the ground.
+
+     The walk has two safety stops, because MediaPipe's foot markers drift by 1-4 cm
+     while the foot is planted and the floor can sit at a different image height where
+     the athlete lands (camera roll): it stops as soon as the marker stops moving toward
+     the ground, and it never walks more than 0.1 s. Hitting that cap is reported.
+
+Accuracy benchmark: tests/test_real_footage.py checks both methods against takeoff and
+landing frames read by eye from a real 120 fps jump.
 """
 from __future__ import annotations
 
@@ -37,6 +45,7 @@ class JumpEvents:
     landing_i: int
     takeoff_threshold: float
     landing_threshold: float
+    search_capped: bool = False     # a refined search hit its 0.1 s limit
 
     def shifted(self, offset):
         return replace(self, onset_i=self.onset_i + offset, bottom_i=self.bottom_i + offset,
@@ -74,20 +83,28 @@ def ground_tolerance(height, baseline, threshold, noise_k=3.0, min_fraction=0.02
     return max(noise_k * noise, min_fraction * rise)
 
 
-def refine_takeoff(height, takeoff_i, baseline, tol):
-    """Walk back from a threshold crossing to the first frame that leaves ground level."""
+def refine_takeoff(height, takeoff_i, baseline, tol, max_steps=None):
+    """Walk back from a threshold crossing to the first frame that leaves ground level.
+    Stops early if the marker stops getting lower going back in time (it has reached
+    whatever level it sat at on the ground) or after max_steps. Returns (frame, capped)."""
     i = takeoff_i
-    while i > 0 and height[i - 1] > baseline + tol:
+    while i > 0 and height[i - 1] > baseline + tol and height[i - 1] < height[i]:
+        if max_steps is not None and takeoff_i - i >= max_steps:
+            return i, True
         i -= 1
-    return i
+    return i, False
 
 
-def refine_landing(height, landing_i, baseline, tol):
-    """Walk forward from a threshold crossing to the first frame back at ground level."""
+def refine_landing(height, landing_i, baseline, tol, max_steps=None):
+    """Walk forward from a threshold crossing to the first frame back at ground level.
+    Stops early if the marker stops falling (it has touched down, even if the floor is at
+    a different image height there) or after max_steps. Returns (frame, capped)."""
     j = landing_i
-    while j < len(height) - 1 and height[j] > baseline + tol:
+    while j < len(height) - 1 and height[j] > baseline + tol and height[j + 1] < height[j]:
+        if max_steps is not None and j - landing_i >= max_steps:
+            return j, True
         j += 1
-    return j
+    return j, False
 
 
 def countermovement_bottom(hip_y, takeoff_i, fps, search_s=1.0):
@@ -124,15 +141,18 @@ def detect_events(hip_y, fps, takeoff_signal, landing_signal=None, refine=False,
 
     to_i, _, to_base, to_rise, to_thr = threshold_crossings(takeoff_signal, threshold_fraction, min_rise)
     _, la_i, la_base, la_rise, la_thr = threshold_crossings(landing_signal, threshold_fraction, min_rise)
+    capped = False
     if refine:
+        max_steps = max(2, int(round(0.1 * fps)))
         to_tol = ground_tolerance(takeoff_signal, to_base, to_thr, rise=to_rise)
         la_tol = ground_tolerance(landing_signal, la_base, la_thr, rise=la_rise)
-        to_i = refine_takeoff(takeoff_signal, to_i, to_base, to_tol)
-        la_i = refine_landing(landing_signal, la_i, la_base, la_tol)
+        to_i, cap_to = refine_takeoff(takeoff_signal, to_i, to_base, to_tol, max_steps)
+        la_i, cap_la = refine_landing(landing_signal, la_i, la_base, la_tol, max_steps)
         to_thr, la_thr = to_base + to_tol, la_base + la_tol
+        capped = cap_to or cap_la
     if la_i <= to_i:
         raise NoJumpFound("Landing was detected before takeoff; check the window/tracking.")
 
     bottom_i = countermovement_bottom(hip_y, to_i, fps)
     onset_i = movement_onset(hip_y, bottom_i, fps)
-    return JumpEvents(onset_i, bottom_i, to_i, la_i, float(to_thr), float(la_thr))
+    return JumpEvents(onset_i, bottom_i, to_i, la_i, float(to_thr), float(la_thr), capped)
