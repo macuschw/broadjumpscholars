@@ -1,0 +1,11 @@
+{
+  "source_video": "bjbd1.mov",
+  "first_frame": 0,
+  "last_frame": 129,
+  "fps": 30.0,
+  "near_side": "LEFT",
+  "far_side": "RIGHT",
+  "jump_direction": "left",
+  "known_far_leg_snap_frame": 36,
+  "note": "Standing broad jump at 30 fps (2560x1440) with a bystander walking BEHIND the jumper. The jumper jumps toward the left of the image, so the left leg is the near leg (MediaPipe's depth estimate agrees). At frame 36 the far (right) leg snaps onto the bystander's legs - confirmed by eye on a skeleton overlay. The near leg, which every default result uses, stays on the jumper. No takeoff/landing labels (30 fps); not an event-timing benchmark."
+}

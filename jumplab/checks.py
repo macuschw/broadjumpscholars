@@ -169,3 +169,64 @@ def check_frame_timing(frame_times, fps):
                         "video. All times assume evenly spaced frames.",
                         CAUTION, ("timing", "trajectory"))]
     return []
+
+
+# ---------------------------------------------------------------- limb snapping
+# A landmark that leaps away from where its neighbouring frames put it, then comes back, is
+# usually MediaPipe briefly attaching that limb to something else - often another person
+# standing behind the jumper. Measured as a fraction of trunk length, so it doesn't depend
+# on resolution. Thresholds were set from real footage (provisional: one confirmed snap):
+#   clean clips: one-frame excursion <= 23%, two-frame <= 30% of trunk length
+#   bystander clips: 35-79%
+SNAP_LANDMARKS = ("HIP", "SHOULDER", "KNEE", "ANKLE", "HEEL", "FOOT_INDEX")
+SNAP_ONE_FRAME = 0.30
+SNAP_TWO_FRAME = 0.40
+
+
+def limb_snap_frames(kp, side):
+    """{frame: [landmark names]} for frames where a near-side landmark snaps away.
+    One-frame test: distance from the midpoint of the previous and next frames.
+    Two-frame test: both middle frames of a 4-frame window, against the straight line
+    between its two end frames (catches a limb that stays snapped for two frames)."""
+    from .pose_tracking import LANDMARKS
+
+    idx = LANDMARKS[side]
+    xy = kp.xyv[:, :, :2]
+    trunk = np.nanmedian(np.hypot(*(xy[:, idx["HIP"]] - xy[:, idx["SHOULDER"]]).T))
+    flagged = {}
+    if not np.isfinite(trunk) or trunk <= 0 or kp.n_frames < 4:
+        return flagged
+    for name in SNAP_LANDMARKS:
+        p = xy[:, idx[name]]
+        with np.errstate(invalid="ignore"):
+            one = np.hypot(*(p[1:-1] - (p[:-2] + p[2:]) / 2).T) / trunk          # frame t = 1..n-2
+            a, b = p[:-3], p[3:]                                                  # window t-1 .. t+2
+            first = np.hypot(*(p[1:-2] - (a + (b - a) / 3)).T) / trunk            # frame t
+            second = np.hypot(*(p[2:-1] - (a + 2 * (b - a) / 3)).T) / trunk       # frame t+1
+            hits = set((np.flatnonzero(one > SNAP_ONE_FRAME) + 1).tolist())
+            hits |= set((np.flatnonzero(first > SNAP_TWO_FRAME) + 1).tolist())
+            hits |= set((np.flatnonzero(second > SNAP_TWO_FRAME) + 2).tolist())
+        for f in hits:
+            flagged.setdefault(int(f), []).append(name.lower().replace("foot_index", "toe"))
+    return dict(sorted(flagged.items()))
+
+
+def check_limb_snaps(snaps, onset_i, takeoff_i, landing_i, hi, fps):
+    """Warn about snaps inside the jump. Warn only: the data is NOT changed (repairing it
+    automatically waits until the thresholds are validated on more real videos)."""
+    end = min(hi, landing_i + max(2, int(0.1 * fps)))
+    inside = {f: n for f, n in snaps.items() if onset_i <= f < end}
+    if not inside:
+        return []
+    margin = max(1, int(0.1 * fps))
+    near_events = [f for f in inside if takeoff_i - margin <= f <= landing_i + margin]
+    parts = sorted({n for names in inside.values() for n in names})
+    frames = sorted(inside)
+    msg = (f"MediaPipe briefly put the {', '.join(parts)} far from where the neighbouring "
+           f"frames had them, at frame(s) {', '.join(map(str, frames[:8]))}"
+           f"{' ...' if len(frames) > 8 else ''}. This is usually a limb snapping onto "
+           "something else, often another person behind the jumper. Results near those "
+           "frames may be off; check the skeleton video. (The data was not changed.)")
+    severity = SERIOUS if near_events else CAUTION
+    return [warning("limb_snap", msg, severity)]
+

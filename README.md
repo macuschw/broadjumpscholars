@@ -13,12 +13,21 @@ and vector geometry do the rest.
      keypoints from a real 120 fps jump (`tests/data/`) and checks takeoff/landing against
      frames labelled by eye (+/-2 frames). Add more labelled jumps with
      `tests/data/make_benchmark_clip.py`.
+   - `tests/test_limb_snap.py` also uses real footage: a 30 fps jump with a bystander
+     walking behind the jumper, where the far leg snaps onto the bystander at frame 36
+     (`tests/data/bystander_jump_30fps_*`).
    - Tests marked `xfail` are known, documented inaccuracies (e.g. the default ankle
      method's early takeoff), not broken tests.
 
 ## Recording tips
 - Camera on a tripod, side-on, perpendicular to the jump, whole jump in frame. Don't zoom or move it.
 - Record at **120-240 fps** (slow-mo). At 30 fps every event time is only good to +/-33 ms.
+- **For faster processing, record at 1080p rather than 4K** (same fps). MediaPipe shrinks
+  every frame to a small size internally, so 4K mostly adds decoding time: on a 5.7 s 4K
+  120 fps clip, decoding alone took 7.9 of the 17 s. Recalibrate if you change resolution.
+- **Keep other people out of the frame**, especially behind the jumper during the jump:
+  MediaPipe tracks one person, and limbs can briefly snap onto someone overlapping them.
+  Have the line wait behind the camera or well off to the side.
 - For calibration, film a tape measure or two floor marks a known distance apart,
   **along the line of the jump** (same distance from the camera as the athlete).
   If the reference has to be somewhere else (e.g. in front of the jump line), measure the
@@ -106,6 +115,16 @@ re-running with a different window or calibration is instant. Outputs in `output
 The analysis **stops** if the jump isn't fully inside the clip (starts or ends mid-air, or
 no landing is found). Anything else suspicious - frames where the person wasn't detected,
 landmarks MediaPipe is unsure of or that leave the frame, an implausible flight time or
-distance, a jump that isn't side-on, a moving start, uneven frame timing - is listed under
-Warnings, marked caution or serious. The summary lowers the rating of each result the
-warning affects.
+distance, a jump that isn't side-on, a moving start, uneven frame timing, a limb snapping
+onto something else - is listed under Warnings, marked caution or serious. The summary
+lowers the rating of each result the warning affects.
+
+**Limb snapping** (`limb_snap`): a leg, hip or shoulder landmark that leaps more than 30% of
+the trunk length away from where its neighbouring frames put it (40% over two frames) -
+usually a limb attaching to a person behind the jumper. It is **warn-only: the data is not
+changed**. The thresholds are provisional (set from 2 clean and 2 bystander clips, with one
+snap confirmed by eye); once they're validated on more real videos, automatically
+replacing snapped landmarks by interpolation can be reconsidered. Only the legs the results
+use are warned about. Snaps on the hidden far leg are listed in `results.json` under
+`tracking_quality.far_leg_snap_frames` without a warning, because no default result uses
+that leg (they are warned about with `--com-mode both`, which does).

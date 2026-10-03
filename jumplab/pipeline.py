@@ -105,6 +105,16 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None):
     warnings += checks.check_jump_inside_window(to, la, lo, hi, fps)
     warnings += checks.check_flight_time(flight_time)
     warnings += checks.check_missing_frames(kp.detected, on, to, la, hi, fps)
+
+    # Limb snapping (a landmark leaping onto something else, often a person behind the
+    # jumper). Only the legs the results use get a warning: the far leg is hidden and only
+    # used with com_mode="both", so far-leg snaps are just listed in tracking_quality.
+    far = "LEFT" if side == "RIGHT" else "RIGHT"
+    snaps = checks.limb_snap_frames(kp, side)
+    far_snaps = checks.limb_snap_frames(kp, far)
+    warnings += checks.check_limb_snaps(snaps, on, to, la, hi, fps)
+    if config.com_mode == "both":
+        warnings += checks.check_limb_snaps(far_snaps, on, to, la, hi, fps)
     if ev.search_capped:
         warnings.append(checks.warning(
             "event_search_capped", "The refined takeoff/landing search hit its 0.1 s limit, "
@@ -281,6 +291,11 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None):
         "distance": distance,
         "pixels": pixels,
         "warnings": warnings,
+        "tracking_quality": {
+            # {frame: [landmarks]} over the whole clip; frames as in "events"
+            "limb_snap_frames": {str(f): n for f, n in snaps.items()},
+            "far_leg_snap_frames": {str(f): n for f, n in far_snaps.items()},
+        },
         # Per-frame arrays for CSV/plots (image x, y up; smoothed unless marked raw)
         "series": {
             "time_s": t, "hip_x_px": hip_x, "hip_y_px_up": hip_y,
