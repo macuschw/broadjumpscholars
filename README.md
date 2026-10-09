@@ -22,6 +22,10 @@ and vector geometry do the rest.
 ## Recording tips
 - Camera on a tripod, side-on, perpendicular to the jump, whole jump in frame. Don't zoom or move it.
 - Record at **120-240 fps** (slow-mo). At 30 fps every event time is only good to +/-33 ms.
+- **Transfer slow-motion videos unconverted**: AirDrop with "All Photos Data" turned on, or
+  Photos -> File -> Export -> "Export Unmodified Original". Otherwise the phone may save the
+  clip for slowed-down playback at 30 fps, and every time comes out 4-8x too long (g ~ 0.6).
+  The analysis spots this (`slow_motion_suspected`) and suggests `--fps 120`.
 - **For faster processing, record at 1080p rather than 4K** (same fps). MediaPipe shrinks
   every frame to a small size internally, so 4K mostly adds decoding time: on a 5.7 s 4K
   120 fps clip, decoding alone took 7.9 of the 17 s. Recalibrate if you change resolution.
@@ -43,7 +47,8 @@ python scripts/calibrate.py calibration_clip.mp4 --distance 2.0
 # 2. Analyze a jump
 python scripts/run_analysis.py jump.mp4 --calibration output/calibration.json
 
-# Options: --start/--end (s) to pick one jump, --events toe_heel, --show, --retrack
+# Options: --start/--end (s) to pick one jump, --events toe_heel, --show, --retrack,
+#          --fps 120 (the real frame rate, if the file's own is wrong)
 python scripts/run_analysis.py --help
 
 # 3. (Recommended) check the calibration with physics: toss or drop a ball in the
@@ -71,6 +76,7 @@ re-running with a different window or calibration is instant. Outputs in `output
 | `jumplab/ball_tracking.py` | tracks a ball, for the ball-toss physics check |
 | `jumplab/pipeline.py` | video / keypoints in -> results dict out |
 | `jumplab/report.py`, `plotting.py` | printed table, CSV, JSON, plots |
+| `jumplab/feet.py` | both feet: front-most takeoff toe and rearmost landing heel (official rule), label-swap safe |
 | `jumplab/checks.py` | sanity checks: stops on an incomplete jump, warns (with severity and affected results) about anything suspicious |
 | `jumplab/summary.py` | plain-language summary by category with reliability ratings (`scripts/summarize.py`) |
 
@@ -83,7 +89,17 @@ re-running with a different window or calibration is instant. Outputs in `output
 - `takeoff` is the first airborne frame and `landing` the first frame back on the ground, so
   flight time = (landing - takeoff) / fps.
 - Ground contact time = movement onset -> takeoff; push-off time = countermovement bottom -> takeoff.
-- Jump distance is measured like the real test: takeoff toe -> landing heel.
+- Jump distance (the main number) uses the camera-side foot: its toe at takeoff to its heel
+  at landing. The official rule uses the front-most toe and the rearmost heel of EITHER foot;
+  that is reported as `jump_distance_both_feet_m`, using the hidden far foot only when
+  MediaPipe sees it clearly enough (visibility >= 0.5, clearly lower than the near foot's,
+  and steady to within 2 cm). A `staggered_feet` warning appears when the two distances
+  differ by more than 5 cm (10% of trunk length uncalibrated). Feet are compared by position
+  and visibility, never by left/right label, so MediaPipe swapping the labels can't break it.
+  These thresholds are provisional until checked against tape-measured staggered landings.
+- Frame rate: taken from the frames' own timestamps when the file header disagrees by more
+  than 1% (one 120 fps phone clip said 116.55), noted as `fps_corrected` without lowering
+  any rating.
 - Trajectory: `x = x0 + vx t`, `y = y0 + vy t - g t^2 / 2`, least-squares fitted to the
   (unsmoothed) whole-body **center of mass** during flight (`--trajectory-point hip` for the
   old behaviour). CoM = sum(m_i r_i) / sum(m_i) over 14 body segments, using segment mass

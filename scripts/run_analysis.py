@@ -41,6 +41,8 @@ def main():
                         "both: use MediaPipe's guess for the hidden far-side limbs")
     p.add_argument("--no-skeleton", action="store_true", help="don't write the skeleton video")
     p.add_argument("--retrack", action="store_true", help="re-run MediaPipe even if cached")
+    p.add_argument("--fps", type=float, help="the video's real frame rate, if the file's own is "
+                   "wrong (e.g. slow-motion saved for slowed-down playback: use 120 or 240)")
     p.add_argument("--show", action="store_true", help="show plots in a window")
     args = p.parse_args()
 
@@ -64,7 +66,8 @@ def main():
     print(f"Analyzing {args.video} ...")
     try:
         r = analyze_video(args.video, scale, config, args.output,
-                          skeleton_video=not args.no_skeleton, retrack=args.retrack)
+                          skeleton_video=not args.no_skeleton, retrack=args.retrack,
+                          fps_override=args.fps)
     except NoJumpFound as e:
         sys.exit(f"No jump found: {e}")
 

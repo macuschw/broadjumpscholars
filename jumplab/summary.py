@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import textwrap
 
-from .checks import SERIOUS, as_warning
+from .checks import INFO, SERIOUS, as_warning
 from .physics import G
 
 M_TO_IN = 1 / 0.0254
@@ -70,15 +70,17 @@ def _worst(a, b):
 
 def _apply_warnings(r, category, rating, reason, skip=()):
     """Downgrade a rating for every pipeline warning that affects this category:
-    caution -> at most '~ use with care', serious -> '✗ rough only'."""
+    caution -> at most '~ use with care', serious -> '✗ rough only', info -> note only."""
     notes = []
     for w in map(as_warning, r.get("warnings", [])):
         if category in w["affects"] and w["code"] not in skip:
+            if w["severity"] == INFO:
+                notes.append(f"NOTE: {w['message']}")
+                continue
             rating = _worst(rating, ROUGH if w["severity"] == SERIOUS else CAREFUL)
-            notes.append(w["message"])
+            notes.append(f"WARNING: {w['message']}")
     if notes:
-        reason = " ".join([reason] + [f"WARNING: {n}" for n in notes]) if reason else \
-            " ".join(f"WARNING: {n}" for n in notes)
+        reason = " ".join([reason] + notes) if reason else " ".join(notes)
     return rating, reason
 
 def _g_check(r):
@@ -149,7 +151,12 @@ def _distance(r):
         s = _Section(1, "Jump distance", rating, reason)
         m = d["jump_distance_m"]
         s.value("Jump distance", f"{m:.2f} m  ({_inches(m):.1f} in, {_feet_inches(m)})")
-        s.text("Measured like the official test: from the toe at takeoff to the heel at landing.")
+        s.text("Measured from the camera-side foot: its toe at takeoff to its heel at landing.")
+        both = d.get("jump_distance_both_feet_m")
+        if both is not None:
+            s.value("Official rule (both feet)", f"{both:.2f} m  ({_inches(both):.1f} in)")
+            s.text("From the front-most toe at takeoff to the rearmost heel at landing, using the "
+                   "far foot where MediaPipe could see it clearly enough.")
         s.blank()
         s.value("Hip travel while in the air", f"{d['hip_travel_m']:.2f} m  ({_inches(d['hip_travel_m']):.1f} in)")
         s.text("Shorter than the jump distance because you take off leaning forward and land "

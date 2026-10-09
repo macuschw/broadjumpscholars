@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional
 
 import numpy as np
 
-from . import angles, checks, events, physics
+from . import angles, checks, events, feet, physics
 from .center_of_mass import COM_LANDMARKS, com_from_keypoints
 from .pose_tracking import BODY_PARTS, load_or_track
 from .smoothing import DEFAULT_CUTOFF_HZ, fill_and_smooth, fill_gaps
@@ -73,13 +73,36 @@ def _event(t, i):
     return {"frame": int(i), "time_s": float(t[i])}
 
 
-def analyze_keypoints(kp, scale_m_per_px=None, config=None):
+def _frame_rate(kp, fps_override):
+    """Decide the real frame rate: an explicit override, else the frames' own timestamps when
+    the file header disagrees with them by more than 1%. Returns (kp, source, warnings)."""
+    if fps_override:
+        times = None if kp.frame_times is None else np.asarray(kp.frame_times) * kp.fps / fps_override
+        note = checks.warning(
+            "fps_override", f"Frame rate set by hand to {fps_override:g} fps (the file says "
+            f"{kp.fps:.2f}).", checks.INFO, ("timing", "trajectory"))
+        return replace(kp, fps=float(fps_override), frame_times=times), "override", [note]
+    real = checks.measured_fps(kp.frame_times)
+    if real and abs(real / kp.fps - 1) > 0.01:
+        note = checks.warning(
+            "fps_corrected", f"The file header says {kp.fps:.2f} fps but the frames are "
+            f"{1000 / real:.2f} ms apart, so {real:.2f} fps was used.", checks.INFO,
+            ("timing", "trajectory"))
+        return replace(kp, fps=real), "timestamps", [note]
+    return kp, "header", []
+
+
+def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
     """Full analysis of already-tracked keypoints. scale_m_per_px=None -> uncalibrated
-    (pixel results, plus gravity/flight-time estimates that need no calibration)."""
+    (pixel results, plus gravity/flight-time estimates that need no calibration).
+    fps_override: the real frame rate, for a file whose own timing is wrong (e.g. slow-motion
+    saved for slowed-down playback)."""
     config = config or AnalysisConfig()
+    header_fps = kp.fps
+    kp, fps_source, warnings = _frame_rate(kp, fps_override)
     fps, t = kp.fps, kp.time
     side = config.side or choose_side(kp)
-    warnings = checks.check_frame_timing(kp.frame_times, fps)
+    warnings += checks.check_frame_timing(kp.frame_times, fps)
     if fps < 100:
         warnings.append(checks.warning(
             "low_fps", f"This video is {fps:.0f} fps (under 100). Angles are fine, but event "
@@ -158,6 +181,19 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None):
 
     n_stand = max(3, int(0.3 * fps))
     stand = slice(lo, lo + n_stand)
+
+    # Both feet (official rule: front-most takeoff toe -> rearmost landing heel). The main
+    # distance stays the near-foot one; this is reported alongside it.
+    trunk_px = float(np.nanmedian(np.hypot(raw["HIP"][0] - raw["SHOULDER"][0],
+                                           raw["HIP"][1] - raw["SHOULDER"][1])))
+    settled = slice(la + int(0.1 * fps), min(hi, la + int(0.4 * fps)))
+    if settled.stop - settled.start < 3:
+        settled = slice(la, hi)
+    planted = slice(bo, to) if to - bo >= 3 else slice(max(lo, to - 3), to)
+    both = feet.both_feet(kp, direction, planted, settled, pixels["jump_distance_px"],
+                          scale_m_per_px, trunk_px)
+    pixels["jump_distance_both_feet_px"] = both["distance_px"]
+    warnings += checks.check_stagger(both, scale_m_per_px)
 
     def seg_len(a, b, sl):
         return float(np.median(np.hypot(raw[a][0][sl] - raw[b][0][sl], raw[a][1][sl] - raw[b][1][sl])))
@@ -254,7 +290,11 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None):
             used += [(far, n) for n in COM_LANDMARKS]
     warnings += checks.check_landmarks(kp, used, on, min(hi, la + max(2, int(0.1 * fps))))
 
+    warnings += checks.check_slow_motion(flight_time, fps, traj.get("g_fit_m_s2"))
+
     distance = {"jump_distance_m": pixels["jump_distance_px"] * scale if scale else None,
+                "jump_distance_both_feet_m": (both["distance_px"] * scale
+                                              if scale and both["distance_px"] is not None else None),
                 "hip_travel_m": pixels["hip_travel_px"] * scale if scale else None,
                 "countermovement_depth_m": pixels["countermovement_depth_px"] * scale if scale else None}
     if implied:
@@ -269,6 +309,8 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None):
     return {
         "video": kp.video_path,
         "fps": float(fps),
+        "header_fps": float(header_fps),
+        "fps_source": fps_source,       # "header", "timestamps" (header was wrong) or "override"
         "n_frames": int(kp.n_frames),
         "frame_size": [int(kp.width), int(kp.height)],
         "detected_fraction": detected,
@@ -291,6 +333,7 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None):
         "distance": distance,
         "pixels": pixels,
         "warnings": warnings,
+        "both_feet": _both_feet_summary(both, scale),
         "tracking_quality": {
             # {frame: [landmarks]} over the whole clip; frames as in "events"
             "limb_snap_frames": {str(f): n for f, n in snaps.items()},
@@ -311,14 +354,34 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None):
     }
 
 
+def _both_feet_summary(both, scale):
+    """JSON-friendly details of the both-feet comparison (cm when calibrated)."""
+    to_cm = (lambda px: round(100 * px * scale, 1)) if scale else (lambda px: None)
+
+    def end(d, label):
+        out = {"far_foot_used": bool(d["trusted"]), "frames": d["frames"]}
+        if "hidden_foot_visibility" in d:
+            out.update({"far_foot_visibility": round(d["hidden_foot_visibility"], 2),
+                        f"{label}_gap_px": round(d["gap_px"], 1), f"{label}_gap_cm": to_cm(d["gap_px"]),
+                        "far_foot_wobble_px": round(d["wobble_px"], 1)})
+        if not d["trusted"]:
+            out["why_not_used"] = d.get("reason")
+        return out
+
+    return {"landing_heels": end(both["landing_heels"], "heel"),
+            "takeoff_toes": end(both["takeoff_toes"], "toe"),
+            "difference_px": both["difference_px"],
+            "difference_cm": to_cm(both["difference_px"]) if both["difference_px"] is not None else None}
+
+
 def analyze_video(video_path, scale_m_per_px=None, config=None, output_dir="output",
-                  skeleton_video=True, retrack=False):
+                  skeleton_video=True, retrack=False, fps_override=None):
     """Video in -> results dict out. MediaPipe runs once; keypoints are cached in
     output_dir so re-analysing (new window, new calibration) is instant."""
     stem = os.path.splitext(os.path.basename(video_path))[0]
     cache = os.path.join(output_dir, f"{stem}_keypoints.npz")
     skeleton = os.path.join(output_dir, f"{stem}_skeleton.mp4") if skeleton_video else None
     kp, ran = load_or_track(video_path, cache, skeleton, retrack)
-    results = analyze_keypoints(kp, scale_m_per_px, config)
+    results = analyze_keypoints(kp, scale_m_per_px, config, fps_override)
     results["files"] = {"keypoints": cache, "skeleton_video": skeleton, "ran_mediapipe": ran}
     return results

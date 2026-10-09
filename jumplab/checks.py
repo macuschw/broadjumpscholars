@@ -7,7 +7,8 @@ A physics tool that prints a confident wrong number is worse than one that stops
 Each warning is a dict:
     code      short id, e.g. "missing_in_jump"
     message   what looks wrong and what to do about it
-    severity  "caution" (numbers usable with care) or "serious" (numbers probably wrong)
+    severity  "info" (something was noticed or corrected; ratings unchanged),
+              "caution" (numbers usable with care) or "serious" (numbers probably wrong)
     affects   result categories: "distance", "trajectory", "angles", "timing"
 """
 from __future__ import annotations
@@ -17,7 +18,7 @@ import numpy as np
 from .events import NoJumpFound
 
 ALL = ("distance", "trajectory", "angles", "timing")
-CAUTION, SERIOUS = "caution", "serious"
+INFO, CAUTION, SERIOUS = "info", "caution", "serious"
 
 # Plausible limits for a standing broad jump
 MIN_FLIGHT_S, MAX_FLIGHT_S = 0.15, 1.0
@@ -133,6 +134,31 @@ def check_distance(distance_px, shin_px):
     return []
 
 
+def check_stagger(both, m_per_px):
+    """Warn when the official-rule (both feet) distance differs from the near-foot one by more
+    than 5 cm (10% of trunk length uncalibrated). Not when the far foot was merely used."""
+    diff = both["difference_px"]
+    if diff is None or diff <= both["warn_above_px"]:
+        return []
+    fmt = (lambda px: f"{100 * px * m_per_px:.0f} cm") if m_per_px else (lambda px: f"{px:.0f} px")
+    parts = []
+    if both["heel_shift_px"] > 0:
+        parts.append(f"the far heel landed {fmt(both['heel_shift_px'])} behind the near heel")
+    if both["toe_shift_px"] > 0:
+        parts.append(f"the far toe was {fmt(both['toe_shift_px'])} ahead of the near toe at takeoff")
+    if m_per_px:
+        dist = (f"Near-foot distance {both['distance_px'] * m_per_px + diff * m_per_px:.2f} m; "
+                f"official-rule distance (front-most toe to rearmost heel) "
+                f"{both['distance_px'] * m_per_px:.2f} m.")
+    else:
+        dist = f"The official-rule distance is {fmt(diff)} shorter than the near-foot one."
+    return [warning("staggered_feet",
+                    f"The feet were staggered: {' and '.join(parts)}. {dist} The main jump "
+                    "distance is still the near-foot one; the far foot is partly hidden, so check "
+                    "the skeleton video before using the official-rule number.",
+                    CAUTION, ("distance",))]
+
+
 def check_side_on(launch_angle_deg, size_before_px, size_after_px):
     """Broad jumps filmed side-on launch well below vertical, and the athlete's apparent
     size doesn't change (no movement toward/away from the camera)."""
@@ -151,6 +177,43 @@ def check_side_on(launch_angle_deg, size_before_px, size_after_px):
                                "toward/away from the camera. Distances assume the jump is "
                                "across the frame.", SERIOUS))
     return out
+
+
+def measured_fps(frame_times):
+    """Frame rate from the frames' own timestamps (median spacing), or None if unknown.
+    Phone files can carry a wrong rate in the header (one 120 fps clip said 116.55)."""
+    if frame_times is None or len(frame_times) < 10:
+        return None
+    gap = float(np.median(np.diff(np.asarray(frame_times, dtype=float))))
+    return 1.0 / gap if gap > 0 else None
+
+
+SLOW_MOTION_FACTORS = (2, 4, 8)        # 60, 120, 240 fps footage saved for 30 fps playback
+
+
+def check_slow_motion(flight_time, fps, g_m_s2=None):
+    """Slow-motion saved for slowed-down playback looks like an ordinary video in which
+    everything happens k times too slowly: flight lasts k times longer and g comes out k^2
+    times too small. Nothing in the file says so, so look for that physics signature."""
+    from .physics import G
+
+    candidates = []
+    if g_m_s2 is not None and g_m_s2 > 0:
+        est = (G / g_m_s2) ** 0.5
+        candidates = [k for k in SLOW_MOTION_FACTORS if abs(est / k - 1) < 0.2]
+        evidence = f"g came out {g_m_s2:.2f} m/s² instead of 9.81"
+    elif flight_time > MAX_FLIGHT_S:
+        candidates = [k for k in SLOW_MOTION_FACTORS if 0.25 <= flight_time / k <= 0.7]
+        evidence = f"the flight lasted {flight_time:.2f} s"
+    if not candidates:
+        return []
+    k = candidates[0]
+    return [warning("slow_motion_suspected",
+                    f"This looks like a slow-motion video saved for slowed-down playback: "
+                    f"{evidence}, as if everything happened {k}x too slowly. The real frame rate "
+                    f"is probably {fps * k:.0f} fps, not {fps:.0f}. Transfer the original (AirDrop "
+                    f"with 'All Photos Data' on, or 'Export Unmodified Original'), or re-run with "
+                    f"--fps {fps * k:.0f}.", SERIOUS)]
 
 
 def check_frame_timing(frame_times, fps):

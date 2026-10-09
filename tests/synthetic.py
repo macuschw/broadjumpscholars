@@ -36,7 +36,8 @@ class Truth:
 
 
 def jumper_keypoints(direction=1, noise_px=0.0, seed=0, duration=2.2, truth=None,
-                     arm_swing_deg=0.0, heel_lift_deg=0.0, heel_lift_s=0.12):
+                     arm_swing_deg=0.0, heel_lift_deg=0.0, heel_lift_s=0.12,
+                     far_visibility=0.5, far_heel_offset_m=0.0, far_toe_offset_m=0.0):
     """A stick-figure broad jump: stand, countermovement, takeoff, symmetric flight, land.
     direction=+1 jumps toward the right of the image, -1 toward the left.
     arm_swing_deg > 0: the arms swing forward/up and back during flight. The body is then
@@ -44,7 +45,11 @@ def jumper_keypoints(direction=1, noise_px=0.0, seed=0, duration=2.2, truth=None
     a real jump.
     heel_lift_deg > 0: in the last heel_lift_s before takeoff the foot rotates about the
     planted toe (heel and ankle rise, toe stays down), as in a real push-off; the foot
-    flattens again by mid-flight."""
+    flattens again by mid-flight.
+    The LEFT side faces the camera (visibility 0.9); the RIGHT side is the far side
+    (visibility far_visibility). far_heel_offset_m moves the far foot forward (+) or back (-)
+    after landing; far_toe_offset_m does the same while it is planted before takeoff -
+    i.e. staggered feet."""
     T = truth or Truth()
     t = np.arange(int(duration * T.fps)) / T.fps
     n = len(t)
@@ -107,8 +112,11 @@ def jumper_keypoints(direction=1, noise_px=0.0, seed=0, duration=2.2, truth=None
     xyv = np.full((n, N_LANDMARKS, 3), np.nan)
     xyv[:, :, 2] = 0.0
     xyv[:, 0, :] = (1.0, 1.0, 0.9)          # nose: just so every frame counts as "detected"
-    for side, vis in (("LEFT", 0.9), ("RIGHT", 0.5)):
+    landed, planted = t >= T.t_landing, t <= T.t_takeoff
+    for side, vis in (("LEFT", 0.9), ("RIGHT", far_visibility)):
         for name, (x_m, y_m) in parts.items():
+            if side == "RIGHT" and name in ("HEEL", "ANKLE", "FOOT_INDEX"):
+                x_m = x_m + np.where(landed, far_heel_offset_m, 0.0) + np.where(planted, far_toe_offset_m, 0.0)
             x_px = T.width / 2 + direction * (x_m - 1.0) / T.scale
             y_img = T.height - 100 - y_m / T.scale
             i = LANDMARKS[side][name]

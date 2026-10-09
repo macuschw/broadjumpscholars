@@ -26,7 +26,9 @@ def format_report(r):
 
     lines.append("=========== RESULTS ===========")
     lines.append(f"Video: {r['video']}")
-    lines.append(f"  {r['fps']:.1f} fps, {r['n_frames']} frames, person detected in "
+    fps_note = "" if r.get("fps_source", "header") == "header" else \
+        f" (file header said {r['header_fps']:.2f}; {r['fps_source']} used)"
+    lines.append(f"  {r['fps']:.1f} fps{fps_note}, {r['n_frames']} frames, person detected in "
                  f"{100 * r['detected_fraction']:.0f}%, {r['side']} side, jumping {r['direction']}")
     lines.append(f"  Calibration: " + (f"{r['scale_m_per_px']:.5f} m/px" if r["scale_m_per_px"]
                                          else "none (pixel results + gravity estimates only)"))
@@ -78,6 +80,8 @@ def format_report(r):
     lines.append("\nDistances")
     if r["scale_m_per_px"]:
         row("Jump distance (takeoff toe -> landing heel)", _fmt(d["jump_distance_m"], ".2f", " m"))
+        if d.get("jump_distance_both_feet_m") is not None:
+            row("  official rule (front toe -> rearmost heel)", _fmt(d["jump_distance_both_feet_m"], ".2f", " m"))
         row("Hip horizontal travel in flight", _fmt(d["hip_travel_m"], ".2f", " m"))
         row("Countermovement depth", _fmt(d["countermovement_depth_m"], ".2f", " m"))
     row("Jump distance", f"{px['jump_distance_px']:.0f} px")
