@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Science · JumpLab</title>
+  <meta name="description" content="The physics behind JumpLab: pose tracking, smoothing, a projectile fit for the trajectory, vector geometry for angles and frame counting for timing, with a worked example.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/fonts/KaTeX_Main-Regular.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/fonts/KaTeX_Math-Italic.woff2" crossorigin>
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script type="module" src="assets/js/components/site-chrome.js" blocking="render"></script>
+  <script type="module" src="assets/js/pages/science.js" blocking="render"></script>
+  <script type="module" src="assets/js/lib/math.js" blocking="render"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <jl-header current="science"></jl-header>
+
+  <main id="main">
+    <header class="page-head container page-head--split">
+      <div>
+        <p class="eyebrow">Science</p>
+        <h1>Physics you can check by hand.</h1>
+      </div>
+      <p class="lede">No black box. Every number comes from five plain steps, each built on physics taught in high school and college.</p>
+    </header>
+
+    <section class="container science" aria-label="The science">
+      <div class="tablist" role="tablist" aria-label="Science topics" id="science-tabs">
+        <button class="tab" role="tab" id="tab-steps" data-tab="steps" aria-controls="panel-steps" aria-selected="true">Pipeline</button>
+        <button class="tab" role="tab" id="tab-example" data-tab="example" aria-controls="panel-example" aria-selected="false">Worked example</button>
+        <button class="tab" role="tab" id="tab-calibration" data-tab="calibration" aria-controls="panel-calibration" aria-selected="false">Calibration<span class="tab__more"> &amp; FAQ</span></button>
+      </div>
+
+      <div class="tabpanel" role="tabpanel" id="panel-steps" aria-labelledby="tab-steps" tabindex="0">
+      <ol class="pipeline stagger" role="list">
+        <li class="pipeline__step">
+          <span class="num">1</span>
+          <h2>Pose tracking</h2>
+          <p>An AI model finds 33 body landmarks in every frame of the video.</p>
+          <div class="formula" role="math" aria-label="p sub i of t equals x sub i, y sub i" data-tex="p_i(t) = (x_i,\, y_i)" data-display><span class="formula__body">
+            <var>p</var><sub><var>i</var></sub>(<var>t</var>) = (<var>x</var><sub><var>i</var></sub>, <var>y</var><sub><var>i</var></sub>)
+          </span></div>
+          <p class="pipeline__note">Pixel positions, every frame</p>
+        </li>
+        <li class="pipeline__step">
+          <span class="num">2</span>
+          <h2>Smoothing</h2>
+          <p>Gaps are filled and jitter removed with a low-pass filter run forwards and backwards, so nothing shifts in time.</p>
+          <div class="formula" role="math" aria-label="cutoff frequency about 10 hertz" data-tex="f_c \approx 10\ \text{Hz}" data-display><span class="formula__body">
+            <var>f</var><sub>c</sub> ≈ 10 Hz
+          </span></div>
+          <p class="pipeline__note">Zero-lag Butterworth filter</p>
+        </li>
+        <li class="pipeline__step pipeline__step--key">
+          <span class="num">3</span>
+          <h2>Parabola fit</h2>
+          <p>In the air only gravity acts, so the centre of mass follows a parabola. Fitting it gives the takeoff velocity.</p>
+          <div class="formula" role="math" aria-label="x of t equals x0 plus v x t; y of t equals y0 plus v y t minus one half g t squared" data-tex="\begin{aligned} x(t) &amp;= x_0 + v_x t \\ y(t) &amp;= y_0 + v_y t - \tfrac{1}{2} g t^2 \end{aligned}" data-display><span class="formula__body">
+            <var>x</var>(<var>t</var>) = <var>x</var><sub>0</sub> + <var>v</var><sub><var>x</var></sub><var>t</var><br>
+            <var>y</var>(<var>t</var>) = <var>y</var><sub>0</sub> + <var>v</var><sub><var>y</var></sub><var>t</var> − ½<var>g</var><var>t</var><sup>2</sup>
+          </span></div>
+          <p class="pipeline__note"><span class="tex" data-tex="\theta = \operatorname{atan2}(v_y, v_x),\ \ h = v_y^2/2g" role="math" aria-label="launch angle theta equals atan2 of v y and v x, and peak height h equals v y squared over 2 g">θ = atan2(<var>v</var><sub><var>y</var></sub>, <var>v</var><sub><var>x</var></sub>), <var>h</var> = <var>v</var><sub><var>y</var></sub><sup>2</sup>/2<var>g</var></span></p>
+        </li>
+        <li class="pipeline__step">
+          <span class="num">4</span>
+          <h2>Vector geometry</h2>
+          <p>Body angles come from the line between two landmarks, measured from vertical. The centre of mass is a weighted average of 14 body segments.</p>
+          <div class="formula" role="math" aria-label="alpha equals atan2 of delta x and delta y" data-tex="\alpha = \operatorname{atan2}(\Delta x,\, \Delta y)" data-display><span class="formula__body">
+            α = atan2(Δ<var>x</var>, Δ<var>y</var>)
+          </span></div>
+          <p class="pipeline__note"><span class="tex" data-tex="r_{\text{CoM}} = \textstyle\sum m_i r_i \,/\, \sum m_i" role="math" aria-label="centre of mass r equals sum of m i r i over sum of m i"><var>r</var><sub>CoM</sub> = Σ<var>m</var><sub><var>i</var></sub><var>r</var><sub><var>i</var></sub>/Σ<var>m</var><sub><var>i</var></sub></span></p>
+        </li>
+        <li class="pipeline__step">
+          <span class="num">5</span>
+          <h2>Frame counting</h2>
+          <p>Takeoff and landing are found from the toe and heel landmarks. Times come from counting frames between them.</p>
+          <div class="formula" role="math" aria-label="flight time T equals landing frame minus takeoff frame, over frames per second" data-tex="T = \dfrac{f_{\text{land}} - f_{\text{takeoff}}}{\text{fps}}" data-display><span class="formula__body">
+            <var>T</var> = (<var>f</var><sub>land</sub> − <var>f</var><sub>takeoff</sub>) / fps
+          </span></div>
+          <p class="pipeline__note">1 frame = 8.3 ms at 120 fps</p>
+        </li>
+      </ol>
+
+      </div>
+
+      <div class="tabpanel science-example" role="tabpanel" id="panel-example" aria-labelledby="tab-example" tabindex="0" hidden>
+      <div class="science-example__head">
+        <h2 id="example-title">One flight, fitted.</h2>
+        <p>The dots are the sample athlete's hip in every frame of the flight, with a few millimetres of simulated tracking noise.
+          The red line is the parabola fitted through them; every number beside it is calculated from that fit, live.
+          <span class="demo-tag">Demo data</span></p>
+      </div>
+      <div class="science-example__grid">
+        <figure class="panel fit-figure">
+          <ul class="fit-legend" role="list">
+            <li><span class="fit-legend__dot" aria-hidden="true"></span>Tracked hip, every frame</li>
+            <li><span class="fit-legend__line" aria-hidden="true"></span>Fitted parabola</li>
+          </ul>
+          <div class="fit-figure__plot" id="fit-chart"></div>
+          <figcaption class="visually-hidden">Hip height against time during the sample jump's flight, with the fitted parabola.</figcaption>
+          <div id="fit-table"></div>
+        </figure>
+
+        <ol class="fit-steps" role="list">
+          <li>
+            <h3><span class="num">1</span> Fit the height</h3>
+            <div class="formula formula--small" role="math" aria-label="y of t equals y0 plus v y t minus one half g t squared" data-tex="y(t) = y_0 + v_y t - \tfrac{1}{2} g t^2" data-display>
+              <var>y</var>(<var>t</var>) = <var>y</var><sub>0</sub> + <var>v</var><sub><var>y</var></sub><var>t</var> − ½<var>g</var><var>t</var><sup>2</sup>
+            </div>
+            <p class="fit-steps__result"><span><span class="tex" data-tex="v_y"><var>v</var><sub><var>y</var></sub></span> = <output id="fit-vy">–</output> m/s</span><span><span class="tex" data-tex="g"><var>g</var></span> = <output id="fit-g">–</output> m/s²</span></p>
+          </li>
+          <li>
+            <h3><span class="num">2</span> Fit the forward position</h3>
+            <div class="formula formula--small" role="math" aria-label="x of t equals x0 plus v x t" data-tex="x(t) = x_0 + v_x t" data-display>
+              <var>x</var>(<var>t</var>) = <var>x</var><sub>0</sub> + <var>v</var><sub><var>x</var></sub><var>t</var>
+            </div>
+            <p class="fit-steps__result"><span><span class="tex" data-tex="v_x"><var>v</var><sub><var>x</var></sub></span> = <output id="fit-vx">–</output> m/s</span></p>
+          </li>
+          <li>
+            <h3><span class="num">3</span> Combine</h3>
+            <p class="fit-steps__result fit-steps__result--stack">
+              <span>Speed <span class="tex" data-tex="\sqrt{v_x^2 + v_y^2}">√(<var>v</var><sub><var>x</var></sub><sup>2</sup> + <var>v</var><sub><var>y</var></sub><sup>2</sup>)</span> = <output id="fit-speed">–</output> m/s</span>
+              <span>Launch angle <span class="tex" data-tex="\operatorname{atan2}(v_y, v_x)">atan2(<var>v</var><sub><var>y</var></sub>, <var>v</var><sub><var>x</var></sub>)</span> = <output id="fit-angle">–</output>°</span>
+              <span>Peak height <span class="tex" data-tex="v_y^2/2g"><var>v</var><sub><var>y</var></sub><sup>2</sup> / 2<var>g</var></span> = <output id="fit-peak">–</output> cm</span>
+            </p>
+          </li>
+          <li>
+            <h3><span class="num">4</span> Check against gravity</h3>
+            <p>Left free, the fit found <span class="tex" data-tex="g"><var>g</var></span> = <output id="fit-g2">–</output> m/s², <output id="fit-gerr">–</output> from 9.81.
+              A wrong scale or frame rate would show here first: a 240 fps clip read as 30 fps gives <span class="tex" data-tex="g/64"><var>g</var> ÷ 64</span>.</p>
+          </li>
+        </ol>
+      </div>
+      <p class="science-example__note">Tracking noise here is about <output id="fit-rms">–</output> mm per frame, so fitted values can differ from the
+        headline numbers by a hundredth or two: the honest uncertainty of one phone camera.</p>
+      </div>
+
+      <div class="tabpanel science-more" role="tabpanel" id="panel-calibration" aria-labelledby="tab-calibration" tabindex="0" hidden>
+      <div class="science-cal">
+        <h2>Pixels to metres</h2>
+        <p>A tape measure filmed along the jump line sets the scale:</p>
+        <div class="formula formula--small" role="math" aria-label="scale equals known distance divided by pixel distance" data-tex="\text{scale} = \dfrac{\text{known distance}}{\text{pixel distance}}" data-display>scale = known distance ÷ pixel distance</div>
+        <p>If the tape is nearer to or farther from the camera than the jump, the scale is corrected by the ratio of those distances, because
+          something twice as far away looks half as big:</p>
+        <div class="formula formula--small" role="math" aria-label="scale for the jump equals scale for the reference times distance to the jump divided by distance to the reference" data-tex="\text{scale}_{\text{jump}} = \text{scale}_{\text{ref}} \times \dfrac{d_{\text{jump}}}{d_{\text{ref}}}" data-display>
+          scale<sub>jump</sub> = scale<sub>ref</sub> × <var>d</var><sub>jump</sub> ÷ <var>d</var><sub>ref</sub>
+        </div>
+        <p>Gravity is the built-in check: fitted freely, the parabola should give <span class="tex" data-tex="g \approx 9.81\ \text{m/s}^2"><var>g</var> ≈ 9.81 m/s²</span>.</p>
+      </div>
+      <div class="science-faq">
+        <h2>Why it's done this way</h2>
+        <details class="disclose" open>
+          <summary>Why fit a curve instead of timing one frame?</summary>
+          <div class="disclose__body"><p>Each tracked position is off by a few millimetres. At 120 fps, 5 mm of noise between two frames swings a
+            frame-to-frame speed by about ±0.8 m/s. A parabola through 50 frames averages that out, and physics says the path has to be a
+            parabola, so the fit can't wander.</p></div>
+        </details>
+        <details class="disclose">
+          <summary>Why the centre of mass, not the hips or hands?</summary>
+          <div class="disclose__body"><p>In the air, gravity is the only force on the body as a whole, so only its centre of mass follows a true
+            parabola; arms and legs swing around it. JumpLab estimates the centre of mass from 14 body segments with standard mass fractions.
+            This demo uses the hip as a stand-in.</p></div>
+        </details>
+        <details class="disclose">
+          <summary>Why film in slow motion?</summary>
+          <div class="disclose__body"><p>Times are counted in frames. At 30 fps each frame is 33 ms, so a 0.43 s flight could read anywhere from
+            0.40 to 0.47 s; at 240 fps the step is 4 ms. Slow motion barely changes distances or angles. It is what makes the timing meaningful.</p></div>
+        </details>
+      </div>
+      </div>
+    </section>
+  </main>
+
+  <jl-footer></jl-footer>
+</body>
+</html>

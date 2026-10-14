@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accuracy · JumpLab</title>
+  <meta name="description" content="What a single phone camera can and can't measure, how JumpLab will be validated, and its known limitations.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script type="module" src="assets/js/components/site-chrome.js"></script>
+  <script type="module" src="assets/js/pages/accuracy.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <jl-header current="accuracy"></jl-header>
+
+  <main id="main">
+    <header class="page-head container page-head--split">
+      <div>
+        <p class="eyebrow">Accuracy</p>
+        <h1>Honest about what one camera can do.</h1>
+      </div>
+      <p class="lede">JumpLab uses a single 2D phone camera, not a lab system. It is built for consistent, repeatable field testing, and it reports its own uncertainty instead of hiding it.</p>
+    </header>
+
+    <section class="container accuracy" aria-label="Validation and limitations">
+      <div class="accuracy__validation">
+        <div class="accuracy__head">
+          <h2>Validation</h2>
+          <span class="demo-tag demo-tag--key">Placeholder · not yet measured</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data" id="validation-table">
+            <caption id="validation-note"></caption>
+            <thead>
+              <tr><th scope="col">Metric</th><th scope="col">Compared against</th><th scope="col" class="num-cell">Jumps</th><th scope="col" class="num-cell">Mean error</th><th scope="col" class="num-cell">95% limits</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="accuracy__limits">
+        <h2>Known limitations</h2>
+        <ul class="limits" role="list">
+          <li><strong>2D only.</strong> Motion toward or away from the camera isn't measured, so jumps must be filmed side-on.</li>
+          <li><strong>Hidden far side.</strong> The arm and leg away from the camera are partly hidden; their positions are estimated.</li>
+          <li><strong>Foot markers drift.</strong> Tracked heel and toe points move 1–4 cm while a foot is planted, so takeoff and landing are timed to about ±2 frames.</li>
+          <li><strong>One-frame resolution.</strong> Every time is ±1 frame: ±8 ms at 120 fps, ±33 ms at 30 fps.</li>
+          <li><strong>Calibration matters.</strong> Metres depend on a reference in the jump plane; a reference closer to the camera makes every distance read short.</li>
+          <li><strong>Average body model.</strong> The centre of mass uses typical adult segment proportions, not the individual athlete's.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <jl-footer></jl-footer>
+</body>
+</html>

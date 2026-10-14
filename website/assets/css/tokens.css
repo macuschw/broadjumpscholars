@@ -1,0 +1,70 @@
+/* JumpLab design tokens.
+   Base: charcoal + off-white. One accent: controlled brick red, used sparingly
+   (buttons, active states, key numbers). Contrast checked: see DESIGN.md. */
+:root {
+  /* Neutrals */
+  --ink: #121315;          /* charcoal base (dark sections) */
+  --ink-2: #1c1e21;        /* raised panels on dark */
+  --ink-3: #2a2d31;        /* borders / rules on dark */
+  --text: #16171a;         /* body text on light */
+  --paper: #f3f1ec;        /* off-white base */
+  --white: #ffffff;        /* cards on paper */
+  --line: #d9d5cc;         /* hairlines on light */
+  --line-strong: #74787f;  /* chart axes, strong rules (>= 3:1 on paper) */
+  --muted: #575b62;        /* secondary text on light (6.0:1) */
+  --muted-dark: #a2a6ad;   /* secondary text on dark (7.6:1) */
+
+  /* Accent */
+  --accent: #a3262a;       /* brick red (6.5:1 on paper, white text 7.3:1) */
+  --accent-hover: #86191d;
+  --accent-on-dark: #e8665a; /* same hue, lifted for charcoal (5.7:1) */
+
+  /* Semantic (light context by default; .is-dark redefines) */
+  --bg: var(--paper);
+  --fg: var(--text);
+  --fg-muted: var(--muted);
+  --surface: var(--white);
+  --rule: var(--line);
+  --key: var(--accent);    /* key numbers */
+  --focus: var(--accent);
+
+  /* Type */
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;                          /* 17px body */
+  --step-1: clamp(1.2rem, 1.1rem + 0.4vw, 1.4rem);
+  --step-2: clamp(1.5rem, 1.3rem + 0.9vw, 2rem);
+  --step-3: clamp(2rem, 1.6rem + 1.8vw, 3rem);
+  --step-4: clamp(2.6rem, 1.9rem + 3.2vw, 4.6rem);
+  --step-5: clamp(3.2rem, 2.2rem + 4.6vw, 6rem);
+
+  /* Space (4/8 rhythm) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px;
+  --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px;
+
+  /* Shape & motion */
+  --radius: 2px;
+  --nav-h: 64px;
+  --container: 1200px;
+  --gutter: clamp(16px, 4vw, 32px);
+  /* Motion: one ease-out curve for things arriving, one ease-in-out for things moving
+     between two places. Short durations; nothing loops or bounces. */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 150ms;
+  --dur: 240ms;
+  --dur-slow: 420ms;
+}
+
+.is-dark {
+  --bg: var(--ink);
+  --fg: var(--paper);
+  --fg-muted: var(--muted-dark);
+  --surface: var(--ink-2);
+  --rule: var(--ink-3);
+  --key: var(--accent-on-dark);
+  --focus: var(--paper);
+  background: var(--bg);
+  color: var(--fg);
+}

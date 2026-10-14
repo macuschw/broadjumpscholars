@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Metrics · JumpLab</title>
+  <meta name="description" content="The six standing broad jump metrics JumpLab measures, explained in plain language: distance, takeoff velocity, launch angle, trunk angle, shin angle and ground contact time.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script type="module" src="assets/js/components/site-chrome.js" blocking="render"></script>
+  <script type="module" src="assets/js/pages/metrics.js" blocking="render"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <jl-header current="metrics"></jl-header>
+
+  <main id="main">
+    <header class="page-head container page-head--split">
+      <div>
+        <p class="eyebrow">Metrics</p>
+        <h1>Six numbers that explain a jump.</h1>
+      </div>
+      <p class="lede">Select a metric to see where it comes from on the body. Values are from the sample jump. <span class="demo-tag">Demo data</span></p>
+    </header>
+
+    <section class="container metrics" aria-label="Metrics explorer">
+      <figure class="panel metrics__figure">
+        <div id="metric-scene"></div>
+        <figcaption class="visually-hidden">The sample athlete at the moment of takeoff, with the selected metric drawn on the figure.</figcaption>
+      </figure>
+      <div class="metrics__side">
+        <div class="metric-list stagger" id="metric-list" role="group" aria-label="Choose a metric"></div>
+        <div class="metric-detail" id="metric-detail" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <jl-footer></jl-footer>
+</body>
+</html>

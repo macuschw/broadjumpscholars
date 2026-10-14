@@ -1,0 +1,129 @@
+/* Reset, typography and layout primitives. */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--nav-h) + 16px); }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.55;
+  background: var(--paper);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  text-rendering: optimizeLegibility;
+}
+main { flex: 1; }
+[hidden] { display: none !important; }   /* layout rules must never un-hide hidden content */
+img, svg { display: block; max-width: 100%; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a, button, input, select, summary, label { touch-action: manipulation; }   /* no double-tap zoom delay on taps */
+a { color: inherit; }
+/* Text links stay underlined; on hover the underline thickens (and takes the accent on dark) */
+.disclose__body a, .site-footer a {
+  text-underline-offset: 3px; text-decoration-thickness: 1px;
+  transition: color var(--dur-fast) var(--ease), text-decoration-color var(--dur-fast) var(--ease);
+}
+.disclose__body a:hover { color: var(--accent-hover); text-decoration-thickness: 2px; }
+.site-footer a:hover { text-decoration-color: var(--accent-on-dark); text-decoration-thickness: 2px; }
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+h1 { font-size: var(--step-5); }
+h2 { font-size: var(--step-4); }
+h3 { font-size: var(--step-2); line-height: 1.1; }
+h4 { font-size: var(--step-1); line-height: 1.15; }
+p { margin: 0; max-width: 64ch; text-wrap: pretty; }
+.lede { font-size: var(--step-1); line-height: 1.45; color: var(--fg-muted); max-width: 52ch; }
+
+/* Small letterspaced label - the only all-caps text on the site, used sparingly */
+.eyebrow {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.eyebrow::before { content: ""; width: 20px; height: 3px; background: var(--key); }
+
+/* Focus: always visible, never removed */
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: var(--radius); }
+/* Headings that receive focus from script (to announce a new view) are not controls: no ring */
+h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus { outline: none; }
+
+/* Accessibility helpers */
+.visually-hidden {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.skip-link {
+  position: absolute; left: var(--s-4); top: -100px; z-index: 100;
+  background: var(--ink); color: var(--paper); padding: var(--s-3) var(--s-4);
+  font-weight: 600; text-decoration: none;
+}
+.skip-link:focus { top: var(--s-3); }
+
+/* Layout */
+.container { width: min(100% - 2 * var(--gutter), var(--container)); margin-inline: auto; }
+.section { padding-block: clamp(40px, 6vw, 80px); }
+.section--tight { padding-block: clamp(28px, 4vw, 48px); }
+.page-head { padding-block: clamp(36px, 5vw, 64px) clamp(20px, 3vw, 32px); }
+.page-head h1 { font-size: var(--step-4); margin-block: var(--s-3) var(--s-4); }
+.stack > * + * { margin-top: var(--s-4); }
+.cluster { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
+
+/* Angled section break, used sparingly (one per page at most) */
+.angle-bottom { clip-path: polygon(0 0, 100% 0, 100% calc(100% - 4vw), 0 100%); padding-bottom: calc(clamp(40px, 6vw, 80px) + 4vw); }
+
+/* Demo-data marker, used wherever simulated numbers appear */
+.demo-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-display); font-weight: 600; font-size: 0.85rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1.5px solid currentColor; padding: 2px 8px; border-radius: var(--radius);
+  color: var(--fg-muted);
+}
+
+/* ---------- Motion ----------
+   Everything here is skipped when the visitor asks for reduced motion. */
+@keyframes rise-in { from { opacity: 0; transform: translateY(12px); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes tick-in { from { opacity: 0; scale: 0.4; } }
+@media (prefers-reduced-motion: no-preference) {
+  /* Page to page: a quick cross-fade instead of a white flash (Chromium, Safari 18.2+) */
+  @view-transition { navigation: auto; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 180ms; animation-timing-function: var(--ease); }
+
+  /* On load, each top-level block of the page settles in a beat after the one above */
+  main > * { animation: rise-in var(--dur-slow) var(--ease) both; }
+  main > :nth-child(2) { animation-delay: 70ms; }
+  main > :nth-child(3) { animation-delay: 140ms; }
+  main > :nth-child(n + 4) { animation-delay: 210ms; }
+  /* Dark bands stay solid (fading them over the light page reads as a grey flash); their content rises instead */
+  main > .is-dark { animation: none; }
+  main > .is-dark > * { animation: rise-in var(--dur-slow) var(--ease) both; }
+  main > .is-dark > .stagger { animation: none; }
+
+  /* Lists marked .stagger: items arrive one after another */
+  .stagger > * { animation: rise-in var(--dur-slow) var(--ease) both; animation-delay: calc(140ms + var(--i, 5) * 50ms); }
+  .stagger > :nth-child(1) { --i: 0; } .stagger > :nth-child(2) { --i: 1; } .stagger > :nth-child(3) { --i: 2; }
+  .stagger > :nth-child(4) { --i: 3; } .stagger > :nth-child(5) { --i: 4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Setup · JumpLab</title>
+  <meta name="description" content="How to set up the phone and tripod for a JumpLab standing broad jump recording, with a pre-recording checklist.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script type="module" src="assets/js/components/site-chrome.js" blocking="render"></script>
+  <script type="module" src="assets/js/pages/setup.js" blocking="render"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <jl-header current="setup"></jl-header>
+
+  <main id="main">
+    <header class="page-head container page-head--split">
+      <div>
+        <p class="eyebrow">Setup</p>
+        <h1>Good data starts with where the phone stands.</h1>
+      </div>
+      <p class="lede">Five minutes of setup decides how accurate every number will be. Set the camera like this, then run the checklist before each session.</p>
+    </header>
+
+    <section class="container setup" aria-label="Camera setup">
+      <figure class="panel setup__diagram">
+        <svg viewBox="0 0 640 420" role="img" aria-labelledby="setup-t setup-d">
+          <title id="setup-t">Top-down view of the recording setup</title>
+          <desc id="setup-d">The athlete jumps left to right along a tape measure laid on the jump line. The phone on a tripod stands 4 to 5 metres away, pointing at the middle of the jump at a right angle to the jump direction, with the whole jump and about one metre of margin at each end in view.</desc>
+          <!-- field of view -->
+          <path class="sd-fov" d="M320 330 L40 92 L600 92 Z"/>
+          <!-- jump lane -->
+          <rect class="sd-lane" x="70" y="72" width="500" height="40"/>
+          <line class="sd-tape" x1="110" y1="112" x2="510" y2="112"/>
+          <g class="sd-ticks">
+            <line x1="110" y1="106" x2="110" y2="118"/><line x1="210" y1="108" x2="210" y2="116"/><line x1="310" y1="106" x2="310" y2="118"/>
+            <line x1="410" y1="108" x2="410" y2="116"/><line x1="510" y1="106" x2="510" y2="118"/>
+          </g>
+          <line class="sd-takeoff" x1="150" y1="64" x2="150" y2="120"/>
+          <!-- footprints at takeoff -->
+          <g class="sd-feet"><rect x="124" y="78" width="22" height="9" rx="4"/><rect x="124" y="93" width="22" height="9" rx="4"/></g>
+          <!-- landing footprints (ghost) -->
+          <g class="sd-feet sd-feet--ghost"><rect x="352" y="78" width="22" height="9" rx="4"/><rect x="352" y="93" width="22" height="9" rx="4"/></g>
+          <!-- jump direction -->
+          <g class="sd-dir"><line x1="160" y1="40" x2="360" y2="40"/><path d="M360 34 L372 40 L360 46 Z"/></g>
+          <text class="sd-label" x="160" y="29">Jump direction</text>
+          <text class="sd-label" x="150" y="140" text-anchor="middle">Takeoff line</text>
+          <text class="sd-label" x="510" y="140" text-anchor="middle">Tape on the jump line</text>
+          <text class="sd-label sd-label--muted" x="70" y="62">1 m margin</text>
+          <text class="sd-label sd-label--muted" x="570" y="62" text-anchor="end">1 m margin</text>
+          <!-- distance + right angle -->
+          <line class="sd-dim" x1="320" y1="122" x2="320" y2="318"/>
+          <path class="sd-right" d="M320 136 h14 v-14"/>
+          <text class="sd-label sd-label--key" x="332" y="232">4–5 m</text>
+          <text class="sd-label sd-label--muted" x="332" y="252">at 90° to the jump</text>
+          <!-- tripod + phone -->
+          <g class="sd-tripod">
+            <line x1="320" y1="350" x2="300" y2="378"/><line x1="320" y1="350" x2="340" y2="378"/><line x1="320" y1="350" x2="320" y2="388"/>
+            <rect class="sd-phone" x="302" y="326" width="36" height="12" rx="2"/>
+          </g>
+          <text class="sd-label" x="350" y="350">Phone on tripod<tspan class="sd-label--muted" x="350" dy="1.3em">hip height · landscape</tspan><tspan class="sd-label--muted" x="350" dy="1.25em">1× lens</tspan></text>
+        </svg>
+        <figcaption class="setup__caption">Top-down view. Aim at the <strong>middle</strong> of the jump, not the takeoff line.</figcaption>
+      </figure>
+
+      <div class="setup__checklist">
+        <div class="setup__progress" aria-live="polite"><span id="check-count">0</span> of <span id="check-total">7</span> ready</div>
+        <ul class="checklist" id="checklist" role="list">
+          <li><label><input type="checkbox" name="perpendicular"><span class="checklist__box" aria-hidden="true"></span>
+            <span><strong>Camera perpendicular to the jump</strong><span class="checklist__why">Point straight across the jump line, at its middle. Angled views shrink distances.</span></span></label></li>
+          <li><label><input type="checkbox" name="level"><span class="checklist__box" aria-hidden="true"></span>
+            <span><strong>Level, at hip height</strong><span class="checklist__why">A tilted phone skews vertical motion and body angles.</span></span></label></li>
+          <li><label><input type="checkbox" name="fps"><span class="checklist__box" aria-hidden="true"></span>
+            <span><strong>High frame rate: 120–240 fps</strong><span class="checklist__why">Slow-motion mode. Transfer the original file, not a 30 fps re-export.</span></span></label></li>
+          <li><label><input type="checkbox" name="lock"><span class="checklist__box" aria-hidden="true"></span>
+            <span><strong>Exposure and focus locked</strong><span class="checklist__why">Long-press to lock (AE/AF lock) so brightness doesn't pump mid-jump.</span></span></label></li>
+          <li><label><input type="checkbox" name="light"><span class="checklist__box" aria-hidden="true"></span>
+            <span><strong>Good, even lighting</strong><span class="checklist__why">Slow motion needs more light. Avoid strong shadows across the feet.</span></span></label></li>
+          <li><label><input type="checkbox" name="calibration"><span class="checklist__box" aria-hidden="true"></span>
+            <span><strong>Calibration reference in the jump plane</strong><span class="checklist__why">Tape measure on the floor along the jump line, not in front of it.</span></span></label></li>
+          <li><label><input type="checkbox" name="frame"><span class="checklist__box" aria-hidden="true"></span>
+            <span><strong>Full jump in frame</strong><span class="checklist__why">Takeoff to landing with about 1 m spare at each end, and nobody else in shot.</span></span></label></li>
+        </ul>
+        <button type="button" class="btn btn--quiet btn--sm" id="check-reset">Reset checklist</button>
+      </div>
+    </section>
+  </main>
+
+  <jl-footer></jl-footer>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About · JumpLab</title>
+  <meta name="description" content="The team behind JumpLab, who it's for, and answers to common questions.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script type="module" src="assets/js/components/site-chrome.js" blocking="render"></script>
+  <script type="module" src="assets/js/pages/about.js" blocking="render"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <jl-header current="about"></jl-header>
+
+  <main id="main">
+    <header class="page-head container page-head--split">
+      <div>
+        <p class="eyebrow">About</p>
+        <h1>Built by students, for people who coach jumps.</h1>
+      </div>
+      <p class="lede">JumpLab began as a math and physics research project: how much can one phone camera tell you about a jump?</p>
+    </header>
+
+    <section class="container about" aria-label="Team and audiences">
+      <div class="about__team">
+        <h2>Team</h2>
+        <ul class="team" role="list">
+          <li class="team__card"><span class="team__initial" aria-hidden="true">1</span><div><strong>[NAME 1]</strong><span>Pose tracking and analysis pipeline</span></div></li>
+          <li class="team__card"><span class="team__initial" aria-hidden="true">2</span><div><strong>[NAME 2]</strong><span>Physics, validation and testing</span></div></li>
+        </ul>
+        <h2 class="about__for">Who it's for</h2>
+        <ul class="audiences stagger" role="list">
+          <li><span data-icon="coach"></span><strong>Coaches</strong><span>Track technique, not just distance, across a squad.</span></li>
+          <li><span data-icon="facility"></span><strong>Training facilities</strong><span>Repeatable testing without a lab budget.</span></li>
+          <li><span data-icon="clinic"></span><strong>PT clinics</strong><span>Compare left-to-right and before-to-after in rehab.</span></li>
+          <li><span data-icon="athlete"></span><strong>Athletes</strong><span>See what changed between your best and worst jump.</span></li>
+        </ul>
+      </div>
+
+      <div class="about__faq">
+        <h2>FAQ</h2>
+        <details class="disclose" open>
+          <summary>Are the numbers on this site real?</summary>
+          <div class="disclose__body"><p>No. Every number in the demo and on these pages is simulated sample data, labelled as such. Real results will appear once the analysis pipeline is connected.</p></div>
+        </details>
+        <details class="disclose">
+          <summary>What equipment do I need?</summary>
+          <div class="disclose__body"><p>A phone that records 120–240 fps slow motion, a tripod, and a tape measure for calibration. See the <a href="setup.html">setup guide</a>.</p></div>
+        </details>
+        <details class="disclose">
+          <summary>How accurate is it?</summary>
+          <div class="disclose__body"><p>It's a single 2D camera, so it's built for consistent field testing rather than lab precision. A validation study against tape-measured jumps is in progress.</p></div>
+        </details>
+        <details class="disclose">
+          <summary>Can I use normal 30 fps video?</summary>
+          <div class="disclose__body"><p>Yes for distance and angles, but timing is only good to ±33 ms per event. Slow motion (120–240 fps) makes contact and flight times meaningful.</p></div>
+        </details>
+        <details class="disclose">
+          <summary>Does my video get uploaded?</summary>
+          <div class="disclose__body"><p>Not in this demo. A file you choose stays in your browser and is never sent anywhere.</p></div>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <jl-footer></jl-footer>
+</body>
+</html>

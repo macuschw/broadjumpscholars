@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JumpLab · Standing broad jump analysis</title>
+  <meta name="description" content="Lab-quality standing broad jump analysis from a phone on a tripod: distance, takeoff velocity, launch angle, body angles and ground contact time.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script type="module" src="assets/js/components/site-chrome.js" blocking="render"></script>
+  <script type="module" src="assets/js/pages/home.js" blocking="render"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <jl-header current="home"></jl-header>
+
+  <main id="main">
+    <section class="hero is-dark angle-bottom" aria-labelledby="hero-title">
+      <div class="container hero__grid">
+        <div class="hero__copy">
+          <p class="eyebrow">Standing broad jump analysis</p>
+          <h1 id="hero-title">See the whole jump, not just the distance.</h1>
+          <p class="lede">Lab-quality jump analysis from a phone on a tripod.</p>
+          <div class="cluster hero__actions">
+            <a class="btn btn--primary" href="demo.html">Open demo <svg class="icon icon--arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
+            <a class="btn btn--ghost" href="how-it-works.html">How it works</a>
+          </div>
+        </div>
+        <figure class="hero__visual">
+          <div class="jump-stage" id="hero-stage" role="group" tabindex="0"
+               aria-label="Interactive jump: an athlete performing the sample standing broad jump. Drag, or use the arrow keys, to look around the athlete; use the jump timeline below to move through the jump.">
+            <div class="jump-stage__hud" aria-hidden="true"><span class="jump-stage__phase">Stance</span><span class="jump-stage__time">0.000 s</span></div>
+            <p class="jump-stage__status" role="status"></p>
+          </div>
+          <div class="hero__scrubber" id="hero-scrubber"></div>
+          <figcaption class="hero__caption">
+            <span class="demo-tag">Simulated sample jump · demo data</span>
+            <span class="hero__hint" id="hero-hint">Drag the athlete to look all the way around it. Drag the timeline, or pick a moment above it, to move through the jump.</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section problem" aria-labelledby="problem-title">
+      <div class="container problem__grid">
+        <div>
+          <p class="eyebrow">The problem</p>
+          <h2 id="problem-title">A tape measure says how far. Not why.</h2>
+        </div>
+        <ol class="problem__list stagger" role="list">
+          <li>
+            <span class="num">01</span>
+            <h3>Distance is the only number</h3>
+            <p>Most testing records one result per jump. Two athletes can land at the same mark with very different technique.</p>
+          </li>
+          <li>
+            <span class="num">02</span>
+            <h3>Lab gear is out of reach</h3>
+            <p>Force plates and motion-capture systems cost thousands and live in a lab, not on the field where athletes train.</p>
+          </li>
+          <li>
+            <span class="num">03</span>
+            <h3>Biomechanics are invisible</h3>
+            <p>Launch angle, trunk lean and push-off timing happen in under half a second, too fast for the eye to judge.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <jl-footer></jl-footer>
+</body>
+</html>

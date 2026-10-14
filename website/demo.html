@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo · JumpLab</title>
+  <meta name="description" content="Interactive JumpLab demo dashboard with simulated sample data: playback, charts, key moments and attempt comparison.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <link rel="stylesheet" href="assets/css/demo.css">
+  <script type="module" src="assets/js/components/site-chrome.js" blocking="render"></script>
+  <script type="module" src="assets/js/pages/demo.js" blocking="render"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <jl-header current="demo"></jl-header>
+
+  <main id="main">
+    <header class="page-head container demo-head">
+      <div>
+        <p class="eyebrow">Demo</p>
+        <h1>Jump analysis dashboard</h1>
+      </div>
+      <div class="notice" role="note" id="demo-notice"></div>
+    </header>
+
+    <!-- 1. Start -->
+    <section class="container demo-start" id="demo-start" aria-label="Start an analysis">
+      <div class="dropzone" id="dropzone">
+        <span class="dropzone__icon" data-icon="upload"></span>
+        <h2>Upload a jump video</h2>
+        <p>Side-on, slow motion (120–240 fps). The file never leaves your browser.</p>
+        <label class="btn btn--ghost dropzone__button" for="video-input">Choose a video</label>
+        <input id="video-input" class="dropzone__input" type="file" accept="video/*" aria-describedby="video-help video-error">
+        <p class="dropzone__hint" id="video-help">or drag and drop it here · MP4, MOV</p>
+        <p class="field-error" id="video-error" role="alert" hidden></p>
+      </div>
+      <div class="demo-start__or" aria-hidden="true"><span>or</span></div>
+      <div class="sample-card is-dark">
+        <p class="eyebrow">No video handy?</p>
+        <h2>Use the sample jump</h2>
+        <p>Three attempts by a simulated athlete, ready to explore.</p>
+        <button type="button" class="btn btn--primary" id="use-sample">Use sample jump</button>
+      </div>
+    </section>
+
+    <!-- 2. Simulated analysis -->
+    <section class="container demo-progress" id="demo-progress" hidden aria-labelledby="progress-title">
+      <h2 id="progress-title" tabindex="-1">Analysing <span id="progress-source"></span></h2>
+      <div class="analysis" id="analysis"></div>
+    </section>
+
+    <!-- 3. Results -->
+    <section class="container demo-results" id="demo-results" hidden aria-labelledby="results-title">
+      <div class="results__head">
+        <h2 id="results-title" tabindex="-1">Results</h2>
+        <div class="attempt-pick" id="attempt-pick" role="group" aria-label="Attempt"></div>
+        <span class="demo-tag">Demo data</span>
+        <button type="button" class="btn btn--quiet btn--sm" id="start-over">Start over</button>
+      </div>
+      <p class="results__source" id="results-source"></p>
+      <div class="scoreboard results__stats" id="results-stats"></div>
+
+      <div class="tablist" role="tablist" aria-label="Result views" id="result-tabs">
+        <button class="tab" role="tab" id="tab-playback" data-tab="playback" aria-controls="panel-playback" aria-selected="true">Playback</button>
+        <button class="tab" role="tab" id="tab-charts" data-tab="charts" aria-controls="panel-charts" aria-selected="false">Charts</button>
+        <button class="tab" role="tab" id="tab-moments" data-tab="moments" aria-controls="panel-moments" aria-selected="false">Key moments</button>
+        <button class="tab" role="tab" id="tab-compare" data-tab="compare" aria-controls="panel-compare" aria-selected="false">Compare<span class="tab__more"> attempts</span></button>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="panel-playback" aria-labelledby="tab-playback" tabindex="0">
+        <div class="playback-layout">
+          <div id="playback"></div>
+          <aside class="pb-readouts" aria-label="Values at the current frame">
+            <h3>At this frame</h3>
+            <div class="scoreboard" id="pb-readouts"></div>
+          </aside>
+        </div>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="panel-charts" aria-labelledby="tab-charts" tabindex="0" hidden>
+        <div class="charts-grid" id="charts"></div>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="panel-moments" aria-labelledby="tab-moments" tabindex="0" hidden>
+        <div class="moments" id="moments"></div>
+      </div>
+      <div class="tabpanel" role="tabpanel" id="panel-compare" aria-labelledby="tab-compare" tabindex="0" hidden>
+        <div class="compare" id="compare"></div>
+      </div>
+    </section>
+  </main>
+
+  <jl-footer></jl-footer>
+</body>
+</html>

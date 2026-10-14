@@ -1,0 +1,11 @@
+/* ---------- Accuracy ---------- */
+.accuracy { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr); gap: var(--s-7); padding-bottom: clamp(32px, 5vw, 64px); align-items: start; }
+.accuracy h2 { font-size: var(--step-3); }
+.accuracy__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); margin-bottom: var(--s-4); }
+.demo-tag--key { color: var(--accent); }
+.accuracy table.data td.num-cell { color: var(--muted); }
+.limits { list-style: none; margin: var(--s-4) 0 0; padding: 0; border-top: 3px solid var(--text); }
+.limits li { padding: var(--s-3) 0; border-bottom: 1px solid var(--line); color: var(--muted); }
+.limits strong { color: var(--text); font-weight: 600; }
+
+@media (max-width: 960px) { .accuracy { grid-template-columns: minmax(0, 1fr); gap: var(--s-6); } }

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How it works · JumpLab</title>
+  <meta name="description" content="Record, track, calculate, improve: how JumpLab turns a phone video of a standing broad jump into biomechanics data.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <script type="module" src="assets/js/components/site-chrome.js" blocking="render"></script>
+  <script type="module" src="assets/js/pages/how.js" blocking="render"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <jl-header current="how"></jl-header>
+
+  <main id="main">
+    <header class="page-head container">
+      <p class="eyebrow">How it works</p>
+      <h1>From a phone video to biomechanics in four steps.</h1>
+      <p class="lede">No sensors on the athlete and no lab. One phone, side-on, captures everything the analysis needs.</p>
+    </header>
+
+    <section class="steps is-dark" aria-label="The four steps">
+      <ol class="container steps__list stagger" role="list">
+        <li class="step">
+          <span class="num step__num">01</span>
+          <span class="step__icon" data-icon="record"></span>
+          <h2 class="step__title">Record</h2>
+          <p>Phone on a tripod, side-on to the jump, filming slow motion at <strong>120–240 fps</strong>.</p>
+          <p class="step__detail">One clip per attempt</p>
+        </li>
+        <li class="step">
+          <span class="num step__num">02</span>
+          <span class="step__icon" data-icon="track"></span>
+          <h2 class="step__title">Track</h2>
+          <p>AI pose tracking finds <strong>33 body landmarks</strong> in every frame: hips, knees, ankles, heels, toes.</p>
+          <p class="step__detail">MediaPipe Pose</p>
+        </li>
+        <li class="step">
+          <span class="num step__num">03</span>
+          <span class="step__icon" data-icon="calculate"></span>
+          <h2 class="step__title">Calculate</h2>
+          <p>Physics turns positions into results: a <strong>projectile fit</strong> for the flight, vectors for angles, frames for timing.</p>
+          <p class="step__detail">Six core metrics</p>
+        </li>
+        <li class="step">
+          <span class="num step__num">04</span>
+          <span class="step__icon" data-icon="improve"></span>
+          <h2 class="step__title">Improve</h2>
+          <p>Compare attempts side by side and over time to see what changed, not just how far each one went.</p>
+          <p class="step__detail">Attempt history</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="section--tight container cluster how__next">
+      <p>Ready to film? Start with the camera setup, or explore a sample analysis.</p>
+      <a class="btn btn--ghost btn--sm" href="setup.html">Setup guide</a>
+      <a class="btn btn--primary btn--sm" href="demo.html">Open demo <svg class="icon icon--arrow" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
+    </section>
+  </main>
+
+  <jl-footer></jl-footer>
+</body>
+</html>
