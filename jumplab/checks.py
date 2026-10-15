@@ -135,28 +135,30 @@ def check_distance(distance_px, shin_px):
 
 
 def check_stagger(both, m_per_px):
-    """Warn when the official-rule (both feet) distance differs from the near-foot one by more
-    than 5 cm (10% of trunk length uncalibrated). Not when the far foot was merely used."""
-    diff = both["difference_px"]
-    if diff is None or diff <= both["warn_above_px"]:
+    """Flag staggered feet: the two heels at landing or the two toes at takeoff more than 5 cm
+    apart (10% of trunk length uncalibrated). Uses the gap between the feet, so it fires even
+    when the far foot is too hidden to measure exactly.
+
+    Why SERIOUS: in the tape check of October 2026 (6 jumps), the staggered jumps' distances were
+    off by 1.5-4.8 in, too long or too short, while the feet-together jump was within 0.3 in.
+    The both-feet ("official rule") correction was further off (4.4-5.9 in), so it is still
+    reported but no longer suggested as the better number."""
+    gap = both.get("stagger_px")
+    if gap is None or gap <= both["warn_above_px"]:
         return []
     fmt = (lambda px: f"{100 * px * m_per_px:.0f} cm") if m_per_px else (lambda px: f"{px:.0f} px")
     parts = []
-    if both["heel_shift_px"] > 0:
-        parts.append(f"the far heel landed {fmt(both['heel_shift_px'])} behind the near heel")
-    if both["toe_shift_px"] > 0:
-        parts.append(f"the far toe was {fmt(both['toe_shift_px'])} ahead of the near toe at takeoff")
-    if m_per_px:
-        dist = (f"Near-foot distance {both['distance_px'] * m_per_px + diff * m_per_px:.2f} m; "
-                f"official-rule distance (front-most toe to rearmost heel) "
-                f"{both['distance_px'] * m_per_px:.2f} m.")
-    else:
-        dist = f"The official-rule distance is {fmt(diff)} shorter than the near-foot one."
+    for key, where in (("stagger_heel_px", "the heels were {} apart at landing"),
+                       ("stagger_toe_px", "the toes were {} apart at takeoff")):
+        if both.get(key) is not None and both[key] > both["warn_above_px"]:
+            parts.append(where.format(fmt(both[key])))
     return [warning("staggered_feet",
-                    f"The feet were staggered: {' and '.join(parts)}. {dist} The main jump "
-                    "distance is still the near-foot one; the far foot is partly hidden, so check "
-                    "the skeleton video before using the official-rule number.",
-                    CAUTION, ("distance",))]
+                    f"The feet look staggered: {' and '.join(parts)}. One camera can't see the far "
+                    "foot well enough to measure a staggered jump: on tape-checked jumps the distance "
+                    "was off by up to about 5 in (12 cm), too long or too short, while feet-together "
+                    "jumps were within about 1 in. Treat this distance as approximate, and jump with "
+                    "the feet side by side for an accurate result.",
+                    SERIOUS, ("distance",))]
 
 
 def check_side_on(launch_angle_deg, size_before_px, size_after_px):

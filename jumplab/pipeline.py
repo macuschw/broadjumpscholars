@@ -178,6 +178,8 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
     toe_x = np.median(raw["FOOT_INDEX"][0][bo:to] if to > bo else raw["FOOT_INDEX"][0][to - 1:to])
     heel_x = np.median(raw["HEEL"][0][la:la + max(2, int(0.1 * fps))])
     pixels["jump_distance_px"] = float(direction * (heel_x - toe_x))
+    pixels["takeoff_toe_x_px"] = float(toe_x)
+    pixels["landing_heel_x_px"] = float(heel_x)
 
     n_stand = max(3, int(0.3 * fps))
     stand = slice(lo, lo + n_stand)
@@ -371,7 +373,8 @@ def _both_feet_summary(both, scale):
     return {"landing_heels": end(both["landing_heels"], "heel"),
             "takeoff_toes": end(both["takeoff_toes"], "toe"),
             "difference_px": both["difference_px"],
-            "difference_cm": to_cm(both["difference_px"]) if both["difference_px"] is not None else None}
+            "difference_cm": to_cm(both["difference_px"]) if both["difference_px"] is not None else None,
+            "feet_gap_cm": to_cm(both["stagger_px"]) if both["stagger_px"] is not None else None}
 
 
 def analyze_video(video_path, scale_m_per_px=None, config=None, output_dir="output",

@@ -1,6 +1,10 @@
 """Both-feet (official rule) distance: front-most takeoff toe -> rearmost landing heel.
-The main jump distance stays the near-foot one; this is reported alongside it, with a
-warning only when the two differ by more than 5 cm.
+The main jump distance stays the near-foot one; the both-feet number is reported alongside it.
+
+Staggered feet are flagged (SERIOUS, affects distance) whenever the feet are more than 5 cm
+apart at landing or takeoff - even when the far foot is too hidden to trust its position -
+because the tape check of October 2026 found staggered jumps off by 1.5-4.8 in and the
+feet-together jump within 0.3 in.
 
 Thresholds (far-foot visibility >= 0.5, wobble <= 2 cm, warn above 5 cm) are provisional
 until checked against tape-measured staggered landings."""
@@ -10,7 +14,7 @@ import os
 import numpy as np
 import pytest
 
-from jumplab.checks import CAUTION
+from jumplab.checks import SERIOUS
 from jumplab.pipeline import AnalysisConfig, analyze_keypoints
 from jumplab.pose_tracking import LANDMARKS, Keypoints
 
@@ -54,16 +58,17 @@ def test_far_heel_behind_is_reported_and_warned(level):
     # The official-rule distance is 15 cm shorter
     assert d["jump_distance_both_feet_m"] == pytest.approx(d["jump_distance_m"] - 0.15, abs=0.01)
     (w,) = stagger_warnings(r)
-    assert w["severity"] == CAUTION and w["affects"] == ["distance"] and "15 cm" in w["message"]
+    assert w["severity"] == SERIOUS and w["affects"] == ["distance"] and "15 cm" in w["message"]
 
 
-def test_near_heel_behind_needs_no_correction():
-    # Far heel AHEAD: the near heel is already the rearmost one, so nothing changes
+def test_near_heel_behind_needs_no_correction_but_is_still_flagged():
+    # Far heel AHEAD: the near heel is already the rearmost one, so the number doesn't change -
+    # but a staggered landing is still flagged, since staggered jumps measured poorly on tape
     r = run(far_visibility=0.7, far_heel_offset_m=+0.15)
     d = r["distance"]
     assert d["jump_distance_both_feet_m"] == pytest.approx(d["jump_distance_m"], abs=0.005)
     assert r["both_feet"]["landing_heels"]["heel_gap_cm"] == pytest.approx(15, abs=1)
-    assert stagger_warnings(r) == []
+    assert len(stagger_warnings(r)) == 1
 
 
 def test_far_toe_ahead_at_takeoff():
@@ -81,11 +86,22 @@ def test_small_stagger_below_5cm_is_recorded_but_not_warned():
     assert stagger_warnings(r) == []
 
 
-def test_low_confidence_far_foot_falls_back_to_near_foot():
+def test_low_confidence_far_foot_falls_back_to_near_foot_but_stagger_is_flagged():
+    # Like the 120 fps staggered tape jump: far foot too hidden to measure, feet clearly apart.
+    # The near-foot distance is kept, but the result must not look trustworthy.
     r = run(far_visibility=0.3, far_heel_offset_m=-0.15)
     heels = r["both_feet"]["landing_heels"]
     assert not heels["far_foot_used"] and "visibility" in heels["why_not_used"]
     assert r["distance"]["jump_distance_both_feet_m"] is None
+    assert r["both_feet"]["feet_gap_cm"] == pytest.approx(15, abs=1)
+    (w,) = stagger_warnings(r)
+    assert w["severity"] == SERIOUS and "approximate" in w["message"]
+
+
+def test_feet_together_with_hidden_far_foot_is_not_flagged():
+    # Like the spot-on 120 fps tape jump: far foot barely visible, feet side by side
+    r = run(far_visibility=0.3)
+    assert r["both_feet"]["feet_gap_cm"] < 5
     assert stagger_warnings(r) == []
 
 

@@ -19,6 +19,11 @@ When the far foot can be trusted (both must hold):
     uncalibrated). A planted foot doesn't move; a guessed one drifts.
 Visibility measures whether a point is seen, not how accurate its position is, so both
 thresholds are provisional until checked against tape-measured staggered landings.
+
+Stagger itself is detected from the GAP between the two feet (how far apart they are along
+the jump), which needs no trust in the far foot's exact position: in the tape check of
+October 2026 every staggered jump showed a gap of 7 cm or more, and the feet-together jump
+at most 3.3 cm.
 """
 from __future__ import annotations
 
@@ -88,7 +93,10 @@ def both_feet(kp, direction, takeoff_frames, landing_frames, primary_px, m_per_p
     if toe["trusted"]:
         toe_shift = max(0.0, toe["extreme_px"] - toe["near_px"])
     used = heel["trusted"] or toe["trusted"]
+    gaps = [end["gap_px"] for end in (heel, toe) if "gap_px" in end]
     return {
+        "stagger_px": max(gaps) if gaps else None,          # widest gap between the feet, either end
+        "stagger_heel_px": heel.get("gap_px"), "stagger_toe_px": toe.get("gap_px"),
         "distance_px": primary_px - heel_shift - toe_shift if used else None,
         "difference_px": heel_shift + toe_shift if used else None,
         "heel_shift_px": heel_shift, "toe_shift_px": toe_shift,
