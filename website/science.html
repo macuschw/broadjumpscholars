@@ -96,7 +96,7 @@
       <div class="tabpanel science-example" role="tabpanel" id="panel-example" aria-labelledby="tab-example" tabindex="0" hidden>
       <div class="science-example__head">
         <h2 id="example-title">One flight, fitted.</h2>
-        <p>The dots are the sample athlete's hip in every frame of the flight, with a few millimetres of simulated tracking noise.
+        <p>The dots are the sample athlete's hip in every frame of the flight, with <span data-imperial="a fraction of an inch">a few millimetres</span> of simulated tracking noise.
           The red line is the parabola fitted through them; every number beside it is calculated from that fit, live.
           <span class="demo-tag">Demo data</span></p>
       </div>
@@ -117,37 +117,37 @@
             <div class="formula formula--small" role="math" aria-label="y of t equals y0 plus v y t minus one half g t squared" data-tex="y(t) = y_0 + v_y t - \tfrac{1}{2} g t^2" data-display>
               <var>y</var>(<var>t</var>) = <var>y</var><sub>0</sub> + <var>v</var><sub><var>y</var></sub><var>t</var> − ½<var>g</var><var>t</var><sup>2</sup>
             </div>
-            <p class="fit-steps__result"><span><span class="tex" data-tex="v_y"><var>v</var><sub><var>y</var></sub></span> = <output id="fit-vy">–</output> m/s</span><span><span class="tex" data-tex="g"><var>g</var></span> = <output id="fit-g">–</output> m/s²</span></p>
+            <p class="fit-steps__result"><span><span class="tex" data-tex="v_y"><var>v</var><sub><var>y</var></sub></span> = <output id="fit-vy">–</output> <span data-imperial="ft/s">m/s</span></span><span><span class="tex" data-tex="g"><var>g</var></span> = <output id="fit-g">–</output> <span data-imperial="ft/s²">m/s²</span></span></p>
           </li>
           <li>
             <h3><span class="num">2</span> Fit the forward position</h3>
             <div class="formula formula--small" role="math" aria-label="x of t equals x0 plus v x t" data-tex="x(t) = x_0 + v_x t" data-display>
               <var>x</var>(<var>t</var>) = <var>x</var><sub>0</sub> + <var>v</var><sub><var>x</var></sub><var>t</var>
             </div>
-            <p class="fit-steps__result"><span><span class="tex" data-tex="v_x"><var>v</var><sub><var>x</var></sub></span> = <output id="fit-vx">–</output> m/s</span></p>
+            <p class="fit-steps__result"><span><span class="tex" data-tex="v_x"><var>v</var><sub><var>x</var></sub></span> = <output id="fit-vx">–</output> <span data-imperial="ft/s">m/s</span></span></p>
           </li>
           <li>
             <h3><span class="num">3</span> Combine</h3>
             <p class="fit-steps__result fit-steps__result--stack">
-              <span>Speed <span class="tex" data-tex="\sqrt{v_x^2 + v_y^2}">√(<var>v</var><sub><var>x</var></sub><sup>2</sup> + <var>v</var><sub><var>y</var></sub><sup>2</sup>)</span> = <output id="fit-speed">–</output> m/s</span>
+              <span>Speed <span class="tex" data-tex="\sqrt{v_x^2 + v_y^2}">√(<var>v</var><sub><var>x</var></sub><sup>2</sup> + <var>v</var><sub><var>y</var></sub><sup>2</sup>)</span> = <output id="fit-speed">–</output> <span data-imperial="ft/s">m/s</span></span>
               <span>Launch angle <span class="tex" data-tex="\operatorname{atan2}(v_y, v_x)">atan2(<var>v</var><sub><var>y</var></sub>, <var>v</var><sub><var>x</var></sub>)</span> = <output id="fit-angle">–</output>°</span>
-              <span>Peak height <span class="tex" data-tex="v_y^2/2g"><var>v</var><sub><var>y</var></sub><sup>2</sup> / 2<var>g</var></span> = <output id="fit-peak">–</output> cm</span>
+              <span>Peak height <span class="tex" data-tex="v_y^2/2g"><var>v</var><sub><var>y</var></sub><sup>2</sup> / 2<var>g</var></span> = <output id="fit-peak">–</output> <span data-imperial="in">cm</span></span>
             </p>
           </li>
           <li>
             <h3><span class="num">4</span> Check against gravity</h3>
-            <p>Left free, the fit found <span class="tex" data-tex="g"><var>g</var></span> = <output id="fit-g2">–</output> m/s², <output id="fit-gerr">–</output> from 9.81.
+            <p>Left free, the fit found <span class="tex" data-tex="g"><var>g</var></span> = <output id="fit-g2">–</output> <span data-imperial="ft/s²">m/s²</span>, <output id="fit-gerr">–</output> from <span data-imperial="32.2">9.81</span>.
               A wrong scale or frame rate would show here first: a 240 fps clip read as 30 fps gives <span class="tex" data-tex="g/64"><var>g</var> ÷ 64</span>.</p>
           </li>
         </ol>
       </div>
-      <p class="science-example__note">Tracking noise here is about <output id="fit-rms">–</output> mm per frame, so fitted values can differ from the
+      <p class="science-example__note">Tracking noise here is about <output id="fit-rms">–</output> <span data-imperial="in">mm</span> per frame, so fitted values can differ from the
         headline numbers by a hundredth or two: the honest uncertainty of one phone camera.</p>
       </div>
 
       <div class="tabpanel science-more" role="tabpanel" id="panel-calibration" aria-labelledby="tab-calibration" tabindex="0" hidden>
       <div class="science-cal">
-        <h2>Pixels to metres</h2>
+        <h2 data-imperial="Pixels to feet">Pixels to metres</h2>
         <p>A tape measure filmed along the jump line sets the scale:</p>
         <div class="formula formula--small" role="math" aria-label="scale equals known distance divided by pixel distance" data-tex="\text{scale} = \dfrac{\text{known distance}}{\text{pixel distance}}" data-display>scale = known distance ÷ pixel distance</div>
         <p>If the tape is nearer to or farther from the camera than the jump, the scale is corrected by the ratio of those distances, because
@@ -155,14 +155,14 @@
         <div class="formula formula--small" role="math" aria-label="scale for the jump equals scale for the reference times distance to the jump divided by distance to the reference" data-tex="\text{scale}_{\text{jump}} = \text{scale}_{\text{ref}} \times \dfrac{d_{\text{jump}}}{d_{\text{ref}}}" data-display>
           scale<sub>jump</sub> = scale<sub>ref</sub> × <var>d</var><sub>jump</sub> ÷ <var>d</var><sub>ref</sub>
         </div>
-        <p>Gravity is the built-in check: fitted freely, the parabola should give <span class="tex" data-tex="g \approx 9.81\ \text{m/s}^2"><var>g</var> ≈ 9.81 m/s²</span>.</p>
+        <p>Gravity is the built-in check: fitted freely, the parabola should give <span class="tex" data-tex="g \approx 9.81\ \text{m/s}^2" data-tex-imperial="g \approx 32.2\ \text{ft/s}^2"><var>g</var> ≈ <span data-imperial="32.2 ft/s²">9.81 m/s²</span></span>.</p>
       </div>
       <div class="science-faq">
         <h2>Why it's done this way</h2>
         <details class="disclose" open>
           <summary>Why fit a curve instead of timing one frame?</summary>
-          <div class="disclose__body"><p>Each tracked position is off by a few millimetres. At 120 fps, 5 mm of noise between two frames swings a
-            frame-to-frame speed by about ±0.8 m/s. A parabola through 50 frames averages that out, and physics says the path has to be a
+          <div class="disclose__body"><p>Each tracked position is off by <span data-imperial="a fraction of an inch">a few millimetres</span>. At 120 fps, <span data-imperial="0.2 in">5 mm</span> of noise between two frames swings a
+            frame-to-frame speed by about <span data-imperial="±2.6 ft/s">±0.8 m/s</span>. A parabola through 50 frames averages that out, and physics says the path has to be a
             parabola, so the fit can't wander.</p></div>
         </details>
         <details class="disclose">

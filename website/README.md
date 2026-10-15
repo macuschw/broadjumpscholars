@@ -50,6 +50,7 @@ assets/
         lib/fit.js              least-squares fit: the projectile fit used on the Science page
         lib/dom.js, motion.js   tiny helpers; reduced-motion awareness
         lib/reveal.js           below-the-fold blocks play their entrance when scrolled into view
+        lib/units.js            metric / imperial switch: formatting, remembered choice, change events
         components/             site-chrome (header/footer), athlete figure, scene,
                                 line chart, stat, tabs, icons, scrubber (jump timeline),
                                 jump-stage (picks 3D or 2D; view toggle; drag-to-scrub),
@@ -70,6 +71,16 @@ changing the moment; the timeline moves time and keeps the chosen angle. If the 
 the same timeline drives the flat 2D athlete instead, so the page always works. To serve
 three.js yourself, download that file into the site and change the import at the top of
 `assets/js/components/jump-stage-3d.js`.
+
+## Units (m / ft)
+
+The switch in the header shows every distance and speed in metric (2.21 m, 3.34 m/s) or imperial
+(7 ft 3½ in, 10.9 ft/s), and the choice is remembered on that device. The data stays in metres and
+seconds; `assets/js/lib/units.js` formats it for display, and each page redraws its numbers, charts and
+the 3D tape when the choice changes. Fixed wording in the HTML gives its imperial version in a
+`data-imperial` attribute (e.g. `<span data-imperial="13–16 ft">4–5 m</span>`), and a typeset formula
+with a number in it uses `data-tex-imperial`. When adding a new distance or speed to a page, format it
+with `formatQuantity` / `quantityHTML` from `units.js` rather than writing "m" by hand.
 
 ## Maths typesetting
 

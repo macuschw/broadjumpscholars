@@ -12,6 +12,7 @@ import {
   add, ankleFromHeel, ankleFromToe, feetFromAnkle, fromVertical, jointAngle, kneeIK, legDown, SEG,
   up, upperBody,
 } from "../lib/body.js";
+import { formatNumber, formatQuantity } from "../lib/units.js";
 
 export const DEMO_LABEL = "Demo data";
 export const DEMO_NOTICE =
@@ -218,16 +219,20 @@ export const ATTEMPTS = PARAMS.map(simulate);
 export const SAMPLE = ATTEMPTS[1];            // the "sample jump" used across the site
 export const ATHLETE = { name: "Demo athlete", session: "Sample session" };
 
-/** The six headline metrics, as shown on stat cards and the Metrics page. */
+/**
+ * The six headline metrics, as shown on stat cards and the Metrics page. Values stay in SI;
+ * `kind` marks the lengths and speeds that are shown in the visitor's units, and the sub lines
+ * are written in those units, so call this again after the units change.
+ */
 export function headline(attempt) {
   const m = attempt.metrics;
   return [
-    { id: "distance", label: "Jump distance", value: m.distance, unit: "m", digits: 2,
+    { id: "distance", label: "Jump distance", value: m.distance, unit: "m", kind: "distance", digits: 2,
       sub: "Takeoff toe to landing heel" },
-    { id: "velocity", label: "Takeoff velocity", value: m.speed, unit: "m/s", digits: 2,
-      sub: `Horizontal ${m.vx.toFixed(2)} · Vertical ${m.vy.toFixed(2)}` },
+    { id: "velocity", label: "Takeoff velocity", value: m.speed, unit: "m/s", kind: "speed", digits: 2,
+      sub: `Horizontal ${formatNumber("speed", m.vx)} · Vertical ${formatNumber("speed", m.vy)}` },
     { id: "launch", label: "Launch angle", value: m.launchAngle, unit: "°", digits: 1,
-      sub: `Peak height +${(m.peakHeight * 100).toFixed(0)} cm` },
+      sub: `Peak height +${formatQuantity("short", m.peakHeight)}` },
     { id: "trunk", label: "Trunk angle", value: m.trunkTakeoff, unit: "°", digits: 0,
       sub: "Forward lean at takeoff" },
     { id: "shin", label: "Shin angle", value: m.shinTakeoff, unit: "°", digits: 0,

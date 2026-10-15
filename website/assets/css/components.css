@@ -16,11 +16,11 @@ jl-header { display: block; min-height: var(--nav-h); background: var(--ink); } 
 .brand { transition: opacity var(--dur-fast) var(--ease); }
 .brand:hover { opacity: 0.85; }
 .brand svg { width: 34px; height: 34px; flex: none; }
-.brand__sub { font-weight: 500; font-size: 0.8rem; color: var(--muted-dark); letter-spacing: 0.08em; text-transform: uppercase; align-self: flex-end; margin-bottom: 10px; }
+.brand__sub { white-space: nowrap; font-weight: 500; font-size: 0.8rem; color: var(--muted-dark); letter-spacing: 0.08em; text-transform: uppercase; align-self: flex-end; margin-bottom: 10px; }
 .nav-list { display: flex; align-items: center; gap: var(--s-1); list-style: none; margin: 0; padding: 0; }
 .nav-link {
   position: relative; display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--s-3);
-  text-decoration: none; font-weight: 500; color: var(--muted-dark); transition: color var(--dur-fast) var(--ease);
+  text-decoration: none; font-weight: 500; color: var(--muted-dark); white-space: nowrap; transition: color var(--dur-fast) var(--ease);
 }
 .nav-link::after {
   content: ""; position: absolute; left: var(--s-3); right: var(--s-3); bottom: 0; height: 3px;
@@ -41,7 +41,25 @@ jl-header { display: block; min-height: var(--nav-h); background: var(--ink); } 
 .nav-toggle:active { transform: translateY(1px); }
 .nav-toggle svg { width: 22px; height: 22px; }
 
-@media (max-width: 960px) {
+/* Units switch (m / ft): a small segmented control after the nav links; a row of the menu on phones */
+.nav-item--units { margin-left: var(--s-2); }
+.units-switch { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--ink-3); border-radius: var(--radius); }
+.units-switch__label { display: none; }
+.units-switch__btn {
+  min-width: 40px; min-height: 40px; padding: 0 var(--s-2); border: 0; border-radius: 1px; background: transparent;
+  font: 700 1rem/1 var(--font-display); letter-spacing: 0.04em; color: var(--muted-dark);
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.units-switch__btn:hover { color: var(--paper); }
+.units-switch__btn:active:not([aria-pressed="true"]) { background: rgba(243, 241, 236, 0.12); }
+.units-switch__btn[aria-pressed="true"] { background: var(--paper); color: var(--ink); }
+.units-switch__btn:focus-visible { outline-offset: 1px; }
+
+@media (max-width: 1080px) {                               /* below this the links, units and button don't fit one row */
+  .nav-item--units { margin: var(--s-2) 0 0; padding: var(--s-2) 0 0 var(--s-4); border-top: 1px solid var(--ink-3); }
+  .units-switch { gap: var(--s-1); border: 0; padding: 0; }
+  .units-switch__label { display: inline; margin-right: auto; padding-right: var(--s-4); font-weight: 500; color: var(--muted-dark); }
+  .units-switch__btn { min-width: 52px; min-height: 44px; border: 1px solid var(--ink-3); }
   .nav-toggle { display: inline-flex; align-items: center; gap: 8px; }
   .site-nav {
     position: absolute; inset: var(--nav-h) 0 auto 0; background: var(--ink); border-bottom: 1px solid var(--ink-3);
@@ -57,7 +75,7 @@ jl-header { display: block; min-height: var(--nav-h); background: var(--ink); } 
   .site-header .btn--nav { display: none; }
   .nav-list .btn { margin-top: var(--s-3); justify-content: center; }
 }
-@media (min-width: 961px) { .nav-list .nav-item--cta { display: none; } }
+@media (min-width: 1081px) { .nav-list .nav-item--cta { display: none; } }
 
 /* ---------- Buttons: flat fills, minimal rounding, no shadows ---------- */
 .btn {
@@ -89,6 +107,7 @@ jl-header { display: block; min-height: var(--nav-h); background: var(--ink); } 
   color: var(--fg);
 }
 .stat__unit { font-size: 0.45em; font-weight: 600; margin-left: 3px; color: var(--fg-muted); letter-spacing: 0; }
+.stat__unit--mid { margin-right: 0.22em; }                    /* 7 ft 3½ in: a gap before the inches */
 .stat__label { font-weight: 600; font-size: 0.95rem; color: var(--fg); }
 .stat__sub { font-size: 0.9rem; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
 .stat--key .stat__value { color: var(--key); }

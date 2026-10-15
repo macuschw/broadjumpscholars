@@ -2,6 +2,7 @@
 import { el, fmt } from "../lib/dom.js";
 import { lineChart } from "../components/line-chart.js";
 import { headline } from "../data/mock-data.js";
+import { formatQuantity, lengthAxis } from "../lib/units.js";
 
 const STYLES = ["solid", "dashed", "dotted"];
 
@@ -30,14 +31,15 @@ export function buildCompare(host, attempts) {
       return;
     }
     const best = chosen.reduce((b, a) => (a.metrics.distance > b.metrics.distance ? a : b), chosen[0]);
+    const L = lengthAxis();
     lineChart(chartHost, {
       title: "Hip paths of the selected attempts",
       desc: `Hip height against forward position. ${best.label} went furthest.`,
       series: chosen.map((a) => ({
         label: a.label, emphasis: a === best, style: STYLES[attempts.indexOf(a)],
-        points: a.frames.slice(a.events.onset, a.events.landing + 30).map((f) => f.hip),
+        points: a.frames.slice(a.events.onset, a.events.landing + 30).map((f) => [f.hip[0] * L.scale, f.hip[1] * L.scale]),
       })),
-      xLabel: "Forward", yLabel: "Height", xUnit: "m", yUnit: "m", equal: true, height: 240, yDigits: 2,
+      xLabel: "Forward", yLabel: "Height", xUnit: L.unit, yUnit: L.unit, equal: true, height: 240, yDigits: 2,
       directLabels: false,                       // the attempt picker above is the legend
     });
 
@@ -49,11 +51,13 @@ export function buildCompare(host, attempts) {
       <tbody>
         ${rows.map((id) => `<tr><th scope="row">${cell(chosen[0], id).label}</th>${chosen.map((a) => {
           const c = cell(a, id);
-          return `<td class="num-cell${a === best && id === "distance" ? " best" : ""}">${fmt(c.value, c.digits)}${c.unit === "°" ? "°" : ` ${c.unit}`}</td>`;
+          const text = c.kind ? formatQuantity(c.kind, c.value, c.digits) : `${fmt(c.value, c.digits)}${c.unit === "°" ? "°" : ` ${c.unit}`}`;
+          return `<td class="num-cell${a === best && id === "distance" ? " best" : ""}">${text}</td>`;
         }).join("")}</tr>`).join("")}
-        <tr><th scope="row">Δ distance</th>${chosen.map((a) => `<td class="num-cell">${a === best ? "—" : `${fmt((a.metrics.distance - best.metrics.distance) * 100, 0)} cm`}</td>`).join("")}</tr>
+        <tr><th scope="row">Δ distance</th>${chosen.map((a) => `<td class="num-cell">${a === best ? "—" : formatQuantity("short", a.metrics.distance - best.metrics.distance)}</td>`).join("")}</tr>
       </tbody></table>`;
   }
   boxes.forEach((b) => b.addEventListener("change", render));
   render();
+  return { render };                                         // called again when the units change
 }

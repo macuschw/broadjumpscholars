@@ -2,6 +2,7 @@
 // Each has an accessible data table. Cursors follow playback; scrubbing a chart seeks it.
 import { el, fmt } from "../lib/dom.js";
 import { lineChart } from "../components/line-chart.js";
+import { lengthAxis } from "../lib/units.js";
 
 function tableHTML(caption, cols, rows) {
   return `<details class="disclose chart-table"><summary>Show data table</summary>
@@ -18,6 +19,7 @@ export function buildCharts(host, attempt, { onSeekTime } = {}) {
   const timeEvents = [ev("takeoff", "Takeoff"), ev("landing", "Landing")];
   const sample = frames.filter((_, i) => i % 6 === 0);          // every 0.05 s for the tables
   const nearestByX = (x) => frames.reduce((b, f) => (Math.abs(f.hip[0] - x) < Math.abs(b.hip[0] - x) ? f : b), frames[0]);
+  const L = lengthAxis(), at = (p) => [p[0] * L.scale, p[1] * L.scale];   // positions in metres or feet
 
   const card = (title, sub) => {
     const c = el("section", { class: "panel chart-card" },
@@ -27,16 +29,16 @@ export function buildCharts(host, attempt, { onSeekTime } = {}) {
     return body;
   };
 
-  const traj = card("Hip trajectory", "side view, metres");
+  const traj = card("Hip trajectory", `side view, ${L.word}`);
   const trajChart = lineChart(traj, {
     title: "Hip trajectory", desc: "Hip height against horizontal position for the whole jump; the flight is an arc.",
-    series: [{ label: "Hip", points: frames.map((f) => f.hip), emphasis: true }],
-    xLabel: "Forward", yLabel: "Height", xUnit: "m", yUnit: "m", equal: true, height: 250, xDigits: 2, yDigits: 2,
-    events: [{ x: frames[events.takeoff].hip[0], label: "Takeoff" }, { x: frames[events.landing].hip[0], label: "Landing" }],
-    onScrub: (x) => onSeekTime?.(nearestByX(x).t),
+    series: [{ label: "Hip", points: frames.map((f) => at(f.hip)), emphasis: true }],
+    xLabel: "Forward", yLabel: "Height", xUnit: L.unit, yUnit: L.unit, equal: true, height: 250, xDigits: 2, yDigits: 2,
+    events: [{ x: frames[events.takeoff].hip[0] * L.scale, label: "Takeoff" }, { x: frames[events.landing].hip[0] * L.scale, label: "Landing" }],
+    onScrub: (x) => onSeekTime?.(nearestByX(x / L.scale).t),
   });
-  traj.insertAdjacentHTML("beforeend", tableHTML("Hip position every 0.05 s", ["Time (s)", "Forward (m)", "Height (m)"],
-    sample.map((f) => [fmt(f.t, 2), fmt(f.hip[0], 2), fmt(f.hip[1], 2)])));
+  traj.insertAdjacentHTML("beforeend", tableHTML("Hip position every 0.05 s", ["Time (s)", `Forward (${L.unit})`, `Height (${L.unit})`],
+    sample.map((f) => [fmt(f.t, 2), fmt(f.hip[0] * L.scale, 2), fmt(f.hip[1] * L.scale, 2)])));
 
   const trunk = card("Trunk angle", "from vertical, forward +");
   const trunkChart = lineChart(trunk, {
@@ -58,7 +60,7 @@ export function buildCharts(host, attempt, { onSeekTime } = {}) {
 
   return {
     setFrame(f) {
-      trajChart.setCursor(f.hip[0], { announce: false });
+      trajChart.setCursor(f.hip[0] * L.scale, { announce: false });
       trunkChart.setCursor(f.t, { announce: false });
       shinChart.setCursor(f.t, { announce: false });
     },

@@ -258,6 +258,7 @@
 .metric-btn__value { font-family: var(--font-display); font-weight: 700; font-size: 1.9rem; line-height: 1; font-variant-numeric: tabular-nums; }
 .metric-btn[aria-pressed="true"] .metric-btn__value { color: var(--accent); }
 .metric-btn__unit { font-size: 0.55em; margin-left: 3px; color: var(--muted); font-weight: 600; }
+.metric-btn__unit--mid { margin-right: 0.22em; }
 .metric-btn__label { font-weight: 600; font-size: 0.95rem; color: var(--muted); }
 .metric-btn[aria-pressed="true"] .metric-btn__label { color: var(--text); }
 .metric-detail { background: var(--white); border: 1px solid var(--line); padding: var(--s-5); border-radius: var(--radius); }

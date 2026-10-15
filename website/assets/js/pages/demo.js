@@ -9,6 +9,7 @@ import { runAnalysis } from "../demo/analysis.js";
 import { Playback, readoutsHTML } from "../demo/playback.js";
 import { buildCharts } from "../demo/charts.js";
 import { buildCompare } from "../demo/compare.js";
+import { formatQuantity, onUnitsChange } from "../lib/units.js";
 
 const $ = (id) => document.getElementById(id);
 const views = { start: $("demo-start"), progress: $("demo-progress"), results: $("demo-results") };
@@ -18,7 +19,7 @@ $("demo-notice").innerHTML = `${icon("info")}<p><strong>Demo data.</strong> ${DE
 document.querySelectorAll("[data-icon]").forEach((n) => { n.innerHTML = icon(n.dataset.icon); });
 
 // ---------------------------------------------------------------- results
-let current = SAMPLE, charts = null, chartsFor = null, compareBuilt = false, activeTab = "playback";
+let current = SAMPLE, charts = null, chartsFor = null, compare = null, activeTab = "playback";
 const playback = new Playback($("playback"), {
   onFrame: (f) => {
     $("pb-readouts").innerHTML = readoutsHTML(f);
@@ -65,7 +66,7 @@ function renderMoments(a) {
         <thead><tr><th scope="col">Moment</th><th scope="col" class="num-cell">Time</th><th scope="col" class="num-cell">Frame</th>
           <th scope="col" class="num-cell">Hip height</th><th scope="col" class="num-cell">Trunk</th><th scope="col" class="num-cell">Shin</th><th scope="col" class="num-cell">Knee</th></tr></thead>
         <tbody>${keyMoments(a).map((k) => `<tr><th scope="row">${k.name}</th><td class="num-cell">${k.time.toFixed(3)} s</td><td class="num-cell">${k.frame}</td>
-          <td class="num-cell">${k.hipHeight.toFixed(2)} m</td><td class="num-cell">${fmt(k.trunk, 0)}°</td><td class="num-cell">${fmt(k.shin, 0)}°</td><td class="num-cell">${fmt(k.knee, 0)}°</td></tr>`).join("")}</tbody>
+          <td class="num-cell">${formatQuantity("height", k.hipHeight)}</td><td class="num-cell">${fmt(k.trunk, 0)}°</td><td class="num-cell">${fmt(k.shin, 0)}°</td><td class="num-cell">${fmt(k.knee, 0)}°</td></tr>`).join("")}</tbody>
       </table>
     </div>
     <div class="scoreboard moments__phases">${phases.map((p) => statHTML(p)).join("")}</div>
@@ -77,8 +78,19 @@ initTabs($("result-tabs"), {
     activeTab = id;
     if (id !== "playback") playback.pause();
     if (id === "charts") { ensureCharts(); charts.setFrame(current.frames[Math.max(0, playback.i ?? 0)]); }
-    if (id === "compare" && !compareBuilt) { buildCompare($("compare"), ATTEMPTS); compareBuilt = true; }
+    if (id === "compare" && !compare) compare = buildCompare($("compare"), ATTEMPTS);
   },
+});
+
+// New units: redraw every number in place (no count-up; the values themselves haven't changed)
+onUnitsChange(() => {
+  const stats = $("results-stats");
+  if (stats.children.length) stats.innerHTML = headline(current).map((s, i) => statHTML(s, { key: i === 0 })).join("");
+  renderMoments(current);
+  if (playback.a) $("pb-readouts").innerHTML = readoutsHTML(current.frames[Math.max(0, playback.i ?? 0)]);
+  chartsFor = null;                                         // charts rebuild in the new units when next shown
+  if (activeTab === "charts" && !views.results.hidden) { ensureCharts(); charts.setFrame(current.frames[Math.max(0, playback.i ?? 0)]); }
+  compare?.render();
 });
 
 // ---------------------------------------------------------------- flow

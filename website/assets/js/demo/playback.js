@@ -5,6 +5,7 @@
 import { fmt } from "../lib/dom.js";
 import { prefersReducedMotion } from "../lib/motion.js";
 import { icon } from "../components/icons.js";
+import { quantityHTML } from "../lib/units.js";
 import { addViewToggle, createFlatStage, createJumpStage, enableStageDrag } from "../components/jump-stage.js";
 
 const SPEEDS = [0.1, 0.25, 0.5, 1];
@@ -182,7 +183,7 @@ export class Playback {
 export function readoutsHTML(f) {
   const row = (label, value, unit) => `<div class="stat"><span class="stat__value">${value}<span class="stat__unit">${unit}</span></span><span class="stat__label">${label}</span></div>`;
   return [
-    row("Hip height", fmt(f.hip[1], 2), "m"),
+    `<div class="stat"><span class="stat__value">${quantityHTML("height", f.hip[1], 2)}</span><span class="stat__label">Hip height</span></div>`,
     row("Trunk angle", fmt(f.trunk, 0), "°"),
     row("Shin angle", fmt(f.shin, 0), "°"),
     row("Knee angle", fmt(f.knee, 0), "°"),

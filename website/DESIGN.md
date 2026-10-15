@@ -64,6 +64,15 @@ as the foundation for layout, typography, accessibility and chart rules.
 - The home page alternates charcoal and off-white all the way down: hero, problem, testimonials, call to
   action, footer.
 
+## Units switch
+- A small m / ft segmented control in the header, after the nav links (the same look as the 3D / Side toggle);
+  in the phone menu it is its own "Units" row. The header folds into the Menu button below 1080 px, so the
+  links, the switch and Open demo always fit on one row.
+- Imperial shows jump distances as feet and inches to the nearest half inch (6 ft 11½ in, as a tape is
+  read), body heights in inches (36.8 in), small lengths in inches (+5.9 in), speeds in ft/s with one
+  decimal, and chart axes in feet. In the scoreboard both numbers of 6 ft 11½ in are full size, each unit small.
+- Switching redraws numbers in place with no animation; the values haven't changed, only how they're written.
+
 ## Interaction states
 Every control has hover, visible focus (3 px ring) and a press state: buttons and the menu button
 press down 1 px; toggles and segmented buttons tint; text links thicken their underline; the logo

@@ -33,7 +33,7 @@
       <figure class="panel setup__diagram">
         <svg viewBox="0 0 640 420" role="img" aria-labelledby="setup-t setup-d">
           <title id="setup-t">Top-down view of the recording setup</title>
-          <desc id="setup-d">The athlete jumps left to right along a tape measure laid on the jump line. The phone on a tripod stands 4 to 5 metres away, pointing at the middle of the jump at a right angle to the jump direction, with the whole jump and about one metre of margin at each end in view.</desc>
+          <desc id="setup-d" data-imperial="The athlete jumps left to right along a tape measure laid on the jump line. The phone on a tripod stands 13 to 16 feet away, pointing at the middle of the jump at a right angle to the jump direction, with the whole jump and about three feet of margin at each end in view.">The athlete jumps left to right along a tape measure laid on the jump line. The phone on a tripod stands 4 to 5 metres away, pointing at the middle of the jump at a right angle to the jump direction, with the whole jump and about one metre of margin at each end in view.</desc>
           <!-- field of view -->
           <path class="sd-fov" d="M320 330 L40 92 L600 92 Z"/>
           <!-- jump lane -->
@@ -53,12 +53,12 @@
           <text class="sd-label" x="160" y="29">Jump direction</text>
           <text class="sd-label" x="150" y="140" text-anchor="middle">Takeoff line</text>
           <text class="sd-label" x="510" y="140" text-anchor="middle">Tape on the jump line</text>
-          <text class="sd-label sd-label--muted" x="70" y="62">1 m margin</text>
-          <text class="sd-label sd-label--muted" x="570" y="62" text-anchor="end">1 m margin</text>
+          <text class="sd-label sd-label--muted" x="70" y="62" data-imperial="3 ft margin">1 m margin</text>
+          <text class="sd-label sd-label--muted" x="570" y="62" text-anchor="end" data-imperial="3 ft margin">1 m margin</text>
           <!-- distance + right angle -->
           <line class="sd-dim" x1="320" y1="122" x2="320" y2="318"/>
           <path class="sd-right" d="M320 136 h14 v-14"/>
-          <text class="sd-label sd-label--key" x="332" y="232">4–5 m</text>
+          <text class="sd-label sd-label--key" x="332" y="232" data-imperial="13–16 ft">4–5 m</text>
           <text class="sd-label sd-label--muted" x="332" y="252">at 90° to the jump</text>
           <!-- tripod + phone -->
           <g class="sd-tripod">
@@ -86,7 +86,7 @@
           <li><label><input type="checkbox" name="calibration"><span class="checklist__box" aria-hidden="true"></span>
             <span><strong>Calibration reference in the jump plane</strong><span class="checklist__why">Tape measure on the floor along the jump line, not in front of it.</span></span></label></li>
           <li><label><input type="checkbox" name="frame"><span class="checklist__box" aria-hidden="true"></span>
-            <span><strong>Full jump in frame</strong><span class="checklist__why">Takeoff to landing with about 1 m spare at each end, and nobody else in shot.</span></span></label></li>
+            <span><strong>Full jump in frame</strong><span class="checklist__why">Takeoff to landing with about <span data-imperial="3 ft">1 m</span> spare at each end, and nobody else in shot.</span></span></label></li>
         </ul>
         <button type="button" class="btn btn--quiet btn--sm" id="check-reset">Reset checklist</button>
       </div>

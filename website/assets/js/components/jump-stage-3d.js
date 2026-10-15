@@ -13,6 +13,7 @@
 // and keeps that angle while the timeline moves; setView() returns to a guided view.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
 import { lerpPose } from "./athlete.js";
+import { FOOT, INCH, isImperial, onUnitsChange } from "../lib/units.js";
 
 const C = {
   ink: 0x121315, ground: 0x111214, lane: 0x1b1d21, laneEdge: 0x34373c, tape: 0xd9d5cc,
@@ -74,9 +75,20 @@ export function createStage3D(host, attempt, { onContextLost, reducedMotion = fa
   const glow = { emissive: C.accent, emissiveIntensity: 0.35 };
   flat(0.05, 1.5, C.accent, -0.025, 0, 0.003, glow);           // takeoff line, just behind the toes
   flat(3.0, 0.028, C.tape, 1.5, TAPE_Z, 0.003);
-  for (let i = 0; i <= 30; i++) {
-    const big = i % 5 === 0, len = big ? 0.075 : 0.035;
-    flat(big ? 0.012 : 0.007, len, C.tape, i * 0.1, TAPE_Z - 0.014 - len / 2, 0.003);
+  // Tick marks: every 10 cm with a long one each half metre, or every 3 in with a long one each foot
+  const tapeTicks = new THREE.Group(), tickMat = new THREE.MeshStandardMaterial({ color: C.tape, roughness: 0.95, metalness: 0 });
+  scene.add(tapeTicks);
+  function markTape() {
+    tapeTicks.children.forEach((t) => t.geometry.dispose());
+    tapeTicks.clear();
+    const step = isImperial() ? 3 * INCH : 0.1, longEvery = isImperial() ? 4 : 5;
+    for (let i = 0; i * step <= 3.0 + 1e-6; i++) {
+      const big = i % longEvery === 0, len = big ? 0.075 : 0.035;
+      const t = new THREE.Mesh(new THREE.PlaneGeometry(big ? 0.012 : 0.007, len), tickMat);
+      t.rotation.x = -Math.PI / 2;
+      t.position.set(i * step, 0.003, TAPE_Z - 0.014 - len / 2);
+      tapeTicks.add(t);
+    }
   }
   const heelX = frames[events.landing].pose.near.heel[0];
   const landMark = flat(0.04, 1.5, C.accent, heelX - 0.02, 0, 0.003, { ...glow, transparent: true, opacity: 0 });
@@ -174,17 +186,23 @@ export function createStage3D(host, attempt, { onContextLost, reducedMotion = fa
     key.target.position.set(p.hip[0], 0.6, 0);
   }
 
-  // ---- metre labels on the tape (HTML, so they use the site's type) ----
+  // ---- distance labels on the tape (HTML, so they use the site's type): each metre, or every 2 ft ----
   const labelLayer = document.createElement("div");
   labelLayer.className = "jump-stage__labels";
   labelLayer.setAttribute("aria-hidden", "true");
-  const labels = [0, 1, 2, 3].map((m) => {
-    const el = document.createElement("span");
-    el.className = "jump-stage__label";
-    el.textContent = m ? `${m} m` : "0";
-    labelLayer.append(el);
-    return { el, at: new THREE.Vector3(m, 0, TAPE_Z + 0.09) };
-  });
+  let labels = [];
+  function labelTape() {
+    const marks = isImperial() ? [0, 2, 4, 6, 8].map((ft) => [ft * FOOT, `${ft} ft`]) : [0, 1, 2, 3].map((m) => [m, `${m} m`]);
+    labels = marks.map(([x, text]) => {
+      const el = document.createElement("span");
+      el.className = "jump-stage__label";
+      el.textContent = x ? text : "0";
+      return { el, at: new THREE.Vector3(x, 0, TAPE_Z + 0.09) };
+    });
+    labelLayer.replaceChildren(...labels.map((l) => l.el));
+  }
+  markTape();
+  labelTape();
 
   // ---- camera ----
   // free: 0 = guided view, 1 = free orbit. yaw/pitch: the free camera's angles. focus: athlete's x.
@@ -258,6 +276,7 @@ export function createStage3D(host, attempt, { onContextLost, reducedMotion = fa
   }
 
   host.append(canvas, labelLayer);
+  const stopUnits = onUnitsChange(() => { markTape(); labelTape(); update(); });
   let current = 0;
   const api = {
     element: canvas,
@@ -301,6 +320,7 @@ export function createStage3D(host, attempt, { onContextLost, reducedMotion = fa
     },
     dispose() {
       disposed = true;
+      stopUnits();
       ro?.disconnect();
       cancelAnimationFrame(raf);
       blobTexture.dispose();

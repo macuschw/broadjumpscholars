@@ -5,16 +5,18 @@ import { Athlete } from "../components/athlete.js";
 import { createScene, pathFrom } from "../components/scene.js";
 import { statHTML } from "../components/stat.js";
 import { SAMPLE, headline } from "../data/mock-data.js";
+import { formatQuantity, isImperial, onUnitsChange, quantityHTML } from "../lib/units.js";
 
 const { frames, events, metrics: m } = SAMPLE;
 const TO = frames[events.takeoff], LAND = frames[events.landing], PEAK = frames[events.peak];
-const STATS = Object.fromEntries(headline(SAMPLE).map((s) => [s.id, s]));
+const statsNow = () => Object.fromEntries(headline(SAMPLE).map((s) => [s.id, s]));   // in the visitor's units
+let STATS = statsNow();
 
 // Plain-language copy for each metric (what it is, how it's measured, which body parts)
 const INFO = {
   distance: { parts: ["foot"],
     what: "How far the athlete travelled, measured like the official test: from the toe at takeoff to the back of the heel at landing.",
-    how: "Foot landmarks at takeoff and landing, converted from pixels to metres using a tape measure filmed along the jump line." },
+    how: () => `Foot landmarks at takeoff and landing, converted from pixels to ${isImperial() ? "feet and inches" : "metres"} using a tape measure filmed along the jump line.` },
   velocity: { parts: [],
     what: "How fast the body was moving the instant the feet left the ground, split into a forward (horizontal) and an upward (vertical) part.",
     how: "A projectile path is fitted to the body during flight; its slope at takeoff gives both components." },
@@ -76,17 +78,18 @@ const vEnd = [H[0] + m.vx * k, H[1] + m.vy * k];
 const yDim = -0.16, yTime = -0.36;
 const tx = (t) => -0.5 + (t / LAND.t) * 2.75;          // time -> x position for the contact timeline
 
-const OVERLAYS = {
+// The overlays carry numbers, so they are drawn again when the units change
+const overlays = () => ({
   distance: [line([0, yDim], [m.distance, yDim], "mx-line mx-line--solid mx-line--key"), ...ticks(0, yDim), ...ticks(m.distance, yDim),
-    text([m.distance / 2, yDim], `${m.distance.toFixed(2)} m`, { anchor: "middle", dy: -10, cls: "mx-label mx-label--key" })],
+    text([m.distance / 2, yDim], formatQuantity("distance", m.distance), { anchor: "middle", dy: -10, cls: "mx-label mx-label--key" })],
   velocity: [arrow(H, [vEnd[0], H[1]]), arrow(H, [H[0], vEnd[1]]), arrow(H, vEnd, "mx-arrow mx-arrow--key"),
-    text([vEnd[0], H[1]], `${m.vx.toFixed(2)} m/s`, { dy: 18 }), text([H[0], vEnd[1]], `${m.vy.toFixed(2)} m/s`, { dx: -10, anchor: "end" }),
-    text(vEnd, `${m.speed.toFixed(2)} m/s`, { cls: "mx-label mx-label--key" })],
+    text([vEnd[0], H[1]], formatQuantity("speed", m.vx), { dy: 18 }), text([H[0], vEnd[1]], formatQuantity("speed", m.vy), { dx: -10, anchor: "end" }),
+    text(vEnd, formatQuantity("speed", m.speed), { cls: "mx-label mx-label--key" })],
   launch: [line(H, [H[0] + 0.8, H[1]]), arrow(H, [H[0] + 0.8 * Math.cos(angleOf([m.vx, m.vy])), H[1] + 0.8 * Math.sin(angleOf([m.vx, m.vy]))], "mx-arrow mx-arrow--key"),
     arc(H, 0.36, 0, angleOf([m.vx, m.vy]), "mx-arc mx-arc--key"),
     text([H[0] + 0.18, H[1]], `${m.launchAngle.toFixed(1)}°`, { cls: "mx-label mx-label--key", dx: 0, dy: 24 }),   // under the line, clear of the path
     line([PEAK.hip[0], TO.hip[1]], PEAK.hip, "mx-line mx-line--solid"),
-    text(PEAK.hip, `+${Math.round(m.peakHeight * 100)} cm peak`, { dx: 10, dy: -6 })],
+    text(PEAK.hip, `+${formatQuantity("short", m.peakHeight)} peak`, { dx: 10, dy: -6 })],
   trunk: [line(H, [H[0], H[1] + 0.62]), arc(H, 0.3, V90, angleOf([S[0] - H[0], S[1] - H[1]]), "mx-arc mx-arc--key"),
     text([H[0] - 0.05, H[1] + 0.46], `${Math.round(m.trunkTakeoff)}°`, { anchor: "end", cls: "mx-label mx-label--key" })],
   shin: [line(A, [A[0], A[1] + 0.5]), arc(A, 0.25, V90, angleOf([K[0] - A[0], K[1] - A[1]]), "mx-arc mx-arc--key"),
@@ -97,21 +100,27 @@ const OVERLAYS = {
     text([tx(frames[events.onset].t), yTime], `Ground contact ${m.contactTime.toFixed(2)} s`, { dx: 0, dy: -14 * gap }),
     text([tx(TO.t), yTime], `Push-off ${m.pushOff.toFixed(2)} s`, { dx: 6, dy: 22 * gap, anchor: "end", cls: "mx-label mx-label--key" }),
     text([tx(LAND.t), yTime], "Landing", { dx: 0, dy: 22 * gap, anchor: "end" })],
-};
-const groups = Object.fromEntries(Object.entries(OVERLAYS).map(([id, items]) => {
-  const g = svg("g", { class: "mx", "data-metric": id }, ...items);
-  layers.front.append(g);
-  return [id, g];
-}));
+});
+let groups = {};
+function drawOverlays() {
+  Object.values(groups).forEach((g) => g.remove());
+  groups = Object.fromEntries(Object.entries(overlays()).map(([id, items]) => {
+    const g = svg("g", { class: "mx", "data-metric": id }, ...items);
+    layers.front.append(g);
+    return [id, g];
+  }));
+}
+drawOverlays();
 
 // ---------------------------------------------------------------- list + detail
 const list = document.getElementById("metric-list");
 const detail = document.getElementById("metric-detail");
 const ORDER = ["distance", "velocity", "launch", "trunk", "shin", "contact"];
+const valueHTML = (s) => (s.kind ? quantityHTML(s.kind, s.value, s.digits, "metric-btn__unit") : `${fmt(s.value, s.digits)}<span class="metric-btn__unit">${s.unit}</span>`);
 list.innerHTML = ORDER.map((id) => {
   const s = STATS[id];
   return `<button type="button" class="metric-btn" data-metric="${id}" aria-pressed="false" aria-controls="metric-detail">
-    <span class="metric-btn__value">${fmt(s.value, s.digits)}<span class="metric-btn__unit">${s.unit}</span></span>
+    <span class="metric-btn__value">${valueHTML(s)}</span>
     <span class="metric-btn__label">${s.label}</span></button>`;
 }).join("");
 const buttons = [...list.querySelectorAll(".metric-btn")];
@@ -133,7 +142,7 @@ function select(id) {
     <h2 class="visually-hidden">${s.label}</h2>
     <dl class="metric-detail__body">
       <dt>What it is</dt><dd>${info.what}</dd>
-      <dt>How it's measured</dt><dd>${info.how}</dd>
+      <dt>How it's measured</dt><dd>${typeof info.how === "function" ? info.how() : info.how}</dd>
     </dl>`;
   detail.classList.remove("is-swapping");                  // restart the cross-fade
   void detail.offsetWidth;
@@ -153,3 +162,11 @@ buttons.forEach((b, i) => {
   });
 });
 select(new URLSearchParams(location.search).get("m") in INFO ? new URLSearchParams(location.search).get("m") : "distance");
+
+// New units: the buttons, the explanation and the labels on the figure all redraw in place
+onUnitsChange(() => {
+  STATS = statsNow();
+  buttons.forEach((b) => { b.querySelector(".metric-btn__value").innerHTML = valueHTML(STATS[b.dataset.metric]); });
+  drawOverlays();
+  select(selected);
+});

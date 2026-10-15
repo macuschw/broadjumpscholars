@@ -1,6 +1,7 @@
 // Persistent header and footer, shared by every page:
 //   <jl-header current="metrics"></jl-header>   <jl-footer></jl-footer>
 import { icon, logoMark } from "./icons.js";
+import { getUnits, onUnitsChange, setUnits } from "../lib/units.js";
 
 export const ROUTES = [
   { id: "how", href: "how-it-works.html", label: "How it works" },
@@ -24,6 +25,13 @@ class JlHeader extends HTMLElement {
           <nav class="site-nav" id="site-nav" aria-label="Main">
             <ul class="nav-list">
               ${ROUTES.map(link).join("")}
+              <li class="nav-item--units">
+                <div class="units-switch" role="group" aria-label="Units">
+                  <span class="units-switch__label" aria-hidden="true">Units</span>
+                  <button type="button" class="units-switch__btn" data-units="metric" aria-label="m (metres)" title="Metric: metres">m</button>
+                  <button type="button" class="units-switch__btn" data-units="imperial" aria-label="ft (feet and inches)" title="Imperial: feet and inches">ft</button>
+                </div>
+              </li>
               <li class="nav-item--cta"><a class="btn btn--primary" href="demo.html"${isDemo ? ' aria-current="page"' : ""}>Open demo ${icon("arrow")}</a></li>
             </ul>
           </nav>
@@ -33,6 +41,13 @@ class JlHeader extends HTMLElement {
           </button>
         </div>
       </header>`;
+
+    // Units switch: every number on the page redraws in the chosen units, and the choice is remembered
+    const unitButtons = [...this.querySelectorAll(".units-switch__btn")];
+    const showUnits = (units) => unitButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.units === units)));
+    unitButtons.forEach((b) => b.addEventListener("click", () => setUnits(b.dataset.units)));
+    showUnits(getUnits());
+    onUnitsChange(showUnits);
 
     const toggle = this.querySelector(".nav-toggle");
     const nav = this.querySelector(".site-nav");

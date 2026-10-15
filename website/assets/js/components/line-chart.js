@@ -5,6 +5,7 @@
 import { el, fmt, svg } from "../lib/dom.js";
 
 const DASH = { solid: null, dashed: "9 6", dotted: "1.5 6" };
+const unitSuffix = (u) => (!u || u === "°" ? u : ` ${u}`);   // 1.20 m, 2.4 ft, 0.45 s, but 35°
 
 function niceTicks(min, max, count = 5) {
   const span = max - min || 1;
@@ -129,9 +130,9 @@ function draw(host, opts, W, remember) {
     const parts = series.map((s, i) => {
       const p = nearest(s.points, cx);
       dots[i].setAttribute("cx", X(p[0])); dots[i].setAttribute("cy", Y(p[1]));
-      return `${s.label} ${fmt(p[1], yDigits)}${yUnit}`;
+      return `${s.label} ${fmt(p[1], yDigits)}${unitSuffix(yUnit)}`;
     });
-    if (announce) readout.textContent = `${xLabel} ${fmt(cx, xDigits)}${xUnit}: ${parts.join(" · ")}`;
+    if (announce) readout.textContent = `${xLabel} ${fmt(cx, xDigits)}${unitSuffix(xUnit)}: ${parts.join(" · ")}`;
     if (fromUser && onScrub) onScrub(cx);
   }
 
