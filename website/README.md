@@ -14,8 +14,19 @@ cd jumplab-site
 python3 -m http.server 8000
 ```
 
-Then open <http://localhost:8000>. Any static host works for publishing (e.g. GitHub Pages):
-there is no build step.
+Then open <http://localhost:8000>.
+
+## Publish it
+
+The live site is <https://macuschw.github.io/broadjumpscholars/> (GitHub Pages, free for a public
+repo). This folder is copied into `website/` in the broadjumpscholars repo, and every push that changes
+`website/` republishes it within a minute or two (`.github/workflows/pages.yml`; progress shows in the
+repo's Actions tab). The notes (`*.md`) and the parked Accuracy page aren't published. From the
+broadjumpscholars folder:
+
+```bash
+rsync -a --exclude '.DS_Store' "../jumplab-site/" website/ && git add website && git commit -m "Update website" && git push
+```
 
 ## Pages
 

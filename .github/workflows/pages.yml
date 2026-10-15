@@ -1,0 +1,35 @@
+# Publishes the website/ folder to GitHub Pages: https://macuschw.github.io/broadjumpscholars/
+# Runs on every push to main that changes the website (takes a minute or two), or by hand from the
+# Actions tab. One-time setup on github.com: Settings -> Pages -> Source: "GitHub Actions".
+name: Publish website
+
+on:
+  push:
+    branches: [main]
+    paths: ["website/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:            # a newer push replaces a publish that is still running
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect the site (leaving out the notes and the parked Accuracy page)
+        run: rsync -a --exclude '_parked' --exclude '*.md' website/ _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
