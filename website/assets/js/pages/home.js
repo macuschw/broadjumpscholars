@@ -3,7 +3,10 @@
 // current moment; drag the timeline or pick a key moment to move through the jump. The view
 // you choose stays as time moves. On load it plays once into a freeze-frame at the peak.
 // Under reduced motion it starts at the peak and only moves when the visitor moves it.
+// Below the hero: the problem, testimonials and the call to action, which rise in as they scroll into view.
 import { prefersReducedMotion } from "../lib/motion.js";
+import { revealOnScroll } from "../lib/reveal.js";
+import { icon } from "../components/icons.js";
 import { createScrubber } from "../components/scrubber.js";
 import { addViewControls, createFlatStage, createJumpStage, enableStageDrag, enableStageOrbit } from "../components/jump-stage.js";
 import { SAMPLE } from "../data/mock-data.js";
@@ -164,3 +167,6 @@ async function boot() {
 
 show(pos);
 boot();
+
+document.querySelectorAll("[data-icon]").forEach((node) => { node.innerHTML = icon(node.dataset.icon); });
+revealOnScroll(document.querySelectorAll("main > section:not(.hero)"));

@@ -21,13 +21,17 @@ there is no build step.
 
 | Route | Page |
 |---|---|
-| `index.html` | Home: pitch, interactive 3D jump with a drag-to-scrub timeline, the problem |
+| `index.html` | Home: pitch, interactive 3D jump with a timeline, the problem, testimonials (placeholder quotes), and a call to action into the sample analysis |
 | `how-it-works.html` | Record → Track → Calculate → Improve |
 | `metrics.html` | The six metrics on one interactive athlete figure (`?m=trunk` deep-links a metric) |
 | `setup.html` | Top-down camera diagram + pre-recording checklist |
 | `science.html` | Three tabs: the pipeline and its formulas; a worked example (parabola fitted live to the sample flight); calibration with depth correction and three short "why" answers (`#example` and `#calibration` link straight to a tab) |
 | `demo.html` | Dashboard: upload or sample → simulated analysis → results with the 3D playback (`#sample` skips the start screen) |
 | `about.html` | Team ([NAME 1], [NAME 2]), audiences, FAQ |
+
+The home testimonials are **placeholder quotes**, marked with a "Placeholder quotes" tag. Before
+sharing the site, replace each quote, `[NAME]` and role in `index.html` with a real quote from someone
+who has used JumpLab (with their permission), then remove the tag.
 
 The Accuracy page (placeholder validation table and known limitations) is parked in
 `_parked/` for now, with steps to restore it in `_parked/README.md`.
@@ -45,6 +49,7 @@ assets/
         lib/body.js             2-D body model (segment angles from vertical, forward +, knee IK)
         lib/fit.js              least-squares fit: the projectile fit used on the Science page
         lib/dom.js, motion.js   tiny helpers; reduced-motion awareness
+        lib/reveal.js           below-the-fold blocks play their entrance when scrolled into view
         components/             site-chrome (header/footer), athlete figure, scene,
                                 line chart, stat, tabs, icons, scrubber (jump timeline),
                                 jump-stage (picks 3D or 2D; view toggle; drag-to-scrub),

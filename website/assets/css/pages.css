@@ -130,9 +130,66 @@
 .problem__list h3 { font-size: 1.45rem; margin-bottom: var(--s-2); }
 .problem__list p { color: var(--muted); }
 
+/* Testimonials: one lead quote, two shorter ones stacked beside it */
+.voices__head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-4) var(--s-6); margin-bottom: var(--s-6); }
+.voices__head h2 { font-size: var(--step-3); margin-top: var(--s-3); max-width: 20ch; }
+.voices__grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); border-top: 3px solid var(--fg); }
+.voice { margin: 0; display: flex; flex-direction: column; gap: var(--s-5); padding-block: var(--s-5); }
+.voice--lead { grid-row: span 2; padding-right: clamp(24px, 4vw, 64px); border-right: 1px solid var(--rule); }
+.voice:not(.voice--lead) { padding-left: clamp(24px, 3vw, 48px); }
+.voice:not(.voice--lead) + .voice { border-top: 1px solid var(--rule); }
+.voice blockquote { margin: 0; }
+.voice blockquote p { max-width: 34ch; font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; line-height: 1.22; color: var(--fg); }
+.voice--lead blockquote p { max-width: 28ch; font-size: clamp(1.9rem, 1.4rem + 1.3vw, 2.6rem); font-weight: 700; line-height: 1.1; }
+/* The opening mark is decoration: an empty alternative keeps it out of what screen readers say */
+.voice--lead blockquote::before {
+  content: "\201C"; content: "\201C" / "";
+  display: block; height: 0.5em; margin-bottom: var(--s-2);
+  font: 700 5.5rem/0.85 var(--font-display); color: var(--key);
+}
+.voice__by { display: flex; align-items: center; gap: var(--s-3); margin-top: auto; }
+.voice__icon { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); color: var(--key); }
+.voice__icon .icon { width: 22px; height: 22px; }
+.voice__by strong { display: block; font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; line-height: 1.15; color: var(--fg); }
+.voice__role { display: block; color: var(--fg-muted); font-size: 0.92rem; }
+
+/* Call to action: the one main action on the left, what filming your own takes on the right */
+.cta__grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: clamp(32px, 6vw, 96px); align-items: center; }
+.cta h2 { font-size: clamp(2.4rem, 1.7rem + 2.6vw, 4rem); margin-block: var(--s-3) var(--s-4); }
+.cta h2 span { display: block; }                            /* each sentence starts its own line */
+.cta__actions { margin-top: var(--s-6); }
+.cta__assure { list-style: none; margin: var(--s-4) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); color: var(--muted); font-size: 0.95rem; font-weight: 500; }
+.cta__assure li { display: inline-flex; align-items: center; gap: 6px; }
+.cta__assure .icon { width: 18px; height: 18px; stroke-width: 2.5; color: var(--accent); }
+.cta__kit { padding: var(--s-5); border-top: 3px solid var(--text); }
+.cta__kit h3 { font-size: 1.75rem; }
+.cta__kit-lede { margin-top: var(--s-1); color: var(--muted); }
+.kit { list-style: none; margin: var(--s-4) 0; padding: 0; border-top: 1px solid var(--line); }
+.kit li { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: var(--s-3); align-items: baseline; padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
+.kit .num { font-size: 1.75rem; }
+.kit strong { display: block; font-weight: 600; }
+.kit__why { display: block; color: var(--muted); font-size: 0.95rem; }
+.cta__kit-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.cta__kit-foot p { color: var(--muted); font-size: 0.95rem; }
+
 @media (max-width: 900px) {
-  .hero__grid, .problem__grid { grid-template-columns: minmax(0, 1fr); }
+  .hero__grid, .problem__grid, .cta__grid { grid-template-columns: minmax(0, 1fr); }
   .problem__list { grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
+  /* Tablets: the lead quote across the top, the two shorter ones side by side under it */
+  .voices__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .voice--lead { grid-column: 1 / -1; grid-row: auto; padding-right: 0; border-right: 0; border-bottom: 1px solid var(--rule); }
+  .voice:not(.voice--lead) { padding-left: 0; padding-right: var(--s-5); }
+  .voice:not(.voice--lead) + .voice { border-top: 0; padding-left: var(--s-5); padding-right: 0; border-left: 1px solid var(--rule); }
+}
+@media (max-width: 560px) {
+  .voices__head { margin-bottom: var(--s-5); }
+  .voices__grid { grid-template-columns: minmax(0, 1fr); }
+  .voice { gap: var(--s-4); padding-block: var(--s-4); }
+  .voice:not(.voice--lead) + .voice { padding-left: 0; border-left: 0; border-top: 1px solid var(--rule); }
+  .voice--lead blockquote p { font-size: 1.7rem; }
+  .voice--lead blockquote::before { font-size: 4.5rem; }
+  .voice blockquote p { font-size: 1.3rem; }
+  .cta__kit { padding: var(--s-4); }
 }
 
 /* ---------- How it works ---------- */

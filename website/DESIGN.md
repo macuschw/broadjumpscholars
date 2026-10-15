@@ -50,6 +50,20 @@ as the foundation for layout, typography, accessibility and chart rules.
   equations centred in full-width dark boxes, inline maths in the text and notes. The plain HTML
   inside each element is the fallback if KaTeX can't load.
 
+## Home: testimonials and call to action
+- **Testimonials** ("From the field", a charcoal band after the problem): one lead quote in large display
+  type with an accent opening mark, and two shorter quotes beside it, split by 1 px rules under a 3 px top
+  rule (the scoreboard pattern). Each attribution has a role icon (the same icons as About's "Who it's for"),
+  a name and a role. Tablets put the lead quote on top and the other two side by side; phones stack all three.
+  The quotes are placeholders, tagged "Placeholder quotes" like every other stand-in on the site, until real
+  quotes replace them.
+- **Call to action** ("Try it", off-white, just above the footer): one main action, "Explore the sample
+  analysis" (`demo.html#sample`, straight into the results), with three short reassurances under it. Beside
+  it, a card answering "Filming your own jumps?" with the three things needed and a link to the setup guide.
+  It promises nothing the demo can't do: uploaded videos aren't analysed yet, so the main action is the sample.
+- The home page alternates charcoal and off-white all the way down: hero, problem, testimonials, call to
+  action, footer.
+
 ## Interaction states
 Every control has hover, visible focus (3 px ring) and a press state: buttons and the menu button
 press down 1 px; toggles and segmented buttons tint; text links thicken their underline; the logo
@@ -74,6 +88,9 @@ decorates. Nothing loops, bounces or autoplays.
   two places; 150 ms (hover, press), 240 ms (state changes), 420 ms (entrances).
 - **Pages:** a 180 ms cross-fade between pages (browsers with view transitions); content
   rises 12 px into place on load, top block first. Dark bands stay solid; only their content moves.
+  On the home page, blocks that start below the fold hold that same entrance until they scroll into view
+  (`lib/reveal.js`), so it isn't spent off-screen; nothing waits under reduced motion, without
+  IntersectionObserver, or when printing.
 - **Buttons:** colour changes in 150 ms, a 1 px press on click, arrows lean 3 px on hover. Still flat:
   no shadows, no scaling.
 - **Nav:** the underline draws in from the left on hover; the mobile menu slides down 8 px and fades.
