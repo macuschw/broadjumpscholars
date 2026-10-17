@@ -3,7 +3,7 @@
 Run run_analysis.py first; this reads the _results.json it saved (no re-analysis).
 
 Examples
-    python scripts/summarize.py "../caliberationtestvid(120fps).mp4"
+    python scripts/summarize.py "../test videos/caliberationtestvid(120fps).mp4"
     python scripts/summarize.py output/myjump/myjump_results.json
 """
 import argparse
