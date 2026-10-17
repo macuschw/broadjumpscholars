@@ -270,6 +270,61 @@
 .metric-btn__unit--mid { margin-right: 0.22em; }
 .metric-btn__label { font-weight: 600; font-size: 0.95rem; color: var(--muted); }
 .metric-btn[aria-pressed="true"] .metric-btn__label { color: var(--text); }
+/* 3D figure (metrics-3d.js): a charcoal panel like the demo playback, the lane fading into it.
+   Metric lines are drawn in the scene; labels are callouts in the site's type, each joined to its
+   point by a thin leader. Only the selected metric's callouts show. */
+.metrics__figure.is-3d { position: relative; padding: 0; overflow: hidden; background: var(--ink); border-color: var(--ink-3); }
+.mx3d { position: relative; aspect-ratio: 16 / 11; }
+.mx3d__canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+@media (prefers-reduced-motion: no-preference) { .mx3d__canvas { animation: fade-in var(--dur-slow) var(--ease) both; } }
+.mx3d__layers, .mx3d__tags, .mx3d__tape { position: absolute; inset: 0; pointer-events: none; }
+.mx3d__tape { transition: opacity var(--dur) var(--ease); }
+.mx3d__leaders { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.mx3d__leaders line { stroke: var(--muted-dark); stroke-width: 1.25; }
+.mx3d__leaders line.is-key { stroke: var(--accent-on-dark); stroke-width: 1.5; }
+.mx3d__leaders circle { fill: var(--paper); }
+.mx3d__leaders circle.is-key { fill: var(--accent-on-dark); }
+.mx3d-tag {
+  position: absolute; left: 0; top: 0; display: flex; flex-direction: column; gap: 4px; padding: 7px 11px 8px;
+  background: rgba(18, 19, 21, 0.86); border: 1px solid var(--ink-3); border-radius: var(--radius);
+  color: var(--paper); white-space: nowrap;
+}
+.mx3d-tag--key { border-left: 3px solid var(--accent-on-dark); }
+.mx3d-tag__value { font: 700 1.4rem/0.95 var(--font-display); font-variant-numeric: tabular-nums; letter-spacing: -0.005em; }
+.mx3d-tag--key .mx3d-tag__value { font-size: 1.75rem; color: var(--accent-on-dark); }
+.mx3d-tag__name { font: 600 0.72rem/1 var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-dark); }
+.mx3d-tag--note { padding: 5px 9px; }
+.mx3d-tag--note .mx3d-tag__name { color: var(--paper); }
+@media (prefers-reduced-motion: no-preference) {
+  .mx3d-tag { animation: fade-in var(--dur) var(--ease) 140ms both; }
+  .mx3d__leaders line, .mx3d__leaders circle { animation: fade-in var(--dur) var(--ease) 140ms both; }
+}
+.metrics__figure.is-3d .jump-stage__views { top: 12px; right: 12px; }
+.metrics__figure.is-3d .jump-stage__status { color: var(--muted-dark); }
+
+/* Ground contact: a strip along the bottom of the figure. Dip, push-off (the key part), flight to landing */
+.mx3d-timeline {
+  position: absolute; left: 6%; right: 6%; bottom: 14px; color: var(--muted-dark);
+  font: 600 0.74rem/1 var(--font-display); letter-spacing: 0.08em; text-transform: uppercase;
+  opacity: 0; transform: translateY(6px); transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.mx3d-timeline.is-on { opacity: 1; transform: none; transition-delay: 120ms; }
+.mx3d-timeline b { font: 700 1.2rem/1 var(--font-display); letter-spacing: 0; color: var(--paper); margin-right: 4px; text-transform: none; }
+.mx3d-timeline__brace { position: relative; height: 30px; margin-bottom: 4px; }
+.mx3d-timeline__brace::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 7px; border: 1.5px solid var(--muted-dark); border-bottom: 0; }
+.mx3d-timeline__brace span { position: absolute; left: 0; top: 0; white-space: nowrap; color: var(--paper); }
+.mx3d-timeline__track { position: relative; height: 8px; border-radius: 4px; background: var(--ink-3); }
+.mx3d-timeline__seg { position: absolute; top: 0; bottom: 0; }
+.mx3d-timeline__seg--dip { background: rgba(217, 213, 204, 0.55); border-radius: 4px 0 0 4px; }
+.mx3d-timeline__seg--push { background: var(--accent-on-dark); }
+.mx3d-timeline__seg--flight { background: radial-gradient(circle, var(--muted-dark) 1.4px, transparent 1.6px) 0 50% / 9px 8px repeat-x; }
+.mx3d-timeline__marks { position: relative; height: 26px; margin-top: 7px; }
+.mx3d-timeline__marks span { position: absolute; top: 0; white-space: nowrap; transform: translateX(-50%); }
+.mx3d-timeline__marks span:first-child { transform: none; }
+.mx3d-timeline__marks .is-end { transform: translateX(-100%); }
+.mx3d-timeline__marks .is-key { color: var(--accent-on-dark); top: 0; }
+.mx3d-timeline__marks .is-key b { color: var(--accent-on-dark); }
+
 .metric-detail { background: var(--white); border: 1px solid var(--line); padding: var(--s-5); border-radius: var(--radius); }
 @media (prefers-reduced-motion: no-preference) {
   .metric-detail.is-swapping > * { animation: fade-in var(--dur) var(--ease); }
@@ -477,7 +532,7 @@
   .hero .lede { font-size: 1.3rem; }
   /* Phones: the readout and the 3D/Side toggle get their own strip, so they never cover the athlete */
   .jump-stage { aspect-ratio: auto; height: calc((100vw - 2 * var(--gutter)) * 0.66 + 52px); }   /* a 3:2 view plus the strip */
-  .jump-stage__canvas, .jump-stage__svg, .jump-stage__labels, .jump-stage__status { inset: 52px 0 0 0; height: auto; }
+  .jump-stage__canvas, .jump-stage__svg, .jump-stage__labels, .jump-stage__status { inset: 52px 0 0 0; height: calc(100% - 52px); }   /* fill the box: a canvas won't stretch between top and bottom by itself */
   .jump-stage__hud { top: 14px; }
   .scrub__tick, .scrub__phase { letter-spacing: 0.04em; }
   .jump-stage__phase { font-size: 1.25rem; }
@@ -500,6 +555,17 @@
   /* The metrics drawing scales to about half size on a phone; keep its labels ~12-15 px */
   .mx-label { font-size: 25px; stroke-width: 7px; }
   .mx-label--key { font-size: 31px; }
+  /* 3D figure: the view buttons get their own strip above the scene, so they never cover the athlete */
+  .mx3d { aspect-ratio: auto; height: calc((100vw - 2 * var(--gutter)) * 0.82 + 48px); }
+  .mx3d__canvas, .mx3d__layers { inset: 48px 0 0 0; height: calc(100% - 48px); }   /* a canvas won't stretch between top and bottom by itself */
+  .metrics__figure.is-3d .jump-stage__views { top: 4px; right: 4px; }
+  .metrics__figure.is-3d .jump-stage__view { min-height: 38px; }
+  .mx3d-tag { padding: 5px 8px 6px; gap: 3px; }
+  .mx3d-tag__value { font-size: 1.12rem; }
+  .mx3d-tag--key .mx3d-tag__value { font-size: 1.32rem; }
+  .mx3d-tag__name { font-size: 0.62rem; }
+  .mx3d-timeline { left: 4%; right: 4%; bottom: 10px; font-size: 0.64rem; letter-spacing: 0.05em; }
+  .mx3d-timeline b { font-size: 1rem; }
   /* Same for the setup diagram (labels ~11 px instead of 7) */
   .sd-label { font-size: 23px; }
   .sd-label--muted { font-size: 21px; }

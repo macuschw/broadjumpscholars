@@ -8,6 +8,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="assets/css/tokens.css">
   <link rel="stylesheet" href="assets/css/base.css">
@@ -30,9 +31,10 @@
     </header>
 
     <section class="container metrics" aria-label="Metrics explorer">
-      <figure class="panel metrics__figure">
-        <div id="metric-scene"></div>
-        <figcaption class="visually-hidden">The sample athlete at the moment of takeoff, with the selected metric drawn on the figure.</figcaption>
+      <figure class="panel metrics__figure is-3d">
+        <div id="metric-scene" class="mx3d" role="img" aria-label="The sample athlete at the moment of takeoff, with the selected metric drawn on the figure."></div>
+        <p class="jump-stage__status" id="metric-status" role="status"></p>
+        <figcaption class="visually-hidden">The sample athlete at the moment of takeoff, with the selected metric drawn on the figure. Values and explanations are in the panel beside it.</figcaption>
       </figure>
       <div class="metrics__side">
         <div class="metric-list stagger" id="metric-list" role="group" aria-label="Choose a metric"></div>

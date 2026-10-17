@@ -73,6 +73,28 @@ as the foundation for layout, typography, accessibility and chart rules.
   decimal, and chart axes in feet. In the scoreboard both numbers of 6 ft 11½ in are full size, each unit small.
 - Switching redraws numbers in place with no animation; the values haven't changed, only how they're written.
 
+## Metrics figure (3D)
+- The sample athlete at takeoff on the same charcoal lane as the home hero, in a charcoal panel like the
+  demo playback. The athlete is the articulated mannequin: tapered limbs meeting at slightly darker ball
+  joints, one smooth lathe-turned torso (hips, waist, ribcage, shoulders), an oval head, a satin finish.
+  Shoes are neutral here so the accent only ever marks the metric. (The home hero and demo keep the
+  simpler capsule mannequin; both come from `scene-3d.js`.)
+- Each metric is drawn in the scene where it comes from: a dimension line on the floor from the takeoff
+  toe to the landing heel (with a landing ghost); forward, upward and resultant arrows from the hips with
+  their parallelogram; the launch angle against the horizontal plus the peak height; trunk and shin lean
+  as arcs from a dotted vertical; for ground contact, a ghost at the lowest point and a timeline strip.
+  Lines sit over the body like a diagram, each with a dark outline so it reads on the light body.
+- Callouts, not loose text: a dark tag (value in display type, name in small caps; key values in the
+  accent with an accent edge), joined to its exact point by a thin leader with a dot. Tags stay inside the
+  figure and move with the camera; some move to a better side on narrow figures.
+- Choosing a metric glides the camera (~1 s) to frame it, three-quarter by default and flatter for the
+  angle metrics; "Side" is level and side-on, where every angle reads true. Hover and focus preview after
+  a 140 ms pause, so sweeping the pointer down the list doesn't swing the camera. Highlighted body parts
+  take an accent tint, not full accent, so the accent lines stay distinct on them. Nothing moves under
+  reduced motion, and the scene stops drawing once it is still.
+- Phones: the 3D / Side buttons get their own strip above the scene. Without WebGL or three.js the flat
+  side-view drawing (`metrics-2d.js`) takes over, as before.
+
 ## Page headings, step links, checklist
 - Every inner page heading (not the demo) has the logo's flight arc - takeoff dot, dotted path, landing
   tick - drawn faintly in its empty top-right corner (accent at 32%, 50% on phones where it's small).

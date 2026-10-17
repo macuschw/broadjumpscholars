@@ -34,7 +34,7 @@ rsync -a --exclude '.DS_Store' "../jumplab-site/" website/ && git add website &&
 |---|---|
 | `index.html` | Home: pitch, interactive 3D jump with a timeline, the problem, testimonials (placeholder quotes), and a call to action into the sample analysis |
 | `how-it-works.html` | Record → Track → Calculate → Improve |
-| `metrics.html` | The six metrics on one interactive athlete figure (`?m=trunk` deep-links a metric) |
+| `metrics.html` | The six metrics drawn on a 3D athlete at takeoff, with a 3D / Side view (`?m=trunk` deep-links a metric) |
 | `setup.html` | Top-down camera diagram + pre-recording checklist |
 | `science.html` | Three tabs: the pipeline and its formulas; a worked example (parabola fitted live to the sample flight); calibration with depth correction and three short "why" answers (`#example` and `#calibration` link straight to a tab) |
 | `demo.html` | Dashboard: upload or sample → simulated analysis → results with the 3D playback (`#sample` skips the start screen) |
@@ -65,7 +65,9 @@ assets/
         components/             site-chrome (header/footer), athlete figure, scene,
                                 line chart, stat, tabs, icons, scrubber (jump timeline),
                                 jump-stage (picks 3D or 2D; view toggle; drag-to-scrub),
-                                jump-stage-3d (three.js) and jump-stage-2d (fallback)
+                                jump-stage-3d (three.js) and jump-stage-2d (fallback),
+                                scene-3d (shared 3D pieces: lane, lights, both mannequins),
+                                metrics-3d (Metrics figure) and metrics-2d (its fallback)
         demo/                   playback, charts, compare, simulated analysis
         pages/                  one small script per page
 ```
