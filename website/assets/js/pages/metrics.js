@@ -5,7 +5,7 @@
 import { fmt } from "../lib/dom.js";
 import { prefersReducedMotion } from "../lib/motion.js";
 import { statHTML } from "../components/stat.js";
-import { addViewToggle } from "../components/jump-stage.js";
+import { addViewControls, enableStageOrbit } from "../components/jump-stage.js";
 import { createMetricsFigure2D } from "../components/metrics-2d.js";
 import { SAMPLE, headline } from "../data/mock-data.js";
 import { formatQuantity, isImperial, onUnitsChange, quantityHTML } from "../lib/units.js";
@@ -51,7 +51,10 @@ const buttons = [...list.querySelectorAll(".metric-btn")];
 // ---------------------------------------------------------------- figure
 const sceneHost = document.getElementById("metric-scene"), figureEl = sceneHost.closest(".metrics__figure");
 const statusEl = document.getElementById("metric-status");
-let figure = null, shown = null, previewTimer = 0;
+let figure = null, controls = null, shown = null, previewTimer = 0;
+
+// Drag the athlete (or arrow keys on the focused figure) to look all the way around it
+enableStageOrbit(sceneHost, () => figure, { onOrbit: () => controls?.free() });
 
 /** Show a metric on the figure (now, or once the figure has loaded). */
 function show(id) {
@@ -69,14 +72,18 @@ const preview = (id) => {
 function describe(id) {
   const s = STATS[id];
   const value = s.kind ? formatQuantity(s.kind, s.value, s.digits) : `${fmt(s.value, s.digits)}${s.unit === "°" ? "°" : ` ${s.unit}`}`;
-  sceneHost.setAttribute("aria-label", `The sample athlete at takeoff, showing the ${s.label.toLowerCase()}: ${value}.`);
+  sceneHost.setAttribute("aria-label", `The sample athlete at takeoff, showing the ${s.label.toLowerCase()}: ${value}.`
+    + (figure?.orbit ? " Drag, or use the arrow keys, to look around the athlete." : ""));
 }
 
 function useFlat() {
   figure?.dispose?.();
-  sceneHost.querySelector(".jump-stage__views")?.remove();
+  controls?.remove();
+  controls = null;
   figureEl.classList.remove("is-3d");
   sceneHost.className = "";
+  sceneHost.setAttribute("role", "img");
+  sceneHost.removeAttribute("tabindex");
   figure = createMetricsFigure2D(sceneHost, SAMPLE, { partsOf: (id) => INFO[id].parts });
   if (shown) figure.show(shown);
 }
@@ -88,8 +95,8 @@ async function boot() {
     const slow = new Promise((_, reject) => setTimeout(() => reject(new Error("3D took too long")), 5000));
     const mod = await Promise.race([import("../components/metrics-3d.js"), slow]);
     figure = mod.createMetricsFigure3D(sceneHost, SAMPLE, { reducedMotion: prefersReducedMotion(), onContextLost: useFlat });
-    addViewToggle(sceneHost, () => figure);
-    if (shown) figure.show(shown);
+    controls = addViewControls(sceneHost, () => figure);          // 3D / Side, and rotate buttons
+    if (shown) { figure.show(shown); describe(shown); }
   } catch {
     useFlat();
   }

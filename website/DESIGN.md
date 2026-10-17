@@ -75,8 +75,11 @@ as the foundation for layout, typography, accessibility and chart rules.
 
 ## Metrics figure (3D)
 - The sample athlete at takeoff on the same charcoal lane as the home hero, in a charcoal panel like the
-  demo playback. The athlete is the articulated mannequin: tapered limbs meeting at slightly darker ball
-  joints, one smooth lathe-turned torso (hips, waist, ribcage, shoulders), an oval head, a satin finish.
+  demo playback. The athlete is the articulated mannequin with light, believable anatomy: limbs turned
+  from profiles that are fuller at the muscle belly and slimmer at the joints, plus soft muscle shapes on
+  the correct side (shoulder caps, biceps and triceps, quads and hamstrings, calves, glutes), meeting at
+  slightly darker ball joints; one smooth lathe-turned torso; an oval head; a satin finish. Kept subtle:
+  it should read as a well-made figure, not a bodybuilder.
   Shoes are neutral here so the accent only ever marks the metric. (The home hero and demo keep the
   simpler capsule mannequin; both come from `scene-3d.js`.)
 - Each metric is drawn in the scene where it comes from: a dimension line on the floor from the takeoff
@@ -92,7 +95,15 @@ as the foundation for layout, typography, accessibility and chart rules.
   a 140 ms pause, so sweeping the pointer down the list doesn't swing the camera. Highlighted body parts
   take an accent tint, not full accent, so the accent lines stay distinct on them. Nothing moves under
   reduced motion, and the scene stops drawing once it is still.
-- Phones: the 3D / Side buttons get their own strip above the scene. Without WebGL or three.js the flat
+- Look around: drag the figure (one figure width = a full turn; tilt with a mouse or pen), use the rotate
+  buttons beside 3D / Side, or the arrow keys when it has focus. The chosen angle holds as metrics change;
+  3D or Side glides back the short way round. A one-line hint under the figure says so.
+- Labels from any angle: each callout's side is a world direction (behind, ahead, above or below the
+  athlete), so turning the camera round keeps "behind" behind. Callouts push apart instead of overlapping,
+  keep clear of the buttons and the contact timeline, and stay inside the figure (checked at four angles
+  for every metric, desktop and phone: no overlaps). Lines drawn in the side-on plane fade back as the
+  camera turns edge-on to them, so they never collapse into misleading slivers; the values stay crisp.
+- Phones: the 3D / Side and rotate buttons get their own strip above the scene. Without WebGL or three.js the flat
   side-view drawing (`metrics-2d.js`) takes over, as before.
 
 ## Page headings, step links, checklist

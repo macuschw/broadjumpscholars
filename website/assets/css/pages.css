@@ -300,6 +300,13 @@
   .mx3d__leaders line, .mx3d__leaders circle { animation: fade-in var(--dur) var(--ease) 140ms both; }
 }
 .metrics__figure.is-3d .jump-stage__views { top: 12px; right: 12px; }
+/* Rotate buttons sit beside 3D / Side, so the bottom of the figure stays clear for the timeline */
+.metrics__figure.is-3d .jump-stage__rotate { top: 12px; right: 146px; bottom: auto; left: auto; }
+.mx3d { cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.mx3d.is-dragging { cursor: grabbing; }
+.mx3d:focus-visible { outline: 3px solid var(--paper); outline-offset: -3px; }
+.mx3d__hint { padding: 10px 14px 12px; border-top: 1px solid var(--ink-3); color: var(--muted-dark); font-size: 0.9rem; }
+.metrics__figure:not(.is-3d) .mx3d__hint { display: none; }
 .metrics__figure.is-3d .jump-stage__status { color: var(--muted-dark); }
 
 /* Ground contact: a strip along the bottom of the figure. Dip, push-off (the key part), flight to landing */
@@ -560,6 +567,9 @@
   .mx3d__canvas, .mx3d__layers { inset: 48px 0 0 0; height: calc(100% - 48px); }   /* a canvas won't stretch between top and bottom by itself */
   .metrics__figure.is-3d .jump-stage__views { top: 4px; right: 4px; }
   .metrics__figure.is-3d .jump-stage__view { min-height: 38px; }
+  .metrics__figure.is-3d .jump-stage__rotate { left: 4px; right: auto; top: 4px; }
+  .mx3d__hint { font-size: 0.85rem; padding: 8px 12px 10px; }
+  .mx3d__hint-more { display: none; }
   .mx3d-tag { padding: 5px 8px 6px; gap: 3px; }
   .mx3d-tag__value { font-size: 1.12rem; }
   .mx3d-tag--key .mx3d-tag__value { font-size: 1.32rem; }

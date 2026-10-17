@@ -7,7 +7,11 @@
 //   contact  - the lowest point of the dip as a ghost, and a timeline of the ground phases
 // Lines are drawn over the body (like a diagram) and labelled with callouts in the site's type,
 // each joined to the exact point it describes. Choosing a metric glides the camera to frame it;
-// "Side" is level and side-on - what the phone sees, where every angle reads true.
+// "Side" is level and side-on - what the phone sees, where every angle reads true. Dragging (or the
+// rotate buttons / arrow keys) turns the camera all the way round; the chosen angle holds as metrics
+// change. Callouts are placed by world direction (behind, ahead, above, below the athlete), so they
+// stay on the right side from any angle, push apart instead of overlapping, and keep clear of the
+// buttons; lines drawn in the side-on plane fade back when seen edge-on, where they would mislead.
 // Rendering happens only while something is still moving. Under reduced motion, nothing glides.
 import {
   THREE, C, HIP_W, TAPE_Z, addLights, aimKeyLight, createContactShadow, createLane, createMannequin, createRenderer, tapeMarks,
@@ -18,6 +22,10 @@ import { formatQuantity, onUnitsChange } from "../lib/units.js";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const TAU = { camera: 0.3, fade: 0.14 };                      // smoothing time constants (s): ~3τ to settle
 const DONE = { x: 0.002, y: 0.002, d: 0.004, az: 0.0015, el: 0.0015 };   // camera gaps too small to see (m, rad)
+const TAU_DRAG = 0.07;                                         // the camera follows a drag closely
+const PITCH = [0.03, 1.05];                                    // free camera: just above the floor to 60° up
+const DIRS = { left: [-1, 0], right: [1, 0], above: [0, 1], below: [0, -1] };   // label sides, in the side view
+const wrap = (a) => ((((a + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
 const VIEW = { "3d": { az: 0.42, el: 0.17 }, side: { az: 0, el: 0.02 } };   // camera angles (rad)
 const COL = { halo: C.ink, key: C.accent, main: 0xd9d5cc, ref: 0x8a8e95, shoe: 0x8d8a84 };
 const BASE = { halo: 0.55, key: 1, main: 0.95, ref: 0.8 };    // overlay opacity by line kind; halo: the dark outline
@@ -124,10 +132,10 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
   const H = V(TO.hip[0], TO.hip[1]);                            // hips (centre of mass stand-in) at takeoff
   const bodyPts = (p) => [p.hip, p.head, ...["near", "far"].flatMap((s) => Object.values(p[s]))];
   const overlays = {};
-  function build(id, frameBox, r, draw) {
+  function build(id, frameBox, r, draw, { planar = true } = {}) {
     const k = kit(r);
     const labels = draw(k) || [];
-    overlays[id] = { ...k, labels, frameBox, now: 0, goal: 0 };
+    overlays[id] = { ...k, labels, frameBox, planar, now: 0, goal: 0 };
   }
 
   build("distance", { pts: [[toeX - 0.55, 0], [heelX + 0.45, 0], ...bodyPts(TO.pose), ...bodyPts(LAND.pose)], pad: [0.06, 0.2], el: 0.3, lift: 0.09 }, 0.0085, (k) => {
@@ -142,7 +150,7 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
       { at: V(toeX, y, HIP_W), side: "left", gap: 30, name: "Takeoff toe" },
       { at: V(heelX, y, HIP_W), side: "right", gap: 30, name: "Landing heel" },
     ];
-  });
+  }, { planar: false });                                         // on the floor, readable from any side
 
   const kv = 0.22;                                               // metres of arrow per m/s
   const vxTip = V(H.x + m.vx * kv, H.y), vyTip = V(H.x, H.y + m.vy * kv), vTip = V(H.x + m.vx * kv, H.y + m.vy * kv);
@@ -255,6 +263,7 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
 
   // ---- camera: frame each metric's points, from the chosen angle ----
   let view = "3d", current = null, width = 0, height = 0;
+  let free = false, yaw = 0, pitch = 0;                        // free: the visitor has turned the camera
   const goal = { x: 0, y: 1, d: 5, az: VIEW["3d"].az, el: VIEW["3d"].el };
   const now = { ...goal };
   function frameGoal(id) {
@@ -263,7 +272,7 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
     const w = (x1 - x0) * (1 + 2 * pad[0]), h = (y1 - y0) * (1 + 2 * pad[1] + TOP);
     const tv = Math.tan((camera.fov * Math.PI) / 360), th = tv * (width / Math.max(1, height) || 1.6);
-    const a = view === "side" ? VIEW.side : { az, el };
+    const a = free ? { az: yaw, el: pitch } : view === "side" ? VIEW.side : { az, el };
     Object.assign(goal, { x: (x0 + x1) / 2, y: (y0 + y1) / 2 + (TOP / 2) * (y1 - y0) - lift * h, d: Math.max(w / 2 / th, h / 2 / tv) / Math.cos(a.el * 0.5), az: a.az, el: a.el });
   }
 
@@ -292,15 +301,53 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
       t.el.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, 0)`;
       t.el.style.opacity = p.ok && p.x > -20 && p.x < width + 20 ? "" : "0";
     }
+    // 1. Where each callout wants to be: beside its point, toward its side of the athlete. Sides are
+    //    world directions (behind, ahead, up, down), so after turning the camera round the "behind"
+    //    callout is still behind the athlete. If that direction points at the camera, use the screen side.
+    const narrow = width < 480, boxes = [];
     for (const l of live) {
-      const a = toScreen(l.spec.at), side = (width < 480 && l.spec.narrow) || l.spec.side, g = width < 480 ? l.spec.gap * 0.7 : l.spec.gap;
-      // Box beside the anchor on the chosen side (some move on narrow figures), then kept inside the figure
-      let x = { right: a.x + g, left: a.x - g - l.w, above: a.x - l.w / 2, below: a.x - l.w / 2 }[side];
-      let y = { right: a.y - l.h / 2, left: a.y - l.h / 2, above: a.y - g - l.h, below: a.y + g }[side];
-      x = Math.max(8, Math.min(width - l.w - 8, x));
-      y = Math.max(8, Math.min(height - l.h - 8, y));
+      const a = toScreen(l.spec.at), sideName = (narrow && l.spec.narrow) || l.spec.side, g = narrow ? l.spec.gap * 0.7 : l.spec.gap;
+      const [wx, wy] = DIRS[sideName];
+      const tip = toScreen(l.spec.at.clone().add(V(wx * 0.25, wy * 0.25)));
+      let ux = tip.x - a.x, uy = tip.y - a.y, len = Math.hypot(ux, uy);
+      if (len < 6) { ux = wx; uy = -wy; len = 1; }            // looking straight along it
+      ux /= len; uy /= len;
+      const tx = a.x + ux * g, ty = a.y + uy * g;
+      const across = Math.abs(ux) >= Math.abs(uy) * 0.8;      // mostly sideways: box beside; else above/below
+      boxes.push({ l, a, key: l.spec.key, w: l.w, h: l.h,
+        x: across ? (ux > 0 ? tx : tx - l.w) : tx - l.w / 2,
+        y: across ? ty - l.h / 2 : (uy > 0 ? ty : ty - l.h) });
+    }
+    // 2. Keep clear of each other, the buttons and the timeline; stay inside the figure
+    const box = canvas.getBoundingClientRect(), keepOut = [...host.querySelectorAll(".jump-stage__views, .mx3d-timeline.is-on")].map((n) => {
+      const r = n.getBoundingClientRect();
+      return { x: r.left - box.left, y: r.top - box.top, w: r.width, h: r.height };
+    }).filter((r) => r.w && r.y < height && r.y + r.h > 0);
+    const M = 8, push = (b, o, share) => {                      // move b out of o along the shorter way
+      const dx1 = o.x + o.w + M - b.x, dx2 = b.x + b.w + M - o.x, dy1 = o.y + o.h + M - b.y, dy2 = b.y + b.h + M - o.y;
+      if (dx1 <= 0 || dx2 <= 0 || dy1 <= 0 || dy2 <= 0) return false;
+      const m = Math.min(dx1, dx2, dy1, dy2);
+      if (m === dy1) b.y += m * share; else if (m === dy2) b.y -= m * share; else if (m === dx1) b.x += m * share; else b.x -= m * share;
+      return true;
+    };
+    for (let pass = 0; pass < 8; pass++) {
+      let moved = false;
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          const [p1, p2] = boxes[i].key ? [boxes[j], boxes[i]] : [boxes[i], boxes[j]];   // the key callout gives way least
+          if (push(p1, p2, 0.75)) { push(p2, p1, 0.25); moved = true; }
+        }
+        for (const o of keepOut) moved = push(boxes[i], o, 1) || moved;
+      }
+      for (const b of boxes) {
+        b.x = Math.max(M, Math.min(width - b.w - M, b.x));
+        b.y = Math.max(M, Math.min(height - b.h - M, b.y));
+      }
+      if (!moved) break;
+    }
+    // 3. Draw: the box, and a leader from the point to the nearest edge of the box
+    for (const { l, a, x, y } of boxes) {
       l.el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
-      // The leader runs from the anchor to the nearest edge of the box
       const ex = Math.max(x, Math.min(x + l.w, a.x)), ey = Math.max(y, Math.min(y + l.h, a.y));
       const show = a.ok && Math.hypot(ex - a.x, ey - a.y) > 6;
       Object.entries({ x1: a.x, y1: a.y, x2: ex, y2: ey }).forEach(([k2, v]) => l.line.setAttribute(k2, v.toFixed(1)));
@@ -326,14 +373,17 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
     const k = (tau) => (snap || reducedMotion ? 1 : 1 - Math.exp(-dt / tau));
     let moving = false;
     for (const key2 of ["x", "y", "d", "az", "el"]) {
-      const gap = goal[key2] - now[key2];
-      now[key2] = Math.abs(gap) < DONE[key2] ? goal[key2] : now[key2] + gap * k(TAU.camera);   // close enough to look still: stop
+      const gap = goal[key2] - now[key2], tau = free && (key2 === "az" || key2 === "el") ? TAU_DRAG : TAU.camera;
+      now[key2] = Math.abs(gap) < DONE[key2] ? goal[key2] : now[key2] + gap * k(tau);   // close enough to look still: stop
       moving ||= now[key2] !== goal[key2];
     }
     const ease = (o) => { const gap = o.goal - o.now; o.now = Math.abs(gap) < 0.004 ? o.goal : o.now + gap * k(TAU.fade); moving ||= o.now !== o.goal; };
+    // Lines in the side-on plane fade back as the camera turns edge-on to it (they'd collapse into slivers)
+    const facing = Math.abs(Math.cos(now.el) * Math.cos(now.az));
+    const planeVis = 0.18 + 0.82 * Math.min(1, Math.max(0, (facing - 0.12) / 0.38));
     for (const o of Object.values(overlays)) {
       ease(o);
-      for (const [kind, mat] of Object.entries(o.mats)) mat.opacity = o.now * BASE[kind];
+      for (const [kind, mat] of Object.entries(o.mats)) mat.opacity = o.now * BASE[kind] * (o.planar ? planeVis : 1);
       o.group.visible = o.now > 0.005;
     }
     Object.values(fades).forEach(ease);
@@ -385,12 +435,27 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
       host.dataset.metric = id;
       update();
     },
-    /** "3d" (three-quarter, the default) or "side" (level, side-on: angles read true). */
+    /** "3d" (three-quarter, the default) or "side" (level, side-on: angles read true). Leaves a free orbit. */
     setView(next) {
       view = next === "side" ? "side" : "3d";
+      if (free) {
+        free = false;
+        const az = view === "side" ? VIEW.side.az : (overlays[current]?.frameBox.az ?? VIEW["3d"].az);
+        now.az = az + wrap(now.az - az);                       // glide back the short way round, never a full spin
+      }
       if (current) frameGoal(current);
       update();
     },
+    /** Turn the camera around the athlete by dYaw / dPitch radians. The angle holds as metrics change. */
+    orbit(dYaw, dPitch = 0) {
+      if (!free) { free = true; yaw = now.az; pitch = now.el; }
+      yaw += dYaw;
+      pitch = Math.min(PITCH[1], Math.max(PITCH[0], pitch + dPitch));
+      goal.az = yaw;
+      goal.el = pitch;
+      update();
+    },
+    get orbiting() { return free; },
     dispose() {
       stopUnits();
       ro?.disconnect();

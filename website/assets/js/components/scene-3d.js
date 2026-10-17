@@ -208,71 +208,96 @@ export function createMannequin(scene, materials, { shadows = true, detailed = f
 }
 
 /**
- * The articulated mannequin (Metrics figure): like an artist's figure - tapered limbs that meet at
- * ball joints, a shaped chest, waist and pelvis, an oval head - in a satin finish. Same interface
- * as createMannequin; `materials.joint` (optional) colours the joints. Segments stretch to the
- * pose's own joint positions, so it always fits the data exactly.
+ * The articulated mannequin (Metrics figure): an artist's figure with light, believable anatomy.
+ * Limbs are turned profiles - fuller at the muscle belly, slimmer at the joints - with a few soft
+ * muscle shapes on the correct side: shoulder caps (deltoids), biceps and triceps, forearms, quads
+ * and hamstrings, calves, glutes. They meet at slightly darker ball joints; one smooth torso, an oval
+ * head, a satin finish. Same interface as createMannequin; `materials.joint` (optional) colours the
+ * joints. Every segment stretches to the pose's own joint positions, so it always fits the data.
  */
 function createArticulated(scene, materials, { shadows }) {
   const meshes = [];
   const add = (geo, mat) => { const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = shadows; scene.add(m); meshes.push(m); return m; };
   const joint = materials.joint || materials.near, jointFar = materials.jointFar || materials.far;
-  // A unit-height tapered limb (radius r0 at its start, r1 at its end), stretched to fit each pose
-  const limb = (r0, r1, mat) => add(new THREE.CylinderGeometry(r1, r0, 1, 28, 1, true), mat);
+  // A limb turned from a profile [[t, radius], ...]: t runs 0 -> 1 from its first joint to its second
+  const lathe = (profile, mat) => add(new THREE.LatheGeometry(profile.map(([t, r]) => new THREE.Vector2(r, t)), 32), mat);
   const ball = (r, mat) => add(new THREE.SphereGeometry(r, 28, 18), mat);
-  const blob = (mat) => add(new THREE.SphereGeometry(1, 36, 24), mat);   // scaled into chest, waist, pelvis, head, hands
+  const blob = (mat) => add(new THREE.SphereGeometry(1, 32, 20), mat);   // scaled into muscles, head, hands
+
+  // Profiles (metres). Kept gentle: the shapes suggest muscle rather than sculpt it.
+  const THIGH = [[0, 0.079], [0.12, 0.083], [0.32, 0.08], [0.55, 0.07], [0.78, 0.058], [0.93, 0.052], [1, 0.05]];
+  const SHIN = [[0, 0.051], [0.12, 0.053], [0.3, 0.054], [0.52, 0.046], [0.76, 0.037], [0.92, 0.033], [1, 0.032]];
+  const UPPER_ARM = [[0, 0.047], [0.18, 0.046], [0.45, 0.044], [0.72, 0.04], [0.9, 0.036], [1, 0.035]];
+  const FOREARM = [[0, 0.036], [0.18, 0.039], [0.42, 0.035], [0.72, 0.029], [1, 0.026]];
+  // Muscle bellies: [where along the limb, which way (+1 front, -1 back), how far out, half-sizes [front-back, along, across]]
+  const MUSCLES = {
+    thigh: [["quad", 0.42, 1, 0.022, [0.05, 0.16, 0.058]], ["hamstring", 0.45, -1, 0.017, [0.044, 0.15, 0.05]]],
+    shin: [["calf", 0.3, -1, 0.021, [0.04, 0.12, 0.044]]],
+    upperArm: [["biceps", 0.52, 1, 0.014, [0.029, 0.1, 0.032]], ["triceps", 0.42, -1, 0.015, [0.03, 0.12, 0.033]]],
+  };
 
   const limbs = {};
   for (const side of ["near", "far"]) {
     const mat = side === "near" ? materials.near : materials.far, jm = side === "near" ? joint : jointFar;
-    limbs[side] = {
-      thigh: limb(0.074, 0.05, mat), shin: limb(0.05, 0.034, mat),
-      upperArm: limb(0.047, 0.036, mat), forearm: limb(0.035, 0.027, mat),
+    const L = limbs[side] = {
+      thigh: lathe(THIGH, mat), shin: lathe(SHIN, mat), upperArm: lathe(UPPER_ARM, mat), forearm: lathe(FOREARM, mat),
+      deltoid: blob(mat),
       foot: add(new THREE.CapsuleGeometry(0.037, LEN.foot - 0.074, 8, 20), materials.shoe),
-      hip: ball(0.07, jm), knee: ball(0.053, jm), ankle: ball(0.037, jm),
-      shoulder: ball(0.052, jm), elbow: ball(0.039, jm), wrist: ball(0.029, jm),
+      hip: ball(0.07, jm), knee: ball(0.052, jm), ankle: ball(0.036, jm),
+      shoulder: ball(0.05, jm), elbow: ball(0.038, jm), wrist: ball(0.028, jm),
       hand: blob(mat),
     };
-    limbs[side].foot.scale.set(1, 1, 1.12);                    // a little wider than tall
+    for (const [seg, list] of Object.entries(MUSCLES)) for (const [name] of list) L[name] = blob(mat);
+    L.foot.scale.set(1, 1, 1.12);                              // a little wider than tall
   }
   // One smooth torso: a lathe profile (hips, waist, ribcage, shoulders) in units of hip-to-shoulder
-  // length, widened across the body and flattened front to back when posed
+  // length, widened across the body and flattened front to back when posed; glutes behind the pelvis
   const PROFILE = [[0, -0.2], [0.52, -0.18], [0.8, -0.1], [0.9, 0.04], [0.84, 0.2], [0.74, 0.36], [0.8, 0.52],
     [0.95, 0.68], [1, 0.8], [0.93, 0.92], [0.72, 1.01], [0.42, 1.06], [0, 1.08]];
   const torso = add(new THREE.LatheGeometry(PROFILE.map(([r, y]) => new THREE.Vector2(r, y)), 40), materials.near);
-  const neck = limb(0.05, 0.043, materials.near), head = blob(materials.near);
+  const glutes = blob(materials.near);
+  const neck = lathe([[0, 0.05], [1, 0.043]], materials.near), head = blob(materials.near);
 
   const Y = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
-  /** Run a unit-height mesh from a to b (side-view points) at depth z, stretched to fit. */
-  const span = (mesh, a, b, z = 0) => {
+  /** Run a turned limb from a to b (side-view points) at depth z, stretched to fit. */
+  const spanFrom = (mesh, a, b, z = 0) => {
     dir.set(b[0] - a[0], b[1] - a[1], 0);
     const len = dir.length() || 1e-3;
-    mesh.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, z);
+    mesh.position.set(a[0], a[1], z);
     mesh.quaternion.setFromUnitVectors(Y, dir.normalize());
     mesh.scale.y = len;
   };
-  /** An ellipsoid along the line a->b: centred at fraction t, half-sizes [along, front-back, across]. */
-  const shape = (mesh, a, b, t, along, depth, across, z = 0) => {
-    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]) - Math.PI / 2;
-    mesh.position.set(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, z);
-    mesh.rotation.set(0, 0, ang);
-    mesh.scale.set(depth, along, across);
+  /**
+   * An ellipsoid along a->b at fraction t, pushed `off` metres to the limb's front (+) or back (-),
+   * half-sizes [front-back, along, across]. "Front" is the side that faces forward with the limb
+   * hanging straight down (quads, biceps), and turns with the limb.
+   */
+  const belly = (mesh, a, b, t, off, size, z = 0) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], n = Math.hypot(dx, dy) || 1;
+    const fx = -dy / n, fy = dx / n;                            // the limb's front
+    mesh.position.set(a[0] + dx * t + fx * off, a[1] + dy * t + fy * off, z);
+    mesh.rotation.set(0, 0, Math.atan2(dy, dx) - Math.PI / 2);
+    mesh.scale.set(size[0], size[1], size[2]);
   };
+  /** An ellipsoid centred at fraction t along a->b, half-sizes [along, front-back, across]. */
+  const shape = (mesh, a, b, t, along, depth, across, z = 0) => belly(mesh, a, b, t, 0, [depth, along, across], z);
   const at = (mesh, p, z) => mesh.position.set(p[0], p[1], z);
 
   function pose(p) {
     for (const side of ["near", "far"]) {
       const s = p[side], L = limbs[side], z = side === "near" ? 1 : -1, zl = z * HIP_W, za = z * SHOULDER_W;
-      span(L.thigh, p.hip, s.knee, zl);
-      span(L.shin, s.knee, s.ankle, zl);
+      const segs = { thigh: [p.hip, s.knee, zl], shin: [s.knee, s.ankle, zl], upperArm: [s.shoulder, s.elbow, za], forearm: [s.elbow, s.wrist, za] };
+      for (const [seg, [a, b, zz]] of Object.entries(segs)) {
+        spanFrom(L[seg], a, b, zz);
+        for (const [name, t, sign, off, size] of MUSCLES[seg] || []) belly(L[name], a, b, t, sign * off, size, zz);
+      }
+      belly(L.deltoid, s.shoulder, s.elbow, 0.1, 0, [0.056, 0.075, 0.058], za);   // the shoulder cap, over the joint
       at(L.hip, p.hip, zl); at(L.knee, s.knee, zl); at(L.ankle, s.ankle, zl);
+      at(L.shoulder, s.shoulder, za); at(L.elbow, s.elbow, za); at(L.wrist, s.wrist, za);
       const d = [s.toe[0] - s.heel[0], s.toe[1] - s.heel[1]], n = Math.hypot(d[0], d[1]) || 1;
       const up = [(-d[1] / n) * 0.02, (d[0] / n) * 0.02];      // sole on the heel/toe markers
       L.foot.position.set((s.heel[0] + s.toe[0]) / 2 + up[0], (s.heel[1] + s.toe[1]) / 2 + up[1], z * (HIP_W + 0.005));
       L.foot.rotation.set(0, 0, Math.atan2(d[1], d[0]) - Math.PI / 2);
-      span(L.upperArm, s.shoulder, s.elbow, za);
-      span(L.forearm, s.elbow, s.wrist, za);
-      at(L.shoulder, s.shoulder, za); at(L.elbow, s.elbow, za); at(L.wrist, s.wrist, za);
       const hd = [s.wrist[0] - s.elbow[0], s.wrist[1] - s.elbow[1]], hl = Math.hypot(hd[0], hd[1]) || 1;
       shape(L.hand, s.wrist, [s.wrist[0] + hd[0] / hl, s.wrist[1] + hd[1] / hl], 0.065, 0.055, 0.03, 0.022, za);
     }
@@ -280,11 +305,12 @@ function createArticulated(scene, materials, { shadows }) {
     torso.position.set(p.hip[0], p.hip[1], 0);
     torso.rotation.set(0, 0, Math.atan2(sh[1] - p.hip[1], sh[0] - p.hip[0]) - Math.PI / 2);
     torso.scale.set(0.118, Math.hypot(sh[0] - p.hip[0], sh[1] - p.hip[1]), 0.19);   // front-back, length, across
+    belly(glutes, p.hip, sh, 0.02, 0.048, [0.068, 0.088, 0.15]);   // behind the pelvis ("front" of an upward segment is its back)
     const neckTop = [sh[0] + (p.head[0] - sh[0]) * 0.62, sh[1] + (p.head[1] - sh[1]) * 0.62];
-    span(neck, sh, neckTop);
+    spanFrom(neck, sh, neckTop);
     shape(head, sh, p.head, 1.04, 0.118, 0.098, 0.092);          // an oval head, a touch above the joint point
   }
 
-  const parts = { trunk: [torso], shin: [limbs.near.shin], foot: [limbs.near.foot, limbs.far.foot] };
+  const parts = { trunk: [torso, glutes], shin: [limbs.near.shin, limbs.near.calf], foot: [limbs.near.foot, limbs.far.foot] };
   return { pose, parts, limbs, meshes };
 }

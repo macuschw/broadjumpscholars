@@ -32,9 +32,9 @@
 
     <section class="container metrics" aria-label="Metrics explorer">
       <figure class="panel metrics__figure is-3d">
-        <div id="metric-scene" class="mx3d" role="img" aria-label="The sample athlete at the moment of takeoff, with the selected metric drawn on the figure."></div>
+        <div id="metric-scene" class="mx3d" role="group" tabindex="0" aria-label="The sample athlete at the moment of takeoff, with the selected metric drawn on the figure."></div>
         <p class="jump-stage__status" id="metric-status" role="status"></p>
-        <figcaption class="visually-hidden">The sample athlete at the moment of takeoff, with the selected metric drawn on the figure. Values and explanations are in the panel beside it.</figcaption>
+        <figcaption class="mx3d__hint">Drag the athlete to look all the way around. <span class="mx3d__hint-more">Side shows the view the phone sees, where angles read true.</span></figcaption>
       </figure>
       <div class="metrics__side">
         <div class="metric-list stagger" id="metric-list" role="group" aria-label="Choose a metric"></div>
