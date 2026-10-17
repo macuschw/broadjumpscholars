@@ -31,8 +31,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # so `jumplab`
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("libgl1", "libglib2.0-0", "libegl1", "libgles2")   # OpenCV / MediaPipe need these
-    .pip_install("mediapipe==0.10.14", "opencv-contrib-python==4.10.0.84", "numpy==1.26.4",
-                 "scipy==1.13.1", "fastapi[standard]")
+    # Exact versions in two steps, so pip never has to search for a combination that fits
+    .pip_install("numpy==1.26.4", "scipy==1.13.1", "opencv-contrib-python==4.10.0.84", "protobuf==4.25.5")
+    .pip_install("mediapipe==0.10.14")
+    .pip_install("fastapi==0.115.6")
     .add_local_python_source("jumplab")
 )
 app = modal.App("jumplab-analysis", image=image)
