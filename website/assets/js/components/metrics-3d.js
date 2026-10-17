@@ -14,7 +14,8 @@
 // buttons; lines drawn in the side-on plane fade back when seen edge-on, where they would mislead.
 // Rendering happens only while something is still moving. Under reduced motion, nothing glides.
 import {
-  THREE, C, HIP_W, TAPE_Z, addLights, aimKeyLight, createContactShadow, createLane, createMannequin, createRenderer, tapeMarks,
+  THREE, C, HIP_W, TAPE_Z, addLights, aimKeyLight, createContactShadow, createLane, createMannequin, createRenderer,
+  studioEnvironment, tapeMarks,
 } from "./scene-3d.js";
 import { fmt } from "../lib/dom.js";
 import { formatQuantity, onUnitsChange } from "../lib/units.js";
@@ -27,7 +28,7 @@ const PITCH = [0.03, 1.05];                                    // free camera: j
 const DIRS = { left: [-1, 0], right: [1, 0], above: [0, 1], below: [0, -1] };   // label sides, in the side view
 const wrap = (a) => ((((a + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
 const VIEW = { "3d": { az: 0.42, el: 0.17 }, side: { az: 0, el: 0.02 } };   // camera angles (rad)
-const COL = { halo: C.ink, key: C.accent, main: 0xd9d5cc, ref: 0x8a8e95, shoe: 0x8d8a84 };
+const COL = { halo: C.ink, key: C.accent, main: 0xd9d5cc, ref: 0x8a8e95 };
 const BASE = { halo: 0.55, key: 1, main: 0.95, ref: 0.8 };    // overlay opacity by line kind; halo: the dark outline
 const V = (x, y, z = 0) => new THREE.Vector3(x, y, z);
 const TOP = 0.12;                                            // extra headroom: the view buttons sit top right
@@ -41,18 +42,19 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(C.ink, 5.5, 13);
   const camera = new THREE.PerspectiveCamera(30, 16 / 10, 0.05, 60);
-  const key = addLights(scene, { modelling: true });          // stronger shading, so the anatomy reads
+  const key = addLights(scene, { studio: true });
+  scene.environment = studioEnvironment(renderer);             // soft studio light: long gradients over the body
   const { markTape, landMark } = createLane(scene, { landingX: heelX });
   markTape();
   const shadow = createContactShadow(scene);
+  // The floor takes only a little of the studio light, so the lane stays dark and the figure stands out
+  scene.traverse((o) => { if (o.isMesh && o.material?.isMeshStandardMaterial) o.material.envMapIntensity = 0.25; });
 
-  // ---- the athlete at takeoff: the articulated mannequin in a satin finish, darker ball joints.
-  //      Shoes are neutral here, so the accent only ever marks the metric ----
+  // ---- the athlete at takeoff: the sculpted mannequin in a warm, matte off-white (the far side a
+  //      shade darker, for depth). No coloured shoes here, so the accent only ever marks the metric ----
   const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0, ...extra });
-  const satin = (color) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0, clearcoat: 0.22, clearcoatRoughness: 0.5 });
-  const athlete = createMannequin(scene, {
-    near: satin(C.body), far: satin(C.bodyFar), shoe: std(COL.shoe, { roughness: 0.6 }), joint: std(0x9d998f, { roughness: 0.45 }), jointFar: std(0x7e7a73, { roughness: 0.45 }),
-  }, { detailed: true });
+  const matte = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0, envMapIntensity: 0.8 });
+  const athlete = createMannequin(scene, { near: matte(0xdfd9cf), far: matte(0xb7b1a6), shoe: matte(0xc9c3b8) }, { detailed: true });
   athlete.pose(TO.pose);
   shadow.follow(TO.pose);
   aimKeyLight(key, TO.hip[0]);

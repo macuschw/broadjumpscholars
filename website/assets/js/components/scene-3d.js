@@ -46,27 +46,51 @@ export function createRenderer({ className, onContextLost }) {
 
 /**
  * Soft sky fill, a key light that casts the shadow, a cool rim from behind. Returns the key light.
- * `modelling` (Metrics figure) lowers the fill and adds a raking light from above the camera side, so
- * rounded forms such as muscles shade from light to dark instead of looking flat.
+ * `studio` (Metrics figure) turns the fill down: the soft studio environment (studioEnvironment)
+ * does the modelling there, and the key light mainly casts the shadow.
  */
-export function addLights(scene, { modelling = false } = {}) {
-  scene.add(new THREE.HemisphereLight(0xe6eaf0, 0x0b0b0d, modelling ? 0.7 : 1.2));
-  if (modelling) {
-    const rake = new THREE.DirectionalLight(0xfff4e8, 1.1);
-    rake.position.set(-1.5, 4.5, 3.5);
-    scene.add(rake);
-  }
-  const key = new THREE.DirectionalLight(0xffffff, modelling ? 2.5 : 2.2);
+export function addLights(scene, { studio = false } = {}) {
+  scene.add(new THREE.HemisphereLight(0xe6eaf0, 0x0b0b0d, studio ? 0.12 : 1.2));
+  const key = new THREE.DirectionalLight(0xffffff, studio ? 2.1 : 2.2);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   Object.assign(key.shadow.camera, { left: -2.2, right: 2.2, top: 2.4, bottom: -1.2, near: 0.5, far: 14 });
   key.shadow.bias = -0.0005;
   key.shadow.normalBias = 0.03;
   scene.add(key, key.target);
-  const rim = new THREE.DirectionalLight(0xc4d2ff, 0.9);
+  const rim = new THREE.DirectionalLight(0xc4d2ff, studio ? 0.7 : 0.9);
   rim.position.set(-3, 3.2, -4);
   scene.add(rim);
   return key;
+}
+
+/**
+ * A photo-studio lighting environment, built in code (no image to download): a dim room with a large
+ * softbox overhead, a key box off to one side, a weak fill box opposite and a thin strip light behind.
+ * Used as scene.environment, it lights rounded forms with long, soft gradients - the look of a
+ * product shot - and gives a satin surface gentle highlights instead of hard specks.
+ */
+export function studioEnvironment(renderer) {
+  const room = new THREE.Scene();
+  room.background = new THREE.Color(0x15171a);
+  const box = (w, h, x, y, z, glow, lookAt = [0, 1, 0]) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(glow, glow, glow), side: THREE.DoubleSide }));
+    m.position.set(x, y, z);
+    m.lookAt(...lookAt);
+    room.add(m);
+  };
+  // The key comes from the side, ~60° off the usual camera line: light that grazes a form shows its
+  // shape (frontal light flattens it, like a camera flash). The fill opposite is kept weak.
+  box(6, 6, 0, 7, 0, 0.7);                   // overhead softbox: a soft top light
+  box(4, 5, 5, 3.5, 2.5, 5);                 // key, to the right of the camera: the dominant light
+  box(3, 4, -4, 2, 4, 0.22);                 // fill, left of the camera: weak, so shadow sides stay shaded
+  box(0.8, 6, -2, 3, -6, 2.2);               // strip light behind: a rim along the back
+  box(30, 30, 0, -1.5, 0, 0.08, [0, 5, 0]);  // the floor bounces a little light back up
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const texture = pmrem.fromScene(room, 0.03).texture;
+  pmrem.dispose();
+  room.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
+  return texture;
 }
 
 /** Keep the key light over the athlete so its shadow stays sharp. */
@@ -157,7 +181,7 @@ export function createContactShadow(scene) {
  * place it, `parts` (trunk, shin, foot...) for highlighting and `meshes` (every segment).
  */
 export function createMannequin(scene, materials, { shadows = true, detailed = false } = {}) {
-  if (detailed) return createArticulated(scene, materials, { shadows });
+  if (detailed) return createSculpted(scene, materials, { shadows });
   const meshes = [];
   const add = (geo, mat) => { const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = shadows; scene.add(m); meshes.push(m); return m; };
   const capsule = (r, len, mat) => add(new THREE.CapsuleGeometry(r, Math.max(0.001, len), 10, 24), mat);
@@ -217,133 +241,129 @@ export function createMannequin(scene, materials, { shadows = true, detailed = f
 }
 
 /**
- * The articulated mannequin (Metrics figure): an artist's figure with defined, believable anatomy.
- * Limbs are turned profiles - fuller at the muscle belly, slimmer at the joints - with muscle
- * shapes on the correct side: shoulder caps, biceps and triceps, forearms, quads (with the teardrop
- * above the knee) and hamstrings, two-headed calves; pecs, traps, lats and glutes on the torso. They meet at slightly darker ball joints; one smooth torso, an oval
- * head, a satin finish. Same interface as createMannequin; `materials.joint` (optional) colours the
- * joints. Every segment stretches to the pose's own joint positions, so it always fits the data.
+ * Smooth sweep geometry for a body part: rings along y (0 -> 1, stretched to the part's length when
+ * posed) whose cross-section is an ellipse with separate front, back and side radii, so a calf can
+ * swell at the back and a quad at the front in one seamless surface. `rings` lists
+ * [t, front, back, side] (metres); between them the radii follow a smooth curve. The front is local
+ * -x for limbs (it faces forward with the limb hanging down) and +x for the trunk (`frontX`).
  */
-function createArticulated(scene, materials, { shadows }) {
+function sweep(rings, { frontX = -1, around = 40, along = 44 } = {}) {
+  const smooth = (k, t) => {                                  // Catmull-Rom through the control radii
+    let i = 0;
+    while (i < rings.length - 2 && rings[i + 1][0] < t) i++;
+    const p = (j) => rings[Math.max(0, Math.min(rings.length - 1, j))];
+    const t0 = p(i)[0], t1 = p(i + 1)[0], u = t1 > t0 ? (t - t0) / (t1 - t0) : 0;
+    const [a, b, c, d] = [p(i - 1)[k], p(i)[k], p(i + 1)[k], p(i + 2)[k]];
+    return 0.5 * ((2 * b) + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u * u + (-a + 3 * b - 3 * c + d) * u * u * u);
+  };
+  const tMin = rings[0][0], tMax = rings[rings.length - 1][0], pos = [], idx = [];
+  for (let i = 0; i <= along; i++) {
+    const t = tMin + ((tMax - tMin) * i) / along, front = smooth(1, t), back = smooth(2, t), side = smooth(3, t);
+    for (let j = 0; j <= around; j++) {
+      const a = (j / around) * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
+      pos.push(frontX * c * (c >= 0 ? front : back), t, sn * side);
+    }
+  }
+  for (let i = 0; i < along; i++) {
+    for (let j = 0; j < around; j++) {
+      const r0 = i * (around + 1) + j, r1 = r0 + around + 1;
+      // Mirroring the front to -x reverses the winding; keep every face pointing outward either way
+      if (frontX > 0) idx.push(r0, r1, r0 + 1, r0 + 1, r1, r1 + 1);
+      else idx.push(r0, r0 + 1, r1, r0 + 1, r1 + 1, r1);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+// Body-part shapes, [t, front, back, side] in metres; t runs from the first joint (0) to the second (1).
+// Read against a standing figure: quads at the front of the thigh, calves at the back of the shin,
+// the deltoid cap at the top of the upper arm, broad shoulders over a narrow waist.
+const SHAPES = {
+  thigh: [[0, 0.074, 0.076, 0.08], [0.12, 0.083, 0.081, 0.084], [0.3, 0.088, 0.078, 0.081], [0.5, 0.079, 0.07, 0.072],
+    [0.7, 0.064, 0.058, 0.06], [0.86, 0.051, 0.049, 0.051], [1, 0.046, 0.046, 0.047]],
+  shin: [[0, 0.046, 0.046, 0.047], [0.1, 0.046, 0.059, 0.051], [0.26, 0.044, 0.07, 0.054], [0.42, 0.04, 0.055, 0.046],
+    [0.62, 0.034, 0.037, 0.037], [0.82, 0.028, 0.028, 0.03], [1, 0.027, 0.027, 0.028]],
+  upperArm: [[0, 0.052, 0.052, 0.056], [0.12, 0.053, 0.053, 0.06], [0.3, 0.042, 0.045, 0.045], [0.5, 0.047, 0.049, 0.041],
+    [0.7, 0.041, 0.042, 0.037], [0.88, 0.034, 0.034, 0.033], [1, 0.032, 0.032, 0.031]],
+  forearm: [[0, 0.033, 0.033, 0.034], [0.16, 0.04, 0.037, 0.042], [0.36, 0.037, 0.034, 0.038], [0.62, 0.03, 0.028, 0.031],
+    [0.86, 0.025, 0.024, 0.026], [1, 0.022, 0.022, 0.023]],
+  // Trunk, hips (t 0) to shoulders (t 1), in units of that length for t; glutes swell the back low down
+  trunk: [[-0.2, 0.05, 0.06, 0.09], [-0.1, 0.09, 0.116, 0.145], [0.04, 0.102, 0.126, 0.157], [0.2, 0.097, 0.1, 0.141],
+    [0.36, 0.09, 0.09, 0.127], [0.52, 0.098, 0.097, 0.143], [0.66, 0.115, 0.107, 0.168], [0.78, 0.124, 0.112, 0.185],
+    [0.9, 0.102, 0.104, 0.193], [1, 0.072, 0.08, 0.164], [1.07, 0.038, 0.04, 0.07]],
+  neck: [[0, 0.048, 0.052, 0.05], [1, 0.041, 0.044, 0.043]],
+  // Foot, heel to toe: "front" is the top of the foot, "back" the sole
+  foot: [[-0.05, 0.022, 0.016, 0.026], [0.06, 0.036, 0.02, 0.036], [0.35, 0.036, 0.019, 0.04], [0.7, 0.027, 0.017, 0.046],
+    [0.95, 0.019, 0.015, 0.04], [1.05, 0.01, 0.01, 0.026]],
+};
+
+/**
+ * The sculpted mannequin (Metrics figure): one smooth, continuous surface per body part, shaped like
+ * a sports mannequin - broad shoulders over a narrow waist, quads and hamstrings, calves high on the
+ * back of the leg, a deltoid cap over each shoulder - with joints that blend in instead of showing,
+ * a featureless egg head and mitten hands. Built for a matte finish under studio light. Same
+ * interface as createMannequin; every part stretches to the pose's own joint positions.
+ */
+function createSculpted(scene, materials, { shadows }) {
   const meshes = [];
   const add = (geo, mat) => { const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = shadows; scene.add(m); meshes.push(m); return m; };
-  const joint = materials.joint || materials.near, jointFar = materials.jointFar || materials.far;
-  // A limb turned from a profile [[t, radius], ...]: t runs 0 -> 1 from its first joint to its second
-  const lathe = (profile, mat) => add(new THREE.LatheGeometry(profile.map(([t, r]) => new THREE.Vector2(r, t)), 32), mat);
-  const ball = (r, mat) => add(new THREE.SphereGeometry(r, 28, 18), mat);
-  const blob = (mat) => add(new THREE.SphereGeometry(1, 32, 20), mat);   // scaled into muscles, head, hands
-
-  // Profiles (metres): slimmer at the joints, so the muscle bellies read
-  const THIGH = [[0, 0.079], [0.12, 0.082], [0.32, 0.078], [0.55, 0.068], [0.78, 0.054], [0.93, 0.048], [1, 0.047]];
-  const SHIN = [[0, 0.049], [0.12, 0.05], [0.3, 0.05], [0.52, 0.043], [0.76, 0.034], [0.92, 0.03], [1, 0.03]];
-  const UPPER_ARM = [[0, 0.046], [0.18, 0.044], [0.45, 0.041], [0.72, 0.037], [0.9, 0.034], [1, 0.033]];
-  const FOREARM = [[0, 0.035], [0.18, 0.037], [0.42, 0.033], [0.72, 0.027], [1, 0.024]];
-  // Muscle bellies: [name, where along the limb, front (+1) or back (-1), how far out (m),
-  // half-sizes [front-back, along, across], toward the body's midline (m, optional)].
-  // Each stands 1-3 cm proud of the limb surface, enough to catch light and cast a little shadow.
-  const MUSCLES = {
-    thigh: [
-      ["quad", 0.42, 1, 0.036, [0.058, 0.19, 0.062]],          // rectus femoris and the outer quad
-      ["teardrop", 0.76, 1, 0.022, [0.034, 0.075, 0.036], 0.028],   // vastus medialis, above the inner knee
-      ["hamstring", 0.45, -1, 0.034, [0.052, 0.17, 0.056]],
-    ],
-    shin: [
-      ["calfIn", 0.28, -1, 0.031, [0.046, 0.13, 0.034], 0.018],    // the two heads of the calf
-      ["calfOut", 0.31, -1, 0.028, [0.042, 0.12, 0.031], -0.018],
-    ],
-    upperArm: [
-      ["biceps", 0.52, 1, 0.024, [0.034, 0.11, 0.036]],
-      ["triceps", 0.42, -1, 0.026, [0.035, 0.13, 0.037]],
-    ],
-    forearm: [["brachioradialis", 0.24, 1, 0.017, [0.03, 0.085, 0.032]]],
-  };
+  const blob = (mat) => add(new THREE.SphereGeometry(1, 40, 28), mat);   // scaled into joints, head, hands
+  const geo = Object.fromEntries(Object.entries(SHAPES).map(([k, rings]) => [k, sweep(rings, { frontX: k === "trunk" ? 1 : -1 })]));
 
   const limbs = {};
   for (const side of ["near", "far"]) {
-    const mat = side === "near" ? materials.near : materials.far, jm = side === "near" ? joint : jointFar;
-    const L = limbs[side] = {
-      thigh: lathe(THIGH, mat), shin: lathe(SHIN, mat), upperArm: lathe(UPPER_ARM, mat), forearm: lathe(FOREARM, mat),
-      deltoid: blob(mat),
-      foot: add(new THREE.CapsuleGeometry(0.037, LEN.foot - 0.074, 8, 20), materials.shoe),
-      hip: ball(0.07, jm), knee: ball(0.052, jm), ankle: ball(0.036, jm),
-      shoulder: ball(0.05, jm), elbow: ball(0.038, jm), wrist: ball(0.028, jm),
-      hand: blob(mat),
+    const mat = side === "near" ? materials.near : materials.far;
+    limbs[side] = {
+      thigh: add(geo.thigh, mat), shin: add(geo.shin, mat), upperArm: add(geo.upperArm, mat), forearm: add(geo.forearm, mat),
+      foot: add(geo.foot, materials.shoe),
+      // Joints in the body's own colour, sized to the limb ends, so the surface reads as continuous
+      knee: blob(mat), ankle: blob(mat), shoulder: blob(mat), elbow: blob(mat), wrist: blob(mat), hand: blob(mat),
     };
-    for (const [seg, list] of Object.entries(MUSCLES)) for (const [name] of list) L[name] = blob(mat);
-    L.foot.scale.set(1, 1, 1.12);                              // a little wider than tall
   }
-  // One smooth torso: a lathe profile (hips, waist, ribcage, shoulders) in units of hip-to-shoulder
-  // length, widened across the body and flattened front to back when posed; glutes behind the pelvis
-  const PROFILE = [[0, -0.2], [0.52, -0.18], [0.8, -0.1], [0.9, 0.04], [0.84, 0.2], [0.74, 0.36], [0.8, 0.52],
-    [0.95, 0.68], [1, 0.8], [0.93, 0.92], [0.72, 1.01], [0.42, 1.06], [0, 1.08]];
-  const torso = add(new THREE.LatheGeometry(PROFILE.map(([r, y]) => new THREE.Vector2(r, y)), 40), materials.near);
-  const glutes = blob(materials.near), traps = blob(materials.near);
-  const pecs = [blob(materials.near), blob(materials.near)], lats = [blob(materials.near), blob(materials.near)];
-  const neck = lathe([[0, 0.05], [1, 0.043]], materials.near), head = blob(materials.near);
+  const torso = add(geo.trunk, materials.near), neck = add(geo.neck, materials.near), head = blob(materials.near);
 
   const Y = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
-  /** Run a turned limb from a to b (side-view points) at depth z, stretched to fit. */
-  const spanFrom = (mesh, a, b, z = 0) => {
+  /** Stand a unit-length part on point a, pointing at b, stretched to reach it. */
+  const span = (mesh, a, b, z = 0) => {
     dir.set(b[0] - a[0], b[1] - a[1], 0);
     const len = dir.length() || 1e-3;
     mesh.position.set(a[0], a[1], z);
-    mesh.quaternion.setFromUnitVectors(Y, dir.normalize());
-    mesh.scale.y = len;
+    mesh.rotation.set(0, 0, Math.atan2(dir.y, dir.x) - Math.PI / 2);
+    mesh.scale.set(1, len, 1);
   };
-  /**
-   * An ellipsoid along a->b at fraction t, pushed `off` metres to the limb's front (+) or back (-),
-   * half-sizes [front-back, along, across]. "Front" is the side that faces forward with the limb
-   * hanging straight down (quads, biceps), and turns with the limb.
-   */
-  const belly = (mesh, a, b, t, off, size, z = 0) => {
-    const dx = b[0] - a[0], dy = b[1] - a[1], n = Math.hypot(dx, dy) || 1;
-    const fx = -dy / n, fy = dx / n;                            // the limb's front
-    mesh.position.set(a[0] + dx * t + fx * off, a[1] + dy * t + fy * off, z);
-    mesh.rotation.set(0, 0, Math.atan2(dy, dx) - Math.PI / 2);
-    mesh.scale.set(size[0], size[1], size[2]);
+  const ball = (mesh, p, r, z) => { mesh.position.set(p[0], p[1], z); mesh.scale.setScalar(r); };
+  /** An ellipsoid centred at fraction t along a->b, half-sizes [front-back, along, across]. */
+  const egg = (mesh, a, b, t, size, z = 0) => {
+    mesh.position.set(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, z);
+    mesh.rotation.set(0, 0, Math.atan2(b[1] - a[1], b[0] - a[0]) - Math.PI / 2);
+    mesh.scale.set(...size);
   };
-  /** An ellipsoid centred at fraction t along a->b, half-sizes [along, front-back, across]. */
-  const shape = (mesh, a, b, t, along, depth, across, z = 0) => belly(mesh, a, b, t, 0, [depth, along, across], z);
-  const at = (mesh, p, z) => mesh.position.set(p[0], p[1], z);
 
   function pose(p) {
     for (const side of ["near", "far"]) {
       const s = p[side], L = limbs[side], z = side === "near" ? 1 : -1, zl = z * HIP_W, za = z * SHOULDER_W;
-      const segs = { thigh: [p.hip, s.knee, zl], shin: [s.knee, s.ankle, zl], upperArm: [s.shoulder, s.elbow, za], forearm: [s.elbow, s.wrist, za] };
-      for (const [seg, [a, b, zz]] of Object.entries(segs)) {
-        spanFrom(L[seg], a, b, zz);
-        for (const [name, t, sign, off, size, mid = 0] of MUSCLES[seg] || []) belly(L[name], a, b, t, sign * off, size, zz - z * mid);
-      }
-      belly(L.deltoid, s.shoulder, s.elbow, 0.12, 0, [0.064, 0.088, 0.066], za);   // the shoulder cap, over the joint
-      at(L.hip, p.hip, zl); at(L.knee, s.knee, zl); at(L.ankle, s.ankle, zl);
-      at(L.shoulder, s.shoulder, za); at(L.elbow, s.elbow, za); at(L.wrist, s.wrist, za);
-      const d = [s.toe[0] - s.heel[0], s.toe[1] - s.heel[1]], n = Math.hypot(d[0], d[1]) || 1;
-      const up = [(-d[1] / n) * 0.02, (d[0] / n) * 0.02];      // sole on the heel/toe markers
-      L.foot.position.set((s.heel[0] + s.toe[0]) / 2 + up[0], (s.heel[1] + s.toe[1]) / 2 + up[1], z * (HIP_W + 0.005));
-      L.foot.rotation.set(0, 0, Math.atan2(d[1], d[0]) - Math.PI / 2);
+      span(L.thigh, p.hip, s.knee, zl);
+      span(L.shin, s.knee, s.ankle, zl);
+      span(L.upperArm, s.shoulder, s.elbow, za);
+      span(L.forearm, s.elbow, s.wrist, za);
+      ball(L.knee, s.knee, 0.047, zl); ball(L.ankle, s.ankle, 0.029, zl);
+      ball(L.shoulder, s.shoulder, 0.054, za); ball(L.elbow, s.elbow, 0.034, za); ball(L.wrist, s.wrist, 0.023, za);
+      // Foot: from the heel to the toe markers, its sole on them (they ride ~2 cm above the floor)
+      span(L.foot, [s.heel[0], s.heel[1] - 0.005], [s.toe[0], s.toe[1] - 0.005], z * (HIP_W + 0.005));
       const hd = [s.wrist[0] - s.elbow[0], s.wrist[1] - s.elbow[1]], hl = Math.hypot(hd[0], hd[1]) || 1;
-      shape(L.hand, s.wrist, [s.wrist[0] + hd[0] / hl, s.wrist[1] + hd[1] / hl], 0.065, 0.055, 0.03, 0.022, za);
+      egg(L.hand, s.wrist, [s.wrist[0] + hd[0] / hl, s.wrist[1] + hd[1] / hl], 0.07, [0.022, 0.058, 0.04], za);   // a mitten
     }
     const sh = p.near.shoulder;
-    torso.position.set(p.hip[0], p.hip[1], 0);
-    torso.rotation.set(0, 0, Math.atan2(sh[1] - p.hip[1], sh[0] - p.hip[0]) - Math.PI / 2);
-    torso.scale.set(0.118, Math.hypot(sh[0] - p.hip[0], sh[1] - p.hip[1]), 0.19);   // front-back, length, across
-    // For an upward segment like the trunk, belly()'s "front" is the body's back: positive = behind
-    belly(glutes, p.hip, sh, 0.02, 0.06, [0.076, 0.1, 0.16]);
-    belly(traps, p.hip, sh, 0.97, 0.035, [0.06, 0.075, 0.13]);   // the slope from the neck to the shoulders
-    for (const [i, side] of [[0, 1], [1, -1]]) {
-      belly(pecs[i], p.hip, sh, 0.79, -0.09, [0.03, 0.068, 0.088], side * 0.078);   // chest, front: broad and flat
-      belly(lats[i], p.hip, sh, 0.6, 0.07, [0.048, 0.14, 0.06], side * 0.12);        // lats: the V of the back
-    }
+    span(torso, p.hip, sh);
     const neckTop = [sh[0] + (p.head[0] - sh[0]) * 0.62, sh[1] + (p.head[1] - sh[1]) * 0.62];
-    spanFrom(neck, sh, neckTop);
-    shape(head, sh, p.head, 1.04, 0.118, 0.098, 0.092);          // an oval head, a touch above the joint point
+    span(neck, [sh[0] + (p.head[0] - sh[0]) * 0.1, sh[1] + (p.head[1] - sh[1]) * 0.1], neckTop);
+    egg(head, sh, p.head, 1.03, [0.095, 0.122, 0.085]);        // featureless egg: taller than wide
   }
 
-  const parts = {
-    trunk: [torso, glutes, traps, ...pecs, ...lats],
-    shin: [limbs.near.shin, limbs.near.calfIn, limbs.near.calfOut],
-    foot: [limbs.near.foot, limbs.far.foot],
-  };
+  const parts = { trunk: [torso], shin: [limbs.near.shin], foot: [limbs.near.foot, limbs.far.foot] };
   return { pose, parts, limbs, meshes };
 }

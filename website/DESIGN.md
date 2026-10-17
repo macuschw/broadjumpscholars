@@ -75,13 +75,16 @@ as the foundation for layout, typography, accessibility and chart rules.
 
 ## Metrics figure (3D)
 - The sample athlete at takeoff on the same charcoal lane as the home hero, in a charcoal panel like the
-  demo playback. The athlete is the articulated mannequin with defined, believable anatomy: limbs turned
-  from profiles that are fuller at the muscle belly and slimmer at the joints, plus muscle shapes on the
-  correct side, each standing 1-3 cm proud so it catches the light: shoulder caps, biceps and triceps,
-  forearms, quads (with the teardrop above the knee) and hamstrings, two-headed calves; pecs, traps, lats
-  and glutes on the torso. They meet at slightly darker ball joints; one smooth lathe-turned torso; an oval
-  head; a satin finish. The Metrics scene uses "modelling" light (less fill, a raking light from above) so
-  rounded forms shade properly. It should read as an athletic figure, not a bodybuilder.
+  demo playback. The athlete is a sculpted sports mannequin, modelled on studio renders of athletic
+  display mannequins: every body part is one smooth, continuous surface whose cross-section changes along
+  its length (separate front, back and side radii), so quads, hamstrings, calves high on the back of the
+  shin, a deltoid cap over each shoulder, a ribcage, glutes and a narrow waist under broad shoulders are
+  all part of the silhouette rather than added lumps. Joints are the body's own colour and blend in;
+  featureless egg head, mitten hands; a warm, matte off-white, the far side a shade darker for depth.
+  Lit like a product shot: a studio environment built in code (a dim room with an overhead softbox, a key
+  softbox ~60° off the camera, a weak fill and a strip light behind) gives long, soft gradients that show
+  the forms, with one key light for the shadow. An earlier version added muscle shapes as separate
+  ellipsoids; it read as lumpy, so it was replaced.
   Shoes are neutral here so the accent only ever marks the metric. (The home hero and demo keep the
   simpler capsule mannequin; both come from `scene-3d.js`.)
 - Each metric is drawn in the scene where it comes from: a dimension line on the floor from the takeoff
