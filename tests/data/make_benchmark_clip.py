@@ -8,7 +8,7 @@ Use a FIXED crop around the foot at full resolution (not one that follows the fo
 the floor is hard to judge and labels come out 1-2 frames late.
 
 Example (how real_jump_120fps was made):
-    python tests/data/make_benchmark_clip.py output/caliberationtestvid\\(120fps\\)_keypoints.npz \\
+    python tests/data/make_benchmark_clip.py output/caliberationtestvid\\(120fps\\)/caliberationtestvid\\(120fps\\)_keypoints.npz \\
         "../caliberationtestvid(120fps).mp4" real_jump_120fps --first 150 --last 559 \\
         --takeoff 384 --landing 431 --scale 0.0012598847715044733
 """

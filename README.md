@@ -58,8 +58,9 @@ python scripts/validate_ball_toss.py ball.mp4 --calibration output/calibration.j
 Without a calibration you still get angles, times, launch angle, and estimates
 from gravity alone.
 
-MediaPipe runs **once** per video; keypoints are cached in `output/<video>_keypoints.npz`, so
-re-running with a different window or calibration is instant. Outputs in `output/`:
+Each video gets its own folder, `output/<video name>/` (or the folder you pass with `--output`).
+MediaPipe runs **once** per video; keypoints are cached there as `<video>_keypoints.npz`, so
+re-running with a different window or calibration is instant. Outputs in that folder:
 `<video>_skeleton.mp4` (check the tracking, especially the feet), `_keypoints_and_angles.csv`,
 `_results.json`, `_events_plot.png`, `_trajectory_plot.png`.
 

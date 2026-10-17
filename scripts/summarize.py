@@ -4,7 +4,7 @@ Run run_analysis.py first; this reads the _results.json it saved (no re-analysis
 
 Examples
     python scripts/summarize.py "../caliberationtestvid(120fps).mp4"
-    python scripts/summarize.py output/myjump_results.json
+    python scripts/summarize.py output/myjump/myjump_results.json
 """
 import argparse
 import json
@@ -18,17 +18,19 @@ from jumplab.summary import format_summary  # noqa: E402
 
 
 def results_path(arg, output_dir):
-    """Accept either a _results.json file or the original video path."""
+    """Accept either a _results.json file or the original video path. For a video, look in its
+    own folder (output/<video name>/, where run_analysis.py saves) and then in output/ itself."""
     if arg.endswith(".json"):
         return arg
     stem = os.path.splitext(os.path.basename(arg))[0]
-    return os.path.join(output_dir, f"{stem}_results.json")
+    own = os.path.join(output_dir, stem, f"{stem}_results.json")
+    return own if os.path.exists(own) else os.path.join(output_dir, f"{stem}_results.json")
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("target", help="the video you analyzed, or its _results.json")
-    p.add_argument("--output", default="output", help="folder run_analysis.py saved to")
+    p.add_argument("--output", default="output", help="folder holding the per-video folders (default: output)")
     args = p.parse_args()
 
     path = results_path(args.target, args.output)

@@ -26,7 +26,7 @@ def main():
     cal = p.add_mutually_exclusive_group()
     cal.add_argument("--calibration", help="calibration JSON from scripts/calibrate.py")
     cal.add_argument("--scale", type=float, help="meters per pixel, if you already know it")
-    p.add_argument("--output", default="output", help="output folder (default: output)")
+    p.add_argument("--output", help="output folder (default: output/<video name>, one folder per video)")
     p.add_argument("--start", type=float, help="analyze from this time (s)")
     p.add_argument("--end", type=float, help="analyze up to this time (s)")
     p.add_argument("--events", choices=EVENT_METHODS, default="ankle",
@@ -64,6 +64,8 @@ def main():
                             threshold_fraction=args.threshold, start_s=args.start,
                             end_s=args.end, side=args.side,
                             trajectory_point=args.trajectory_point, com_mode=args.com_mode)
+    stem = os.path.splitext(os.path.basename(args.video))[0]
+    args.output = args.output or os.path.join("output", stem)   # everything from one video together
     print(f"Analyzing {args.video} ...")
     try:
         r = analyze_video(args.video, scale, config, args.output,
@@ -78,7 +80,6 @@ def main():
 
     color = use_color()
     print(format_report(r, color=color))
-    stem = os.path.splitext(os.path.basename(args.video))[0]
     out = lambda name: os.path.join(args.output, f"{stem}_{name}")  # noqa: E731
     save_csv(r, out("keypoints_and_angles.csv"))
     save_json(r, out("results.json"))
