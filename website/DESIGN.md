@@ -73,6 +73,15 @@ as the foundation for layout, typography, accessibility and chart rules.
   decimal, and chart axes in feet. In the scoreboard both numbers of 6 ft 11½ in are full size, each unit small.
 - Switching redraws numbers in place with no animation; the values haven't changed, only how they're written.
 
+## Page headings, step links, checklist
+- Every inner page heading (not the demo) has the logo's flight arc - takeoff dot, dotted path, landing
+  tick - drawn faintly in its empty top-right corner (accent at 32%, 50% on phones where it's small).
+  It's decoration only, behind the text, and the same on every page.
+- How it works: each step ends with a link to the page that covers it (Camera setup, the pipeline,
+  the six metrics, the demo's comparison), a 48 px row whose arrow leans in on hover.
+- Setup: with all seven items ticked, the count becomes "All 7 ready" (accent rule) and a "Ready to
+  film" note appears under the list.
+
 ## Interaction states
 Every control has hover, visible focus (3 px ring) and a press state: buttons and the menu button
 press down 1 px; toggles and segmented buttons tint; text links thicken their underline; the logo

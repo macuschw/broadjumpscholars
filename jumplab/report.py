@@ -6,7 +6,8 @@ import os
 
 import numpy as np
 
-from .checks import as_warning
+from .alerts import banner, marker
+from .checks import SERIOUS, as_warning
 from .pipeline import POINT_NAMES
 
 CSV_COLUMNS = ["hip_x_px", "hip_y_px_up", "ankle_x_px", "ankle_y_px_up", "trunk_angle_deg",
@@ -18,8 +19,10 @@ def _fmt(v, spec, unit=""):
     return "n/a" if v is None else f"{v:{spec}}{unit}"
 
 
-def format_report(r):
+def format_report(r, color=False):
+    """The full printed report. color=True adds terminal colours to the alerts."""
     lines = []
+    warnings = r.get("warnings", [])
 
     def row(label, value):
         lines.append(f"  {label:<46}{value}")
@@ -32,6 +35,9 @@ def format_report(r):
                  f"{100 * r['detected_fraction']:.0f}%, {r['side']} side, jumping {r['direction']}")
     lines.append(f"  Calibration: " + (f"{r['scale_m_per_px']:.5f} m/px" if r["scale_m_per_px"]
                                          else "none (pixel results + gravity estimates only)"))
+    alert = banner(warnings, color)
+    if alert:
+        lines += ["", alert]
 
     lines.append(f"\nEvents ({r['event_method']} method)")
     for key, label in [("movement_onset", "Movement onset"),
@@ -79,12 +85,13 @@ def format_report(r):
 
     lines.append("\nDistances")
     if r["scale_m_per_px"]:
-        row("Jump distance (takeoff toe -> landing heel)", _fmt(d["jump_distance_m"], ".2f", " m"))
+        row("Jump distance (takeoff toe -> landing heel)",
+            _fmt(d["jump_distance_m"], ".2f", " m") + marker(warnings, "distance"))
         if d.get("jump_distance_both_feet_m") is not None:
             row("  official rule (front toe -> rearmost heel)", _fmt(d["jump_distance_both_feet_m"], ".2f", " m"))
         row("Hip horizontal travel in flight", _fmt(d["hip_travel_m"], ".2f", " m"))
         row("Countermovement depth", _fmt(d["countermovement_depth_m"], ".2f", " m"))
-    row("Jump distance", f"{px['jump_distance_px']:.0f} px")
+    row("Jump distance", f"{px['jump_distance_px']:.0f} px" + ("" if r["scale_m_per_px"] else marker(warnings, "distance")))
     row("Hip travel / rise / countermovement depth",
         f"{px['hip_travel_px']:.0f} / {px['hip_rise_px']:.0f} / {px['countermovement_depth_px']:.0f} px")
     if "gravity_implied_scale_m_per_px" in tr:
@@ -94,7 +101,8 @@ def format_report(r):
     if r["warnings"]:
         lines.append("\nWarnings")
         for w in map(as_warning, r["warnings"]):
-            lines.append(f"  - [{w['severity']}] {w['message']}")
+            tag = "!! SERIOUS" if w["severity"] == SERIOUS else w["severity"]
+            lines.append(f"  - [{tag}] {w['message']}")
     lines.append("================================")
     return "\n".join(lines)
 

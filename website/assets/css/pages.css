@@ -202,7 +202,16 @@
 .step__title { font-size: var(--step-3); }
 .step p { color: var(--muted-dark); }
 .step strong { color: var(--paper); font-weight: 600; }
-.step__detail { margin-top: auto; padding-top: var(--s-3); border-top: 1px solid var(--ink-3); font-family: var(--font-display); font-weight: 600; letter-spacing: 0.04em; color: var(--paper) !important; }
+/* Each step ends with a link to the page that covers it in detail */
+.step__detail {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); min-height: 48px;
+  margin-top: auto; padding-top: var(--s-3); border-top: 1px solid var(--ink-3);
+  font-family: var(--font-display); font-weight: 600; font-size: 1.08rem; letter-spacing: 0.03em; color: var(--paper);
+  text-decoration: none; transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.step__detail .icon { width: 18px; height: 18px; flex: none; color: var(--accent-on-dark); transition: transform var(--dur) var(--ease); }
+.step__detail:hover { border-top-color: var(--accent-on-dark); }
+.step__detail:hover .icon { transform: translateX(3px); }
 .how__next { gap: var(--s-4); }
 .how__next p { margin-right: auto; color: var(--muted); }
 
@@ -298,6 +307,16 @@
 
 .setup__progress { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; padding-bottom: var(--s-2); border-bottom: 3px solid var(--text); }
 .setup__progress span:first-child { color: var(--accent); }
+.setup__done { display: inline-flex; align-items: center; gap: var(--s-2); }
+.setup__done .icon { width: 26px; height: 26px; stroke-width: 3; }
+.setup__progress.is-done { border-bottom-color: var(--accent); }
+.setup__ready { margin: 0 0 var(--s-4); }
+.setup__ready p { max-width: none; }
+.setup__ready > [data-icon] { flex: none; width: 20px; color: var(--accent); }   /* keeps the tick full size */
+.setup__ready .icon { stroke-width: 3; }
+@media (prefers-reduced-motion: no-preference) {
+  .setup__progress.is-done .setup__done, .setup__ready:not([hidden]) { animation: rise-in var(--dur-slow) var(--ease); }
+}
 .checklist { list-style: none; margin: 0 0 var(--s-4); padding: 0; }
 .checklist li { border-bottom: 1px solid var(--line); }
 .checklist label { display: grid; grid-template-columns: 28px 1fr; gap: var(--s-3); align-items: start; padding: var(--s-3) 0; cursor: pointer; min-height: 44px; }

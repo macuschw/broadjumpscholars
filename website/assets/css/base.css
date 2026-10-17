@@ -80,6 +80,15 @@ h1[tabindex="-1"]:focus, h2[tabindex="-1"]:focus { outline: none; }
 .section--tight { padding-block: clamp(28px, 4vw, 48px); }
 .page-head { padding-block: clamp(36px, 5vw, 64px) clamp(20px, 3vw, 32px); }
 .page-head h1 { font-size: var(--step-4); margin-block: var(--s-3) var(--s-4); }
+/* The logo's flight arc (takeoff dot, dotted path, landing tick), faint in the heading's empty top
+   corner: one quiet signature shared by every inner page. Decoration only, behind the text. */
+.page-head { position: relative; isolation: isolate; }
+.page-head:not(.demo-head)::after {
+  content: ""; position: absolute; z-index: -1; right: 0; top: clamp(28px, 4.2vw, 56px);
+  width: min(36%, 400px); aspect-ratio: 400 / 140; pointer-events: none; opacity: 0.32;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 140'%3E%3Cpath d='M14 118C112-8 288-8 380 118' fill='none' stroke='%23a3262a' stroke-width='5' stroke-linecap='round' stroke-dasharray='0.1 13'/%3E%3Ccircle cx='14' cy='118' r='7' fill='%23a3262a'/%3E%3Cpath d='M366 130h28' stroke='%23a3262a' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+@media (max-width: 560px) { .page-head:not(.demo-head)::after { width: 112px; top: 24px; opacity: 0.5; } }   /* beside the small label */
 .stack > * + * { margin-top: var(--s-4); }
 .cluster { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
 

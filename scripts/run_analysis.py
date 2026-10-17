@@ -16,6 +16,7 @@ from jumplab.calibration import load_calibration  # noqa: E402
 from jumplab.events import NoJumpFound  # noqa: E402
 from jumplab.center_of_mass import MODES  # noqa: E402
 from jumplab.pipeline import EVENT_METHODS, TRAJECTORY_POINTS, AnalysisConfig, analyze_video  # noqa: E402
+from jumplab.alerts import use_color, verdict  # noqa: E402
 from jumplab.report import format_report, save_csv, save_json  # noqa: E402
 
 
@@ -75,7 +76,8 @@ def main():
     if args.calibration and c.width and (c.width, c.height) != (w, h):
         print(f"WARNING: calibration was made on a {c.width}x{c.height} video; this one is {w}x{h}.")
 
-    print(format_report(r))
+    color = use_color()
+    print(format_report(r, color=color))
     stem = os.path.splitext(os.path.basename(args.video))[0]
     out = lambda name: os.path.join(args.output, f"{stem}_{name}")  # noqa: E731
     save_csv(r, out("keypoints_and_angles.csv"))
@@ -88,6 +90,7 @@ def main():
         print(f"Skeleton video:  {r['files']['skeleton_video']}")
     print(f"Saved {out('keypoints_and_angles.csv')}, {out('results.json')},")
     print(f"      {out('events_plot.png')}, {out('trajectory_plot.png')}")
+    print("\n" + verdict(r["warnings"], color))             # the last line on screen: the verdict
 
 
 if __name__ == "__main__":

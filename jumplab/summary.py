@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import textwrap
 
+from .alerts import banner, marker
 from .checks import INFO, SERIOUS, as_warning
 from .physics import G
 
@@ -150,7 +151,8 @@ def _distance(r):
         rating, reason = _apply_warnings(r, "distance", rating, reason)
         s = _Section(1, "Jump distance", rating, reason)
         m = d["jump_distance_m"]
-        s.value("Jump distance", f"{m:.2f} m  ({_inches(m):.1f} in, {_feet_inches(m)})")
+        s.value("Jump distance", f"{m:.2f} m  ({_inches(m):.1f} in, {_feet_inches(m)})"
+                + marker(r.get("warnings"), "distance"))
         s.text("Measured from the camera-side foot: its toe at takeoff to its heel at landing.")
         both = d.get("jump_distance_both_feet_m")
         if both is not None:
@@ -275,13 +277,17 @@ def _contact(r):
     return s
 
 
-def format_summary(r):
+def format_summary(r, color=False):
+    """The plain-language summary. color=True adds terminal colours to the alert banner."""
     name = r["video"].replace("\\", "/").split("/")[-1]
     cal = "calibrated" if r["scale_m_per_px"] else "NOT calibrated"
     bar = "═" * WIDTH
     head = [bar, f" BROAD JUMP SUMMARY: {name}",
             f" {r['fps']:.0f} fps · {cal} · events: {r['event_method']} · jumping {r['direction']}",
             bar]
+    alert = banner(r.get("warnings"), color)
+    if alert:
+        head += ["", alert]
     sections = [_distance(r), _trajectory(r), _trunk(r), _shin(r), _contact(r)]
     body = "\n\n".join(s.render() for s in sections)
     key = ("Ratings:  ✓ reliable   ~ use with care   ✗ rough only "

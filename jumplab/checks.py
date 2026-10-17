@@ -10,6 +10,8 @@ Each warning is a dict:
     severity  "info" (something was noticed or corrected; ratings unchanged),
               "caution" (numbers usable with care) or "serious" (numbers probably wrong)
     affects   result categories: "distance", "trajectory", "angles", "timing"
+    headline  (optional) a few words for the alert banner, e.g. "Feet staggered: distance is
+              approximate"; see alerts.py
 """
 from __future__ import annotations
 
@@ -28,8 +30,11 @@ MIN_VISIBILITY = 0.5              # MediaPipe's own confidence that a landmark i
 MAX_LOW_VIS_FRACTION = 0.10
 
 
-def warning(code, message, severity=CAUTION, affects=ALL):
-    return {"code": code, "message": message, "severity": severity, "affects": list(affects)}
+def warning(code, message, severity=CAUTION, affects=ALL, headline=None):
+    w = {"code": code, "message": message, "severity": severity, "affects": list(affects)}
+    if headline:
+        w["headline"] = headline
+    return w
 
 
 def as_warning(w):
@@ -158,7 +163,8 @@ def check_stagger(both, m_per_px):
                     "was off by up to about 5 in (12 cm), too long or too short, while feet-together "
                     "jumps were within about 1 in. Treat this distance as approximate, and jump with "
                     "the feet side by side for an accurate result.",
-                    SERIOUS, ("distance",))]
+                    SERIOUS, ("distance",),
+                    headline="Feet staggered: distance is approximate (could be off by ~5 in)")]
 
 
 def check_side_on(launch_angle_deg, size_before_px, size_after_px):

@@ -71,7 +71,7 @@
       </figure>
 
       <div class="setup__checklist">
-        <div class="setup__progress" aria-live="polite"><span id="check-count">0</span> of <span id="check-total">7</span> ready</div>
+        <div class="setup__progress" id="check-progress" aria-live="polite"><span id="check-count">0</span> of <span id="check-total">7</span> ready</div>
         <ul class="checklist" id="checklist" role="list">
           <li><label><input type="checkbox" name="perpendicular"><span class="checklist__box" aria-hidden="true"></span>
             <span><strong>Camera perpendicular to the jump</strong><span class="checklist__why">Point straight across the jump line, at its middle. Angled views shrink distances.</span></span></label></li>
@@ -88,6 +88,10 @@
           <li><label><input type="checkbox" name="frame"><span class="checklist__box" aria-hidden="true"></span>
             <span><strong>Full jump in frame</strong><span class="checklist__why">Takeoff to landing with about <span data-imperial="3 ft">1 m</span> spare at each end, and nobody else in shot.</span></span></label></li>
         </ul>
+        <div class="notice setup__ready" id="check-ready" hidden>
+          <span data-icon="check"></span>
+          <p><strong>Ready to film.</strong> Record one clip per attempt, and run the checklist again if anyone moves the tripod.</p>
+        </div>
         <button type="button" class="btn btn--quiet btn--sm" id="check-reset">Reset checklist</button>
       </div>
     </section>

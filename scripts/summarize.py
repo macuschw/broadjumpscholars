@@ -13,6 +13,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
+from jumplab.alerts import use_color, verdict  # noqa: E402
 from jumplab.summary import format_summary  # noqa: E402
 
 
@@ -34,14 +35,17 @@ def main():
     if not os.path.exists(path):
         sys.exit(f"No results found at {path}. Run scripts/run_analysis.py on the video first.")
     with open(path) as f:
-        text = format_summary(json.load(f))
-    print(text)
+        r = json.load(f)
+    color = use_color()
+    print(format_summary(r, color=color))
+    text = format_summary(r)                                 # the saved copy has no colour codes
 
     txt = path.replace("_results.json", "_summary.txt") if path.endswith("_results.json") \
         else os.path.splitext(path)[0] + "_summary.txt"
     with open(txt, "w") as f:
         f.write(text + "\n")
     print(f"\nSaved {txt}")
+    print("\n" + verdict(r.get("warnings"), color))
 
 
 if __name__ == "__main__":
