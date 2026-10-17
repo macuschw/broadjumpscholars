@@ -44,10 +44,19 @@ export function createRenderer({ className, onContextLost }) {
   };
 }
 
-/** Soft sky fill, a key light that casts the shadow, a cool rim from behind. Returns the key light. */
-export function addLights(scene) {
-  scene.add(new THREE.HemisphereLight(0xe6eaf0, 0x0b0b0d, 1.2));
-  const key = new THREE.DirectionalLight(0xffffff, 2.2);
+/**
+ * Soft sky fill, a key light that casts the shadow, a cool rim from behind. Returns the key light.
+ * `modelling` (Metrics figure) lowers the fill and adds a raking light from above the camera side, so
+ * rounded forms such as muscles shade from light to dark instead of looking flat.
+ */
+export function addLights(scene, { modelling = false } = {}) {
+  scene.add(new THREE.HemisphereLight(0xe6eaf0, 0x0b0b0d, modelling ? 0.7 : 1.2));
+  if (modelling) {
+    const rake = new THREE.DirectionalLight(0xfff4e8, 1.1);
+    rake.position.set(-1.5, 4.5, 3.5);
+    scene.add(rake);
+  }
+  const key = new THREE.DirectionalLight(0xffffff, modelling ? 2.5 : 2.2);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   Object.assign(key.shadow.camera, { left: -2.2, right: 2.2, top: 2.4, bottom: -1.2, near: 0.5, far: 14 });
@@ -208,10 +217,10 @@ export function createMannequin(scene, materials, { shadows = true, detailed = f
 }
 
 /**
- * The articulated mannequin (Metrics figure): an artist's figure with light, believable anatomy.
- * Limbs are turned profiles - fuller at the muscle belly, slimmer at the joints - with a few soft
- * muscle shapes on the correct side: shoulder caps (deltoids), biceps and triceps, forearms, quads
- * and hamstrings, calves, glutes. They meet at slightly darker ball joints; one smooth torso, an oval
+ * The articulated mannequin (Metrics figure): an artist's figure with defined, believable anatomy.
+ * Limbs are turned profiles - fuller at the muscle belly, slimmer at the joints - with muscle
+ * shapes on the correct side: shoulder caps, biceps and triceps, forearms, quads (with the teardrop
+ * above the knee) and hamstrings, two-headed calves; pecs, traps, lats and glutes on the torso. They meet at slightly darker ball joints; one smooth torso, an oval
  * head, a satin finish. Same interface as createMannequin; `materials.joint` (optional) colours the
  * joints. Every segment stretches to the pose's own joint positions, so it always fits the data.
  */
@@ -224,16 +233,29 @@ function createArticulated(scene, materials, { shadows }) {
   const ball = (r, mat) => add(new THREE.SphereGeometry(r, 28, 18), mat);
   const blob = (mat) => add(new THREE.SphereGeometry(1, 32, 20), mat);   // scaled into muscles, head, hands
 
-  // Profiles (metres). Kept gentle: the shapes suggest muscle rather than sculpt it.
-  const THIGH = [[0, 0.079], [0.12, 0.083], [0.32, 0.08], [0.55, 0.07], [0.78, 0.058], [0.93, 0.052], [1, 0.05]];
-  const SHIN = [[0, 0.051], [0.12, 0.053], [0.3, 0.054], [0.52, 0.046], [0.76, 0.037], [0.92, 0.033], [1, 0.032]];
-  const UPPER_ARM = [[0, 0.047], [0.18, 0.046], [0.45, 0.044], [0.72, 0.04], [0.9, 0.036], [1, 0.035]];
-  const FOREARM = [[0, 0.036], [0.18, 0.039], [0.42, 0.035], [0.72, 0.029], [1, 0.026]];
-  // Muscle bellies: [where along the limb, which way (+1 front, -1 back), how far out, half-sizes [front-back, along, across]]
+  // Profiles (metres): slimmer at the joints, so the muscle bellies read
+  const THIGH = [[0, 0.079], [0.12, 0.082], [0.32, 0.078], [0.55, 0.068], [0.78, 0.054], [0.93, 0.048], [1, 0.047]];
+  const SHIN = [[0, 0.049], [0.12, 0.05], [0.3, 0.05], [0.52, 0.043], [0.76, 0.034], [0.92, 0.03], [1, 0.03]];
+  const UPPER_ARM = [[0, 0.046], [0.18, 0.044], [0.45, 0.041], [0.72, 0.037], [0.9, 0.034], [1, 0.033]];
+  const FOREARM = [[0, 0.035], [0.18, 0.037], [0.42, 0.033], [0.72, 0.027], [1, 0.024]];
+  // Muscle bellies: [name, where along the limb, front (+1) or back (-1), how far out (m),
+  // half-sizes [front-back, along, across], toward the body's midline (m, optional)].
+  // Each stands 1-3 cm proud of the limb surface, enough to catch light and cast a little shadow.
   const MUSCLES = {
-    thigh: [["quad", 0.42, 1, 0.022, [0.05, 0.16, 0.058]], ["hamstring", 0.45, -1, 0.017, [0.044, 0.15, 0.05]]],
-    shin: [["calf", 0.3, -1, 0.021, [0.04, 0.12, 0.044]]],
-    upperArm: [["biceps", 0.52, 1, 0.014, [0.029, 0.1, 0.032]], ["triceps", 0.42, -1, 0.015, [0.03, 0.12, 0.033]]],
+    thigh: [
+      ["quad", 0.42, 1, 0.036, [0.058, 0.19, 0.062]],          // rectus femoris and the outer quad
+      ["teardrop", 0.76, 1, 0.022, [0.034, 0.075, 0.036], 0.028],   // vastus medialis, above the inner knee
+      ["hamstring", 0.45, -1, 0.034, [0.052, 0.17, 0.056]],
+    ],
+    shin: [
+      ["calfIn", 0.28, -1, 0.031, [0.046, 0.13, 0.034], 0.018],    // the two heads of the calf
+      ["calfOut", 0.31, -1, 0.028, [0.042, 0.12, 0.031], -0.018],
+    ],
+    upperArm: [
+      ["biceps", 0.52, 1, 0.024, [0.034, 0.11, 0.036]],
+      ["triceps", 0.42, -1, 0.026, [0.035, 0.13, 0.037]],
+    ],
+    forearm: [["brachioradialis", 0.24, 1, 0.017, [0.03, 0.085, 0.032]]],
   };
 
   const limbs = {};
@@ -255,7 +277,8 @@ function createArticulated(scene, materials, { shadows }) {
   const PROFILE = [[0, -0.2], [0.52, -0.18], [0.8, -0.1], [0.9, 0.04], [0.84, 0.2], [0.74, 0.36], [0.8, 0.52],
     [0.95, 0.68], [1, 0.8], [0.93, 0.92], [0.72, 1.01], [0.42, 1.06], [0, 1.08]];
   const torso = add(new THREE.LatheGeometry(PROFILE.map(([r, y]) => new THREE.Vector2(r, y)), 40), materials.near);
-  const glutes = blob(materials.near);
+  const glutes = blob(materials.near), traps = blob(materials.near);
+  const pecs = [blob(materials.near), blob(materials.near)], lats = [blob(materials.near), blob(materials.near)];
   const neck = lathe([[0, 0.05], [1, 0.043]], materials.near), head = blob(materials.near);
 
   const Y = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3();
@@ -289,9 +312,9 @@ function createArticulated(scene, materials, { shadows }) {
       const segs = { thigh: [p.hip, s.knee, zl], shin: [s.knee, s.ankle, zl], upperArm: [s.shoulder, s.elbow, za], forearm: [s.elbow, s.wrist, za] };
       for (const [seg, [a, b, zz]] of Object.entries(segs)) {
         spanFrom(L[seg], a, b, zz);
-        for (const [name, t, sign, off, size] of MUSCLES[seg] || []) belly(L[name], a, b, t, sign * off, size, zz);
+        for (const [name, t, sign, off, size, mid = 0] of MUSCLES[seg] || []) belly(L[name], a, b, t, sign * off, size, zz - z * mid);
       }
-      belly(L.deltoid, s.shoulder, s.elbow, 0.1, 0, [0.056, 0.075, 0.058], za);   // the shoulder cap, over the joint
+      belly(L.deltoid, s.shoulder, s.elbow, 0.12, 0, [0.064, 0.088, 0.066], za);   // the shoulder cap, over the joint
       at(L.hip, p.hip, zl); at(L.knee, s.knee, zl); at(L.ankle, s.ankle, zl);
       at(L.shoulder, s.shoulder, za); at(L.elbow, s.elbow, za); at(L.wrist, s.wrist, za);
       const d = [s.toe[0] - s.heel[0], s.toe[1] - s.heel[1]], n = Math.hypot(d[0], d[1]) || 1;
@@ -305,12 +328,22 @@ function createArticulated(scene, materials, { shadows }) {
     torso.position.set(p.hip[0], p.hip[1], 0);
     torso.rotation.set(0, 0, Math.atan2(sh[1] - p.hip[1], sh[0] - p.hip[0]) - Math.PI / 2);
     torso.scale.set(0.118, Math.hypot(sh[0] - p.hip[0], sh[1] - p.hip[1]), 0.19);   // front-back, length, across
-    belly(glutes, p.hip, sh, 0.02, 0.048, [0.068, 0.088, 0.15]);   // behind the pelvis ("front" of an upward segment is its back)
+    // For an upward segment like the trunk, belly()'s "front" is the body's back: positive = behind
+    belly(glutes, p.hip, sh, 0.02, 0.06, [0.076, 0.1, 0.16]);
+    belly(traps, p.hip, sh, 0.97, 0.035, [0.06, 0.075, 0.13]);   // the slope from the neck to the shoulders
+    for (const [i, side] of [[0, 1], [1, -1]]) {
+      belly(pecs[i], p.hip, sh, 0.79, -0.09, [0.03, 0.068, 0.088], side * 0.078);   // chest, front: broad and flat
+      belly(lats[i], p.hip, sh, 0.6, 0.07, [0.048, 0.14, 0.06], side * 0.12);        // lats: the V of the back
+    }
     const neckTop = [sh[0] + (p.head[0] - sh[0]) * 0.62, sh[1] + (p.head[1] - sh[1]) * 0.62];
     spanFrom(neck, sh, neckTop);
     shape(head, sh, p.head, 1.04, 0.118, 0.098, 0.092);          // an oval head, a touch above the joint point
   }
 
-  const parts = { trunk: [torso, glutes], shin: [limbs.near.shin, limbs.near.calf], foot: [limbs.near.foot, limbs.far.foot] };
+  const parts = {
+    trunk: [torso, glutes, traps, ...pecs, ...lats],
+    shin: [limbs.near.shin, limbs.near.calfIn, limbs.near.calfOut],
+    foot: [limbs.near.foot, limbs.far.foot],
+  };
   return { pose, parts, limbs, meshes };
 }

@@ -75,11 +75,13 @@ as the foundation for layout, typography, accessibility and chart rules.
 
 ## Metrics figure (3D)
 - The sample athlete at takeoff on the same charcoal lane as the home hero, in a charcoal panel like the
-  demo playback. The athlete is the articulated mannequin with light, believable anatomy: limbs turned
-  from profiles that are fuller at the muscle belly and slimmer at the joints, plus soft muscle shapes on
-  the correct side (shoulder caps, biceps and triceps, quads and hamstrings, calves, glutes), meeting at
-  slightly darker ball joints; one smooth lathe-turned torso; an oval head; a satin finish. Kept subtle:
-  it should read as a well-made figure, not a bodybuilder.
+  demo playback. The athlete is the articulated mannequin with defined, believable anatomy: limbs turned
+  from profiles that are fuller at the muscle belly and slimmer at the joints, plus muscle shapes on the
+  correct side, each standing 1-3 cm proud so it catches the light: shoulder caps, biceps and triceps,
+  forearms, quads (with the teardrop above the knee) and hamstrings, two-headed calves; pecs, traps, lats
+  and glutes on the torso. They meet at slightly darker ball joints; one smooth lathe-turned torso; an oval
+  head; a satin finish. The Metrics scene uses "modelling" light (less fill, a raking light from above) so
+  rounded forms shade properly. It should read as an athletic figure, not a bodybuilder.
   Shoes are neutral here so the accent only ever marks the metric. (The home hero and demo keep the
   simpler capsule mannequin; both come from `scene-3d.js`.)
 - Each metric is drawn in the scene where it comes from: a dimension line on the floor from the takeoff

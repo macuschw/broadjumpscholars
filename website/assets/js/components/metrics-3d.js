@@ -41,7 +41,7 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(C.ink, 5.5, 13);
   const camera = new THREE.PerspectiveCamera(30, 16 / 10, 0.05, 60);
-  const key = addLights(scene);
+  const key = addLights(scene, { modelling: true });          // stronger shading, so the anatomy reads
   const { markTape, landMark } = createLane(scene, { landingX: heelX });
   markTape();
   const shadow = createContactShadow(scene);
@@ -49,7 +49,7 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
   // ---- the athlete at takeoff: the articulated mannequin in a satin finish, darker ball joints.
   //      Shoes are neutral here, so the accent only ever marks the metric ----
   const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0, ...extra });
-  const satin = (color) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.42, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.45 });
+  const satin = (color) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0, clearcoat: 0.22, clearcoatRoughness: 0.5 });
   const athlete = createMannequin(scene, {
     near: satin(C.body), far: satin(C.bodyFar), shoe: std(COL.shoe, { roughness: 0.6 }), joint: std(0x9d998f, { roughness: 0.45 }), jointFar: std(0x7e7a73, { roughness: 0.45 }),
   }, { detailed: true });
