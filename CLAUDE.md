@@ -46,7 +46,9 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
 - **Upload a video** needs the analysis server: `server/modal_app.py` (Modal, free while idle).
   Deploy: `python3 -m pip install modal && python3 -m modal setup && python3 -m modal deploy server/modal_app.py`,
   then put the printed `.modal.run` URL into `website/assets/js/config.js` → `ANALYSIS_URL`.
-  **Status: code done and tested locally; not yet deployed (needs the team's Modal account).**
+  **Status: deployed and live** at https://macuschw--jumplab-analysis-web.us-east.modal.run (Modal workspace
+  "macuschw", free Starter plan: $1 credit until a payment method is added, ~400-500 analyses). Redeploy after
+  changing `jumplab/` or `server/`. Cloud results can differ from a Mac run by a few mm / ~2% (MediaPipe on Linux).
   Local test server: `python scripts/serve_local.py`, then open the local site's
   `demo.html?server=http://localhost:8765`.
 - Flow: upload → server tracks (MediaPipe) + analyses → returns bundle + a still → visitor clicks the
@@ -62,7 +64,7 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
 - Verify UI changes in a browser at desktop and phone widths; run `pytest` after Python changes.
 
 ## Open to-dos / ideas
-- Deploy the Modal server and set `ANALYSIS_URL`.
+- Test an upload from a real phone (large 4K slow-motion files; iPhone HEVC playback).
 - Replace placeholder testimonials and team names; pick a final project name ("JumpLab" is a working name).
 - Accuracy page (parked in `website/_parked/`) could return with the tape-check data.
 - Collect more tape-measured jumps (esp. staggered) to validate / correct.
