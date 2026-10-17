@@ -1,72 +1,158 @@
-// Demo dashboard: start (upload or sample) -> simulated analysis -> results.
-// All results come from the mock-data module and are labelled as demo data.
+// Demo dashboard. Three ways in:
+//   1. A video  -> the JumpLab analysis server (demo/server.js) -> click the tape to set the scale
+//      (demo/calibrate.js) -> results. Real numbers, the same analysis as the command line.
+//   2. A results file from the JumpLab app (<video>_web.json, with the video if available) -> results.
+//   3. The sample jump: three simulated attempts (data/mock-data.js), clearly marked as demo data.
+// Real jumps play back as the video with the tracked skeleton (demo/video-playback.js); the sample
+// plays on the 3D stage. Charts, key moments and the comparison are shared.
 import { fmt } from "../lib/dom.js";
 import { icon } from "../components/icons.js";
 import { countUp, statHTML, statValues } from "../components/stat.js";
 import { initTabs } from "../components/tabs.js";
 import { ATTEMPTS, DEMO_NOTICE, SAMPLE, headline, keyMoments } from "../data/mock-data.js";
-import { runAnalysis } from "../demo/analysis.js";
+import { createSteps, runAnalysis } from "../demo/analysis.js";
 import { Playback, readoutsHTML } from "../demo/playback.js";
+import { VideoPlayback } from "../demo/video-playback.js";
 import { buildCharts } from "../demo/charts.js";
 import { buildCompare } from "../demo/compare.js";
+import { bundleToAttempt, checkBundle, downloadBundle, realHeadline } from "../demo/real.js";
+import { calibrate } from "../demo/calibrate.js";
+import { analyzeVideo, recompute, serverURL, wake } from "../demo/server.js";
 import { formatQuantity, onUnitsChange } from "../lib/units.js";
 
 const $ = (id) => document.getElementById(id);
-const views = { start: $("demo-start"), progress: $("demo-progress"), results: $("demo-results") };
+const views = { start: $("demo-start"), progress: $("demo-progress"), calibrate: $("demo-calibrate"), results: $("demo-results") };
 const show = (name) => Object.entries(views).forEach(([k, v]) => { v.hidden = k !== name; });
+const MAX_REAL = 6;                                            // real jumps kept for comparing
 
-$("demo-notice").innerHTML = `${icon("info")}<p><strong>Demo data.</strong> ${DEMO_NOTICE}</p>`;
 document.querySelectorAll("[data-icon]").forEach((n) => { n.innerHTML = icon(n.dataset.icon); });
+function setNotice(mode) {
+  $("demo-notice").innerHTML = mode === "sample"
+    ? `${icon("info")}<p><strong>Demo data.</strong> ${DEMO_NOTICE}</p>`
+    : mode === "real"
+      ? `${icon("info")}<p><strong>Your jump.</strong> Analysed with the same pose tracking and physics as the JumpLab app; see the Science page for how.</p>`
+      : `${icon("info")}<p>The sample jump is simulated demo data. A video of your own is analysed for real.</p>`;
+}
+setNotice("start");
+
+// The start card says what this site can do right now
+if (serverURL) {
+  $("drop-privacy").textContent = "Your video is sent to the JumpLab analysis server, analysed, and deleted straight away. Nothing is stored.";
+  wake();                                                      // start a sleeping server while the visitor gets the video
+} else {
+  $("drop-title").textContent = "Open your results";
+  $("drop-lede").innerHTML = "Analysing videos on this site is being set up. Meanwhile, run the JumpLab app on a computer and open the <code>_web.json</code> it saves, with the video if you have it.";
+  $("drop-button").textContent = "Open results";
+  $("drop-fps").hidden = true;
+  $("drop-help").textContent = "or drag the files here";
+  $("drop-privacy").textContent = "Files open in your browser and are never uploaded.";
+}
 
 // ---------------------------------------------------------------- results
-let current = SAMPLE, charts = null, chartsFor = null, compare = null, activeTab = "playback";
-const playback = new Playback($("playback"), {
-  onFrame: (f) => {
-    $("pb-readouts").innerHTML = readoutsHTML(f);
-    if (charts && activeTab === "charts") charts.setFrame(f);
-  },
-});
+let mode = "sample", session = ATTEMPTS, current = SAMPLE, charts = null, chartsFor = null, compare = null, activeTab = "playback";
+const realSession = [];
+const headlineOf = (a) => (a.real ? realHeadline(a) : headline(a));
+const onFrame = (f) => {
+  $("pb-readouts").innerHTML = readoutsHTML(f);
+  if (charts && activeTab === "charts") charts.setFrame(f);
+};
+const simPlayback = new Playback($("playback"), { onFrame });
+let realPlayback = null;
+const playback = () => (current.real ? realPlayback : simPlayback);
 
-$("attempt-pick").innerHTML = ATTEMPTS.map((a) =>
-  `<button type="button" class="attempt-btn" data-attempt="${a.id}" aria-pressed="false">${a.label}</button>`).join("");
-const attemptButtons = [...document.querySelectorAll(".attempt-btn")];
-attemptButtons.forEach((b) => b.addEventListener("click", () => setAttempt(ATTEMPTS.find((a) => a.id === b.dataset.attempt))));
+function renderPicker() {
+  $("attempt-pick").innerHTML = session.map((a) =>
+    `<button type="button" class="attempt-btn" data-attempt="${a.id}" aria-pressed="${a === current}" title="${a.name || a.label}">${a.label}</button>`).join("");
+  $("attempt-pick").setAttribute("aria-label", mode === "sample" ? "Attempt" : "Jump");
+  $("attempt-pick").querySelectorAll(".attempt-btn").forEach((b) => b.addEventListener("click", () => setAttempt(session.find((a) => a.id === b.dataset.attempt))));
+}
 
 function ensureCharts() {
   if (chartsFor === current) return;
-  charts = buildCharts($("charts"), current, {
-    onSeekTime: (t) => playback.seek(Math.round(t * current.fps)),
-  });
+  charts = buildCharts($("charts"), current, { onSeekTime: (t) => playback().seek(Math.round(t * current.fps)) });
   chartsFor = current;
+}
+
+function renderStats({ animate = true, prev = null } = {}) {
+  const stats = $("results-stats");
+  stats.innerHTML = headlineOf(current).map((s, i) => statHTML(s, { key: i === 0 })).join("");
+  if (animate) countUp(stats, { from: prev, ms: prev ? 450 : 700, delay: prev ? 0 : 150 });
 }
 
 function setAttempt(a) {
   const stats = $("results-stats"), prev = stats.children.length ? statValues(stats) : null;
+  simPlayback.pause();
+  realPlayback?.pause();
   current = a;
-  attemptButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.attempt === a.id)));
-  stats.innerHTML = headline(a).map((s, i) => statHTML(s, { key: i === 0 })).join("");
-  countUp(stats, { from: prev, ms: prev ? 450 : 700, delay: prev ? 0 : 150 });   // tick over from the last attempt
-  playback.load(a);
-  playback.seek(a.events.takeoff);
+  $("attempt-pick").querySelectorAll(".attempt-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.attempt === a.id)));
+  renderStats({ prev });
+  $("playback").hidden = a.real;
+  $("playback-real").hidden = !a.real;
+  if (a.real) {
+    realPlayback ??= new VideoPlayback($("playback-real"), { onFrame });
+    realPlayback.load(a);
+  } else {
+    simPlayback.load(a);
+    simPlayback.seek(a.events.takeoff);
+  }
   renderMoments(a);
-  if (activeTab === "charts") { ensureCharts(); charts.setFrame(a.frames[Math.max(0, playback.i ?? 0)]); }
+  renderChecks(a);
+  renderSource(a);
+  chartsFor = null;
+  if (activeTab === "charts") { ensureCharts(); charts.setFrame(a.frames[Math.max(0, playback().i ?? 0)]); }
+}
+
+function renderSource(a) {
+  const tag = $("results-tag");
+  if (!a.real) {
+    tag.textContent = "Demo data";
+    $("results-source").textContent = "Sample session: three attempts by a simulated athlete.";
+    return;
+  }
+  tag.textContent = a.calibrated ? "Your jump" : a.rough ? "Rough: no calibration" : "Not calibrated";
+  const r = a.bundle.results;
+  const fps = `${Math.round(r.fps)} fps${r.fps_source === "override" ? " (as you set)" : ""}`;
+  const scale = a.calibrated ? `calibrated, 1 px = ${formatQuantity("tiny", r.scale_m_per_px)}` : "no tape calibration";
+  $("results-source").textContent = `${a.name} · ${fps} · ${scale} · ${r.side === "LEFT" ? "left" : "right"} side to the camera`;
+}
+
+// Ratings for each part of the analysis, and any warnings, kept in view above the tabs
+const RATING = { reliable: ["✓", "Reliable"], care: ["~", "Use with care"], rough: ["✗", "Rough only"] };
+function renderChecks(a) {
+  const host = $("real-checks");
+  host.hidden = !a.real;
+  if (!a.real) { host.replaceChildren(); return; }
+  const serious = a.warnings.filter((w) => w.severity === "serious"), other = a.warnings.filter((w) => w.severity !== "serious");
+  host.innerHTML = `
+    ${serious.map((w) => `<div class="real-warning" role="note">${icon("info")}<div><strong>${w.headline || "Check this jump"}</strong><p>${w.message}</p></div></div>`).join("")}
+    <ul class="ratings" role="list" aria-label="How reliable each result is">
+      ${Object.values(a.ratings).map((r) => `<li class="rating rating--${r.rating}"><span class="rating__mark" aria-hidden="true">${RATING[r.rating][0]}</span>
+        <span><strong>${r.title}</strong> ${RATING[r.rating][1]}</span></li>`).join("")}
+    </ul>
+    <details class="disclose real-why">
+      <summary>Why these ratings${other.length ? ` · ${other.length} other note${other.length > 1 ? "s" : ""}` : ""}</summary>
+      <div class="disclose__body">
+        <dl>${Object.values(a.ratings).map((r) => `<dt>${r.title}</dt><dd>${r.reason}</dd>`).join("")}</dl>
+        ${other.length ? `<ul class="real-notes">${other.map((w) => `<li>${w.message}</li>`).join("")}</ul>` : ""}
+      </div>
+    </details>`;
 }
 
 function renderMoments(a) {
-  const m = a.metrics, e = a.events;
+  const m = a.metrics, e = a.events, t = (i) => a.frames[i]?.t ?? i / a.fps;
   const phases = [
-    { label: "Countermovement", value: (e.bottom - e.onset) / a.fps, unit: "s", digits: 2, sub: "Start of dip to lowest point" },
+    { label: "Countermovement", value: t(e.bottom) - t(e.onset), unit: "s", digits: 2, sub: "Start of dip to lowest point" },
     { label: "Push-off", value: m.pushOff, unit: "s", digits: 2, sub: "Lowest point to takeoff" },
     { label: "Flight", value: m.flightTime, unit: "s", digits: 2, sub: "Takeoff to landing" },
   ];
   $("moments").innerHTML = `
     <div class="table-wrap">
       <table class="data">
-        <caption>Key moments of ${a.label} (demo data). Frames at ${a.fps} fps; times from the start of the clip.</caption>
+        <caption>Key moments of ${a.real ? a.name : `${a.label} (demo data)`}. Frames at ${Math.round(a.fps)} fps; times from the start of the clip.</caption>
         <thead><tr><th scope="col">Moment</th><th scope="col" class="num-cell">Time</th><th scope="col" class="num-cell">Frame</th>
           <th scope="col" class="num-cell">Hip height</th><th scope="col" class="num-cell">Trunk</th><th scope="col" class="num-cell">Shin</th><th scope="col" class="num-cell">Knee</th></tr></thead>
         <tbody>${keyMoments(a).map((k) => `<tr><th scope="row">${k.name}</th><td class="num-cell">${k.time.toFixed(3)} s</td><td class="num-cell">${k.frame}</td>
-          <td class="num-cell">${formatQuantity("height", k.hipHeight)}</td><td class="num-cell">${fmt(k.trunk, 0)}°</td><td class="num-cell">${fmt(k.shin, 0)}°</td><td class="num-cell">${fmt(k.knee, 0)}°</td></tr>`).join("")}</tbody>
+          <td class="num-cell">${a.measured === false ? "—" : formatQuantity("height", k.hipHeight)}</td><td class="num-cell">${fmt(k.trunk, 0)}°</td><td class="num-cell">${fmt(k.shin, 0)}°</td><td class="num-cell">${fmt(k.knee, 0)}°</td></tr>`).join("")}</tbody>
       </table>
     </div>
     <div class="scoreboard moments__phases">${phases.map((p) => statHTML(p)).join("")}</div>
@@ -76,57 +162,183 @@ function renderMoments(a) {
 initTabs($("result-tabs"), {
   onChange: (id) => {
     activeTab = id;
-    if (id !== "playback") playback.pause();
-    if (id === "charts") { ensureCharts(); charts.setFrame(current.frames[Math.max(0, playback.i ?? 0)]); }
-    if (id === "compare" && !compare) compare = buildCompare($("compare"), ATTEMPTS);
+    if (id !== "playback") playback()?.pause();
+    if (id === "charts") { ensureCharts(); charts.setFrame(current.frames[Math.max(0, playback().i ?? 0)]); }
+    if (id === "compare" && !compare) compare = buildCompare($("compare"), session, { headlineOf });
   },
 });
 
-// New units: redraw every number in place (no count-up; the values themselves haven't changed)
-onUnitsChange(() => {
-  const stats = $("results-stats");
-  if (stats.children.length) stats.innerHTML = headline(current).map((s, i) => statHTML(s, { key: i === 0 })).join("");
-  renderMoments(current);
-  if (playback.a) $("pb-readouts").innerHTML = readoutsHTML(current.frames[Math.max(0, playback.i ?? 0)]);
-  chartsFor = null;                                         // charts rebuild in the new units when next shown
-  if (activeTab === "charts" && !views.results.hidden) { ensureCharts(); charts.setFrame(current.frames[Math.max(0, playback.i ?? 0)]); }
-  compare?.render();
-});
-
-// ---------------------------------------------------------------- flow
-async function start(source) {
-  $("progress-source").textContent = source.type === "upload" ? `“${source.name}”` : "the sample jump";
-  show("progress");
-  $("progress-title").focus();
-  await runAnalysis($("analysis"));
-  $("results-source").innerHTML = source.type === "upload"
-    ? `<strong>${source.name}</strong> was not analysed: the real pipeline isn't connected to this demo yet. Showing the sample athlete's attempts instead.`
-    : "Sample session: three attempts by a simulated athlete.";
+/** Show results for a list of attempts (the sample session, or the real jumps so far). */
+function showResults(list, which, m) {
+  mode = m;
+  session = list;
+  current = which;
+  setNotice(m);
+  $("download-results").hidden = m !== "real";
+  $("add-jump").hidden = m !== "real";
+  $("result-tabs").querySelector("#tab-compare").hidden = list.length < 2;
+  if (activeTab === "compare" && list.length < 2) $("tab-playback").click();
+  compare = null;
+  $("compare").replaceChildren();
+  renderPicker();
   show("results");
-  setAttempt(SAMPLE);
+  $("results-stats").replaceChildren();
+  setAttempt(which);
   $("results-title").focus();
 }
 
-$("use-sample").addEventListener("click", () => start({ type: "sample" }));
-$("start-over").addEventListener("click", () => {
-  playback.pause();
-  $("results-stats").replaceChildren();                    // the next run counts up from zero again
-  show("start");
-  $("use-sample").focus();
-});
-
-// Upload (file stays in the browser; nothing is sent anywhere)
-const input = $("video-input"), zone = $("dropzone"), error = $("video-error");
-function accept(file) {
-  const ok = file && (file.type.startsWith("video/") || /\.(mp4|mov|m4v|webm)$/i.test(file.name));
-  error.hidden = ok;
-  if (!ok) { error.textContent = "That file isn't a video. Choose an MP4 or MOV recording of a jump."; return; }
-  const mb = (file.size / 1048576).toFixed(1);
-  start({ type: "upload", name: `${file.name} (${mb} MB)` });
+function addReal(attempt) {
+  realSession.push(attempt);
+  if (realSession.length > MAX_REAL) realSession.shift();
+  showResults(realSession.slice(), attempt, "real");
 }
-input.addEventListener("change", () => input.files[0] && accept(input.files[0]));
+
+// ---------------------------------------------------------------- 3. the sample
+async function startSample() {
+  $("progress-source").textContent = "the sample jump";
+  $("analysis-error").hidden = true;
+  $("analysis-cancel").hidden = true;
+  show("progress");
+  $("progress-title").focus();
+  await runAnalysis($("analysis"));
+  showResults(ATTEMPTS, SAMPLE, "sample");
+}
+$("use-sample").addEventListener("click", startSample);
+
+// ---------------------------------------------------------------- 1. a video -> the analysis server
+let job = null;
+async function startUpload(file) {
+  const fps = Number($("fps-select").value) || null;
+  $("progress-source").textContent = `“${file.name}”`;
+  $("analysis-error").hidden = true;
+  $("analysis-cancel").hidden = false;
+  show("progress");
+  $("progress-title").focus();
+  const steps = createSteps($("analysis"), ["Uploading the video", "Tracking 33 body landmarks in every frame", "Finding takeoff and landing, fitting the flight"]);
+  steps.active(0);
+  job = analyzeVideo(file, {
+    fps,
+    onProgress: (stage, f) => {
+      if (stage === "upload") steps.label(0, `Uploading the video (${Math.round(f * 100)}%)`);
+      else { steps.label(0, "Uploading the video"); steps.done(0); steps.active(1, "Tracking 33 body landmarks in every frame (usually under a minute)"); }
+    },
+  });
+  let bundle;
+  try {
+    bundle = checkBundle(await job.promise);
+  } catch (e) {
+    steps.fail();
+    if (e.cancelled) { show("start"); return; }
+    return fail(e.message);
+  } finally {
+    job = null;
+    $("analysis-cancel").hidden = true;
+  }
+  steps.done(1);
+  steps.done(2);
+  if (bundle.still) calibrateThen(bundle, file);
+  else addReal(bundleToAttempt(bundle, { video: file }));
+}
+
+function fail(text) {
+  $("analysis-error-text").textContent = text;
+  $("analysis-error").hidden = false;
+  $("analysis-error").querySelector("[data-icon]").innerHTML = icon("info");
+}
+$("analysis-retry").addEventListener("click", () => { show("start"); $("file-input").value = ""; });
+$("analysis-cancel").addEventListener("click", () => job?.abort());
+
+function calibrateThen(bundle, file) {
+  show("calibrate");
+  const cal = calibrate($("demo-calibrate"), bundle.still, {
+    onDone: async ({ scale }) => {
+      cal.dispose();
+      $("progress-source").textContent = `“${file.name}”`;
+      $("analysis-error").hidden = true;
+      show("progress");
+      const steps = createSteps($("analysis"), ["Applying the scale"]);
+      steps.active(0);
+      try {
+        const calibrated = checkBundle(await recompute(bundle, { scale }));
+        steps.done(0);
+        addReal(bundleToAttempt(calibrated, { video: file }));
+      } catch (e) {
+        steps.fail();
+        fail(`${e.message} Showing the uncalibrated results instead.`);
+        setTimeout(() => addReal(bundleToAttempt(bundle, { video: file })), 2500);
+      }
+    },
+    onSkip: () => { cal.dispose(); addReal(bundleToAttempt(bundle, { video: file })); },
+  });
+}
+
+// ---------------------------------------------------------------- 2. results files (+ video)
+const isVideo = (f) => f.type.startsWith("video/") || /\.(mp4|mov|m4v|webm)$/i.test(f.name);
+const isJSON = (f) => f.type === "application/json" || /\.json$/i.test(f.name);
+const stem = (name) => String(name).replace(/\.[a-z0-9]+$/i, "").toLowerCase();
+
+async function openFiles(fileList) {
+  const files = [...fileList], error = $("file-error");
+  error.hidden = true;
+  const results = files.filter(isJSON), videos = files.filter(isVideo);
+  try {
+    if (results.length) {
+      let last = null;
+      for (const f of results) {
+        const bundle = checkBundle(JSON.parse(await f.text()));
+        // The matching video: same name as the one analysed, or the only one given
+        const video = videos.find((v) => stem(v.name) === stem(bundle.name)) || (videos.length === 1 && results.length === 1 ? videos[0] : null);
+        last = bundleToAttempt(bundle, { video });
+        realSession.push(last);
+        if (realSession.length > MAX_REAL) realSession.shift();
+      }
+      showResults(realSession.slice(), last, "real");
+    } else if (videos.length) {
+      if (!serverURL) throw new Error("Analysing videos on this site isn't switched on yet. Run the JumpLab app on a computer, then open the _web.json it saves.");
+      startUpload(videos[0]);
+    } else {
+      throw new Error("Choose a video (MP4 or MOV), or a JumpLab results file (_web.json).");
+    }
+  } catch (e) {
+    error.textContent = e instanceof SyntaxError ? "That file couldn't be read as JumpLab results." : e.message;
+    error.hidden = false;
+  }
+}
+const input = $("file-input"), zone = $("dropzone");
+input.addEventListener("change", () => { if (input.files.length) openFiles(input.files); });
 ["dragenter", "dragover"].forEach((t) => zone.addEventListener(t, (e) => { e.preventDefault(); zone.classList.add("is-over"); }));
 ["dragleave", "drop"].forEach((t) => zone.addEventListener(t, () => zone.classList.remove("is-over")));
-zone.addEventListener("drop", (e) => { e.preventDefault(); accept(e.dataTransfer.files[0]); });
+zone.addEventListener("drop", (e) => { e.preventDefault(); openFiles(e.dataTransfer.files); });
 
-if (location.hash === "#sample") start({ type: "sample" });
+// ---------------------------------------------------------------- results actions
+$("start-over").addEventListener("click", () => {
+  simPlayback.pause();
+  realPlayback?.pause();
+  realSession.length = 0;
+  $("results-stats").replaceChildren();                      // the next run counts up from zero again
+  input.value = "";
+  show("start");
+  setNotice("start");
+  $("use-sample").focus();
+});
+$("add-jump").addEventListener("click", () => {
+  realPlayback?.pause();
+  input.value = "";
+  show("start");
+  $("drop-button").focus();
+});
+$("download-results").addEventListener("click", () => current.real && downloadBundle(current));
+
+// New units: redraw every number in place (no count-up; the values themselves haven't changed)
+onUnitsChange(() => {
+  if ($("results-stats").children.length) renderStats({ animate: false });
+  renderMoments(current);
+  renderSource(current);
+  const f = current.frames[Math.max(0, playback()?.i ?? 0)];
+  if (f) $("pb-readouts").innerHTML = readoutsHTML(f);
+  chartsFor = null;
+  if (activeTab === "charts" && !views.results.hidden) { ensureCharts(); charts.setFrame(f); }
+  compare?.render();
+});
+
+if (location.hash === "#sample") startSample();

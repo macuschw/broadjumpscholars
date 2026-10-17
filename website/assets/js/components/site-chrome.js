@@ -78,7 +78,7 @@ class JlFooter extends HTMLElement {
       <footer class="site-footer">
         <div class="container site-footer__inner">
           <p><strong style="color:var(--paper)">JumpLab</strong> (working name) · a student biomechanics project.
-             Numbers shown on this site are simulated demo data.</p>
+             The sample jump and figures on these pages are simulated demo data.</p>
           <nav aria-label="Footer">
             <ul>
               <li><a href="index.html">Home</a></li>

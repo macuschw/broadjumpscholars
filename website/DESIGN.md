@@ -111,6 +111,26 @@ as the foundation for layout, typography, accessibility and chart rules.
 - Phones: the 3D / Side and rotate buttons get their own strip above the scene. Without WebGL or three.js the flat
   side-view drawing (`metrics-2d.js`) takes over, as before.
 
+## Demo: real analyses
+- One drop area takes a video (sent for analysis) or a `_web.json` from the JumpLab app (opened in the
+  browser, with the video if dropped too); a "Recorded at" choice covers slow-motion files whose own
+  frame rate is wrong. Without a configured server the card becomes "Open your results".
+- Progress is honest: the upload percentage, then the tracking step with a running clock, then done.
+  Errors read as a sentence the visitor can act on, with "Try another video".
+- Calibration happens after tracking, on a still the server sends back (exactly the frame the tracking
+  saw, whatever the browser can decode): click both ends of the tape, enter its length (metres or feet
+  and inches, remembered), with a 3x loupe, draggable points and keyboard placement. "Skip" gives
+  rough results from the gravity check, marked as such.
+- Real results reuse the dashboard. The tag says "Your jump" (or "Rough: no calibration"); the line
+  under the title gives file, frame rate, scale and the camera side. Serious warnings (e.g. staggered
+  feet) sit above the tabs in an accent-edged box with their headline, followed by the five ratings
+  (✓ reliable, dashed ~ use with care, accent ✗ rough only) and a "Why these ratings" disclosure.
+- Playback is the visitor's own video with the tracked skeleton: camera-side limbs bright, the far side
+  dim, unsure points faint and dashed, the hip's flight lit in the accent, feet marked. Without the
+  video (or if the browser can't decode iPhone HEVC) the skeleton plays alone, framed and with a floor.
+- Charts focus on the jump (half a second before the dip to just after landing); Compare appears when
+  two or more of your jumps are open; "Download results" saves the `_web.json` to reopen later.
+
 ## Page headings, step links, checklist
 - Every inner page heading (not the demo) has the logo's flight arc - takeoff dot, dotted path, landing
   tick - drawn faintly in its empty top-right corner (accent at 32%, 50% on phones where it's small).

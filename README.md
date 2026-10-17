@@ -64,11 +64,44 @@ re-running with a different window or calibration is instant. Outputs in that fo
 `<video>_skeleton.mp4` (check the tracking, especially the feet), `_keypoints_and_angles.csv`,
 `_results.json`, `_events_plot.png`, `_trajectory_plot.png`.
 
+## On the website
+
+Every run also saves `<video>_web.json`: everything the website shows for that jump (results,
+the five ratings, warnings, the per-frame curves and the tracked skeleton). Open it on the
+website's **Demo** page, with the video if you have it, to see the jump there: real numbers,
+the video with the skeleton drawn on top, charts, key moments, and comparisons between jumps.
+For runs made before this existed, build the files from what they saved (nothing is re-analysed):
+
+```bash
+python scripts/export_web.py output
+```
+
+### Analysing uploads (the analysis server)
+
+The Demo page can also take a video directly. It sends it to the JumpLab analysis server, which
+runs exactly this analysis (`jumplab/web.py`: MediaPipe, then `analyze_keypoints`), returns the
+results and a still from the video, and keeps nothing. The visitor then clicks the two ends of
+the tape on the still, and the server recalculates with that scale from the saved landmarks.
+
+- **On this computer** (testing, or a team laptop):
+  ```bash
+  python scripts/serve_local.py
+  ```
+  then open the site's Demo page with `?server=http://localhost:8765` added to the address.
+- **In the cloud, on Modal** (free while idle; see `server/modal_app.py`):
+  ```bash
+  python3 -m pip install modal
+  python3 -m modal setup
+  python3 -m modal deploy server/modal_app.py
+  ```
+  Put the URL it prints into the website's `assets/js/config.js` (`ANALYSIS_URL`) and publish.
+
 ## Package layout
 | Module | What it does |
 |---|---|
 | `jumplab/pose_tracking.py` | single MediaPipe pass -> raw keypoints (+ skeleton video), caching |
 | `jumplab/calibration.py` | click-to-calibrate, meters per pixel, save/load JSON |
+| `jumplab/web.py` | website bundle (`_web.json`), and the analysis service behind the site's upload |
 | `jumplab/smoothing.py` | gap interpolation + zero-lag Butterworth low-pass (10 Hz default) |
 | `jumplab/angles.py` | trunk and shin angle from vertical, joint angle from 3 points |
 | `jumplab/events.py` | takeoff, landing, countermovement bottom, movement onset |

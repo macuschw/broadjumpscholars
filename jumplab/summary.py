@@ -41,6 +41,7 @@ def _lean(angle, forward="forward", backward="backward"):
 class _Section:
     def __init__(self, number, title, rating, reason):
         self.lines = [f"{number}. {title.upper():<{WIDTH - 20}}{rating:>17}"]
+        self.title, self.rating = title, rating
         self.reason = reason
 
     def value(self, label, value):
@@ -293,3 +294,19 @@ def format_summary(r, color=False):
     key = ("Ratings:  ✓ reliable   ~ use with care   ✗ rough only "
            "(see the reason under each section)")
     return "\n".join(head) + "\n\n" + body + "\n\n" + "─" * WIDTH + "\n" + key
+
+
+# ---------------------------------------------------------------- for the website
+
+_RATING_KEYS = {RELIABLE: "reliable", CAREFUL: "care", ROUGH: "rough"}
+
+
+def ratings(r):
+    """The five categories' ratings as data: {category: {"title", "rating", "label", "reason"}},
+    rating in "reliable" / "care" / "rough" (the same judgement as format_summary)."""
+    out = {}
+    for key, section in (("distance", _distance(r)), ("trajectory", _trajectory(r)), ("trunk", _trunk(r)),
+                         ("shin", _shin(r)), ("contact", _contact(r))):
+        out[key] = {"title": section.title, "rating": _RATING_KEYS[section.rating],
+                    "label": section.rating, "reason": section.reason or ""}
+    return out

@@ -1,8 +1,8 @@
 # JumpLab website (working name)
 
-Front-end-only site for JumpLab: standing broad jump analysis from one phone camera.
-Seven pages, a persistent nav, and an interactive demo dashboard. **All numbers are
-simulated demo data**; there is no backend, login or payment.
+Front-end site for JumpLab: standing broad jump analysis from one phone camera.
+Seven pages, a persistent nav, and a dashboard that shows **real analyses** of your own jumps
+as well as a simulated sample jump (always labelled as demo data). No login or payment.
 
 ## Run it
 
@@ -37,7 +37,7 @@ rsync -a --exclude '.DS_Store' "../jumplab-site/" website/ && git add website &&
 | `metrics.html` | The six metrics drawn on a 3D athlete at takeoff, with a 3D / Side view (`?m=trunk` deep-links a metric) |
 | `setup.html` | Top-down camera diagram + pre-recording checklist |
 | `science.html` | Three tabs: the pipeline and its formulas; a worked example (parabola fitted live to the sample flight); calibration with depth correction and three short "why" answers (`#example` and `#calibration` link straight to a tab) |
-| `demo.html` | Dashboard: upload or sample → simulated analysis → results with the 3D playback (`#sample` skips the start screen) |
+| `demo.html` | Dashboard. A video goes to the analysis server, then the visitor clicks the tape to set the scale; a `_web.json` from the JumpLab app opens directly (with its video); or the simulated sample jump (`#sample`). Real jumps play as the video with the tracked skeleton, with the analysis's ratings and warnings |
 | `about.html` | Team ([NAME 1], [NAME 2]), audiences, FAQ |
 
 The home testimonials are **placeholder quotes**, marked with a "Placeholder quotes" tag. Before
@@ -94,6 +94,18 @@ the 3D tape when the choice changes. Fixed wording in the HTML gives its imperia
 `data-imperial` attribute (e.g. `<span data-imperial="13–16 ft">4–5 m</span>`), and a typeset formula
 with a number in it uses `data-tex-imperial`. When adding a new distance or speed to a page, format it
 with `formatQuantity` / `quantityHTML` from `units.js` rather than writing "m" by hand.
+
+## Real analyses on the Demo page
+
+- **Results files:** every run of the JumpLab app (jumplab-analysis repo) saves `<video>_web.json`.
+  Drop it on the Demo page, with the video if you have it, to see that jump: nothing is uploaded.
+- **Videos:** need the analysis server (`server/modal_app.py` in the jumplab-analysis repo). Deploy
+  it, then put its URL in `assets/js/config.js` as `ANALYSIS_URL`. Until then the Demo page offers
+  results files and the sample only. For testing, run `scripts/serve_local.py` there and open
+  `demo.html?server=http://localhost:8765` (only localhost addresses are accepted from the address bar).
+- Code: `demo/real.js` turns a results file into the dashboard's attempt shape (every number from
+  the analysis; nothing re-estimated), `demo/server.js` talks to the server, `demo/calibrate.js` is
+  the click-the-tape step, `demo/video-playback.js` draws the skeleton over the video.
 
 ## Maths typesetting
 

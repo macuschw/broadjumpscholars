@@ -387,4 +387,5 @@ def analyze_video(video_path, scale_m_per_px=None, config=None, output_dir="outp
     kp, ran = load_or_track(video_path, cache, skeleton, retrack)
     results = analyze_keypoints(kp, scale_m_per_px, config, fps_override)
     results["files"] = {"keypoints": cache, "skeleton_video": skeleton, "ran_mediapipe": ran}
+    results["_keypoints"] = kp                                 # for the website bundle (not saved to JSON)
     return results

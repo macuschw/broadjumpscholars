@@ -7,6 +7,7 @@ Examples
     python scripts/run_analysis.py jump.mp4 --events toe_heel --show
 """
 import argparse
+import json
 import os
 import sys
 
@@ -18,6 +19,7 @@ from jumplab.center_of_mass import MODES  # noqa: E402
 from jumplab.pipeline import EVENT_METHODS, TRAJECTORY_POINTS, AnalysisConfig, analyze_video  # noqa: E402
 from jumplab.alerts import use_color, verdict  # noqa: E402
 from jumplab.report import format_report, save_csv, save_json  # noqa: E402
+from jumplab.web import make_bundle  # noqa: E402
 
 
 def main():
@@ -83,13 +85,15 @@ def main():
     out = lambda name: os.path.join(args.output, f"{stem}_{name}")  # noqa: E731
     save_csv(r, out("keypoints_and_angles.csv"))
     save_json(r, out("results.json"))
+    with open(out("web.json"), "w") as f:                    # open this on the website's Demo page
+        json.dump(make_bundle(r, r["_keypoints"], os.path.basename(args.video)), f, separators=(",", ":"))
     plot_events(r, out("events_plot.png"), show=args.show)
     plot_trajectory(r, out("trajectory_plot.png"), show=args.show)
     print(f"\nKeypoints cache: {r['files']['keypoints']}"
           + ("  (MediaPipe run)" if r["files"]["ran_mediapipe"] else "  (reused, MediaPipe skipped)"))
     if r["files"]["skeleton_video"]:
         print(f"Skeleton video:  {r['files']['skeleton_video']}")
-    print(f"Saved {out('keypoints_and_angles.csv')}, {out('results.json')},")
+    print(f"Saved {out('keypoints_and_angles.csv')}, {out('results.json')}, {out('web.json')},")
     print(f"      {out('events_plot.png')}, {out('trajectory_plot.png')}")
     print("\n" + verdict(r["warnings"], color))             # the last line on screen: the verdict
 

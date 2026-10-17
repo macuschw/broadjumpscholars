@@ -14,10 +14,12 @@ function tableHTML(caption, cols, rows) {
 
 export function buildCharts(host, attempt, { onSeekTime } = {}) {
   host.replaceChildren();
-  const { frames, events } = attempt;
-  const ev = (k, label) => ({ x: frames[events[k]].t, label });
+  // A real clip also has standing about and walking off; chart the jump itself (attempt.window)
+  const { events } = attempt, frames = attempt.window ? attempt.frames.slice(attempt.window[0], attempt.window[1] + 1) : attempt.frames;
+  const ev = (k, label) => ({ x: attempt.frames[events[k]].t, label });
   const timeEvents = [ev("takeoff", "Takeoff"), ev("landing", "Landing")];
-  const sample = frames.filter((_, i) => i % 6 === 0);          // every 0.05 s for the tables
+  const every = Math.max(1, Math.round(0.05 * (attempt.fps || 120)));
+  const sample = frames.filter((_, i) => i % every === 0);      // every 0.05 s for the tables
   const nearestByX = (x) => frames.reduce((b, f) => (Math.abs(f.hip[0] - x) < Math.abs(b.hip[0] - x) ? f : b), frames[0]);
   const L = lengthAxis(), at = (p) => [p[0] * L.scale, p[1] * L.scale];   // positions in metres or feet
 
@@ -34,7 +36,7 @@ export function buildCharts(host, attempt, { onSeekTime } = {}) {
     title: "Hip trajectory", desc: "Hip height against horizontal position for the whole jump; the flight is an arc.",
     series: [{ label: "Hip", points: frames.map((f) => at(f.hip)), emphasis: true }],
     xLabel: "Forward", yLabel: "Height", xUnit: L.unit, yUnit: L.unit, equal: true, height: 250, xDigits: 2, yDigits: 2,
-    events: [{ x: frames[events.takeoff].hip[0] * L.scale, label: "Takeoff" }, { x: frames[events.landing].hip[0] * L.scale, label: "Landing" }],
+    events: [{ x: attempt.frames[events.takeoff].hip[0] * L.scale, label: "Takeoff" }, { x: attempt.frames[events.landing].hip[0] * L.scale, label: "Landing" }],
     onScrub: (x) => onSeekTime?.(nearestByX(x / L.scale).t),
   });
   traj.insertAdjacentHTML("beforeend", tableHTML("Hip position every 0.05 s", ["Time (s)", `Forward (${L.unit})`, `Height (${L.unit})`],

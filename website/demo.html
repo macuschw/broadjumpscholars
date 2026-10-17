@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Demo · JumpLab</title>
-  <meta name="description" content="Interactive JumpLab demo dashboard with simulated sample data: playback, charts, key moments and attempt comparison.">
+  <meta name="description" content="Analyse a standing broad jump video, or explore the simulated sample jump: playback with the tracked skeleton, charts, key moments and attempt comparison.">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,12 +35,23 @@
     <section class="container demo-start" id="demo-start" aria-label="Start an analysis">
       <div class="dropzone" id="dropzone">
         <span class="dropzone__icon" data-icon="upload"></span>
-        <h2>Upload a jump video</h2>
-        <p>Side-on, slow motion (120–240 fps). The file never leaves your browser.</p>
-        <label class="btn btn--ghost dropzone__button" for="video-input">Choose a video</label>
-        <input id="video-input" class="dropzone__input" type="file" accept="video/*" aria-describedby="video-help video-error">
-        <p class="dropzone__hint" id="video-help">or drag and drop it here · MP4, MOV</p>
-        <p class="field-error" id="video-error" role="alert" hidden></p>
+        <h2 id="drop-title">Analyse your jump</h2>
+        <p id="drop-lede">A side-on video, ideally in slow motion with a tape measure on the floor in shot.
+          <a href="setup.html">How to film it</a>.</p>
+        <div class="dropzone__actions">
+          <label class="btn btn--primary dropzone__button" for="file-input" id="drop-button">Choose a video</label>
+          <label class="dropzone__fps" id="drop-fps">Recorded at
+            <select id="fps-select">
+              <option value="">Auto (from the file)</option>
+              <option value="30">30 fps</option><option value="60">60 fps</option>
+              <option value="120">120 fps (slow motion)</option><option value="240">240 fps (slow motion)</option>
+            </select>
+          </label>
+        </div>
+        <input id="file-input" class="dropzone__input" type="file" accept="video/*,.mov,.mp4,.json,application/json" multiple aria-describedby="drop-help file-error">
+        <p class="dropzone__hint" id="drop-help">or drag it here · MP4, MOV. Results from the JumpLab app? Drop its <code>_web.json</code> here, with the video if you have it.</p>
+        <p class="dropzone__privacy" id="drop-privacy"></p>
+        <p class="field-error" id="file-error" role="alert" hidden></p>
       </div>
       <div class="demo-start__or" aria-hidden="true"><span>or</span></div>
       <div class="sample-card is-dark">
@@ -55,18 +66,31 @@
     <section class="container demo-progress" id="demo-progress" hidden aria-labelledby="progress-title">
       <h2 id="progress-title" tabindex="-1">Analysing <span id="progress-source"></span></h2>
       <div class="analysis" id="analysis"></div>
+      <div class="analysis__error" id="analysis-error" hidden>
+        <p class="notice" role="alert"><span data-icon="info"></span><span id="analysis-error-text"></span></p>
+        <button type="button" class="btn btn--primary btn--sm" id="analysis-retry">Try another video</button>
+      </div>
+      <button type="button" class="btn btn--quiet btn--sm analysis__cancel" id="analysis-cancel" hidden>Cancel</button>
     </section>
+
+    <!-- 2b. Calibrate (real videos): click the tape on a still from the video -->
+    <section class="container demo-calibrate" id="demo-calibrate" hidden aria-labelledby="cal-title"></section>
 
     <!-- 3. Results -->
     <section class="container demo-results" id="demo-results" hidden aria-labelledby="results-title">
       <div class="results__head">
         <h2 id="results-title" tabindex="-1">Results</h2>
         <div class="attempt-pick" id="attempt-pick" role="group" aria-label="Attempt"></div>
-        <span class="demo-tag">Demo data</span>
-        <button type="button" class="btn btn--quiet btn--sm" id="start-over">Start over</button>
+        <span class="demo-tag" id="results-tag">Demo data</span>
+        <div class="results__actions">
+          <button type="button" class="btn btn--quiet btn--sm" id="download-results" hidden>Download results</button>
+          <button type="button" class="btn btn--quiet btn--sm" id="add-jump" hidden>Add another jump</button>
+          <button type="button" class="btn btn--quiet btn--sm" id="start-over">Start over</button>
+        </div>
       </div>
       <p class="results__source" id="results-source"></p>
       <div class="scoreboard results__stats" id="results-stats"></div>
+      <div class="real-checks" id="real-checks" hidden></div>
 
       <div class="tablist" role="tablist" aria-label="Result views" id="result-tabs">
         <button class="tab" role="tab" id="tab-playback" data-tab="playback" aria-controls="panel-playback" aria-selected="true">Playback</button>
@@ -76,7 +100,7 @@
       </div>
       <div class="tabpanel" role="tabpanel" id="panel-playback" aria-labelledby="tab-playback" tabindex="0">
         <div class="playback-layout">
-          <div id="playback"></div>
+          <div><div id="playback"></div><div id="playback-real" hidden></div></div>
           <aside class="pb-readouts" aria-label="Values at the current frame">
             <h3>At this frame</h3>
             <div class="scoreboard" id="pb-readouts"></div>
