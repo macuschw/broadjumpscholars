@@ -34,7 +34,8 @@ class Keypoints:
     xyv[frame, landmark] = (x_px, y_px, visibility) in IMAGE coordinates
     (y points DOWN). Frames with no person detected are (NaN, NaN, 0).
     settings: how MediaPipe was run (so a cache made differently isn't reused).
-    frame_times: each frame's timestamp in seconds from the video file, if known."""
+    frame_times: each frame's timestamp in seconds from the video file, if known.
+    sharpness: how sharp the athlete looks in each frame (athlete_sharpness), if measured."""
     xyv: np.ndarray
     fps: float
     width: int
@@ -42,6 +43,7 @@ class Keypoints:
     video_path: str = ""
     settings: dict = field(default_factory=dict)
     frame_times: Optional[np.ndarray] = None
+    sharpness: Optional[np.ndarray] = None
 
     @property
     def n_frames(self):
@@ -62,18 +64,20 @@ class Keypoints:
 
     def save(self, path):
         times = np.array([]) if self.frame_times is None else np.asarray(self.frame_times)
+        sharp = np.array([]) if self.sharpness is None else np.asarray(self.sharpness)
         np.savez_compressed(path, xyv=self.xyv, fps=self.fps, width=self.width,
                             height=self.height, video_path=self.video_path,
                             settings=json.dumps(self.settings, sort_keys=True),
-                            frame_times=times)
+                            frame_times=times, sharpness=sharp)
 
     @classmethod
     def load(cls, path):
         d = np.load(path, allow_pickle=False)
         settings = json.loads(str(d["settings"])) if "settings" in d.files else {}
         times = d["frame_times"] if "frame_times" in d.files and d["frame_times"].size else None
+        sharp = d["sharpness"] if "sharpness" in d.files and d["sharpness"].size else None
         return cls(d["xyv"], float(d["fps"]), int(d["width"]), int(d["height"]),
-                   str(d["video_path"]), settings, times)
+                   str(d["video_path"]), settings, times, sharp)
 
 
 def tracking_settings(model_complexity=1, smooth_landmarks=True):
@@ -103,6 +107,29 @@ def open_video(video_path):
     return cap, fps, width, height
 
 
+def athlete_sharpness(frame, xy):
+    """How sharp the athlete looks in one frame: the variance of the Laplacian over the box around
+    their landmarks, scaled to a fixed 240 px height (so 4K and 1080p compare). Sharp phone footage
+    of our tape-checked jumps scores ~800-4400 in the air; the same frames blurred score 20-310.
+    NaN when the athlete wasn't found."""
+    import cv2
+
+    ok = ~np.isnan(xy[:, 0])
+    if ok.sum() < 5:
+        return np.nan
+    (x0, y0), (x1, y1) = np.nanmin(xy[ok], 0), np.nanmax(xy[ok], 0)
+    pw, ph = 0.15 * (x1 - x0), 0.1 * (y1 - y0)
+    h, w = frame.shape[:2]
+    x0, x1 = int(max(0, x0 - pw)), int(min(w, x1 + pw))
+    y0, y1 = int(max(0, y0 - ph)), int(min(h, y1 + ph))
+    if x1 - x0 < 10 or y1 - y0 < 10:
+        return np.nan
+    gray = cv2.cvtColor(frame[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY)
+    k = 240 / gray.shape[0]
+    gray = cv2.resize(gray, (max(8, round(gray.shape[1] * k)), 240), interpolation=cv2.INTER_AREA)
+    return float(cv2.Laplacian(gray, cv2.CV_64F).var())
+
+
 def track_video(video_path, skeleton_video_path=None, model_complexity=1, smooth_landmarks=True):
     """Run MediaPipe Pose once over every frame.
 
@@ -117,7 +144,7 @@ def track_video(video_path, skeleton_video_path=None, model_complexity=1, smooth
     cap, fps, _, _ = open_video(video_path)
     out = None
     width = height = None
-    frames, times = [], []
+    frames, times, sharp = [], [], []
     missing = np.full((N_LANDMARKS, 3), np.nan)
     missing[:, 2] = 0.0
     with mp_pose.Pose(static_image_mode=False, model_complexity=model_complexity,
@@ -139,11 +166,13 @@ def track_video(video_path, skeleton_video_path=None, model_complexity=1, smooth
             if results.pose_landmarks:
                 lms = results.pose_landmarks.landmark
                 frames.append([(p.x * width, p.y * height, p.visibility) for p in lms])
+                sharp.append(athlete_sharpness(frame, np.array([(p.x * width, p.y * height) for p in lms])))
                 if out is not None:
                     mp_drawing.draw_landmarks(frame, results.pose_landmarks,
                                               mp_pose.POSE_CONNECTIONS)
             else:
                 frames.append(missing)
+                sharp.append(np.nan)
             if out is not None:
                 out.write(frame)
     cap.release()
@@ -152,7 +181,7 @@ def track_video(video_path, skeleton_video_path=None, model_complexity=1, smooth
 
     xyv = np.array(frames, dtype=float).reshape(-1, N_LANDMARKS, 3)
     return Keypoints(xyv, fps, width or 0, height or 0, os.path.abspath(video_path),
-                     tracking_settings(model_complexity, smooth_landmarks), np.array(times))
+                     tracking_settings(model_complexity, smooth_landmarks), np.array(times), np.array(sharp, dtype=float))
 
 
 def load_or_track(video_path, cache_path, skeleton_video_path=None, retrack=False):

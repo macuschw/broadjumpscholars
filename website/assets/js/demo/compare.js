@@ -48,13 +48,14 @@ export function buildCompare(host, attempts, { headlineOf = headline } = {}) {
     const rows = headlineOf(chosen[0]).map((h) => h.id);
     const cell = (a, id) => headlineOf(a).find((h) => h.id === id);
     tableHost.innerHTML = `<table class="data">
-      <caption>Headline metrics. ${best.label} is the longest jump; Δ is the difference in distance from it.</caption>
+      <caption>Headline metrics. ${best.label} is the longest jump; Δ is the difference in distance from it.${chosen.some((a) => headlineOf(a).some((h) => h.flag)) ? " ⚠ marks a number that isn't reliable (see the warning above the results)." : ""}</caption>
       <thead><tr><th scope="col">Metric</th>${chosen.map((a) => `<th scope="col" class="num-cell${a === best ? " best" : ""}">${a.label}${a === best ? '<span class="best-label">Best</span>' : ""}</th>`).join("")}</tr></thead>
       <tbody>
         ${rows.map((id) => `<tr><th scope="row">${cell(chosen[0], id).label}</th>${chosen.map((a) => {
           const c = cell(a, id);
           const text = c.value == null ? "—" : c.kind ? formatQuantity(c.kind, c.value, c.digits) : `${fmt(c.value, c.digits)}${c.unit === "°" ? "°" : ` ${c.unit}`}`;
-          return `<td class="num-cell${a === best && id === "distance" ? " best" : ""}">${text}</td>`;
+          const flag = c.flag ? ` <span class="flag-mark" title="Not reliable: ${c.flag}">⚠<span class="visually-hidden">not reliable</span></span>` : "";
+          return `<td class="num-cell${a === best && id === "distance" ? " best" : ""}${c.flag ? " flagged" : ""}">${text}${flag}</td>`;
         }).join("")}</tr>`).join("")}
         <tr><th scope="row">Δ distance</th>${chosen.map((a) => `<td class="num-cell">${a === best || a.metrics.distance == null || best.metrics.distance == null ? "—" : formatQuantity("short", a.metrics.distance - best.metrics.distance)}</td>`).join("")}</tr>
       </tbody></table>`;

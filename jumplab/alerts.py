@@ -17,10 +17,77 @@ from .checks import CAUTION, SERIOUS, as_warning
 
 WIDTH = 64
 
-# Short headlines for warnings saved before warnings carried their own
-HEADLINES = {
-    "staggered_feet": "Feet staggered: distance is approximate",
+# Plain language for every warning: a headline, what happened, and how to film it better next time.
+# The website shows these above the results; the full technical message stays available too.
+PLAIN = {
+    "staggered_feet": ("Feet staggered at landing",
+                       "One foot landed behind the other. A single side-on camera can't see the far foot well, "
+                       "so the distance can be off by up to about 5 inches (12 cm), too long or too short.",
+                       "Land with the feet side by side, or treat this distance as approximate."),
+    "limb_snap": ("Someone else may be in the shot",
+                  "The tracker briefly jumped onto something else, usually another person behind the jumper, "
+                  "so the skeleton was wrong for a moment.",
+                  "Film with nobody else in the frame, especially behind the jumper."),
+    "blurry_video": ("The video is blurry",
+                     "The athlete looks blurred during the jump, so the tracker had to guess where the body was.",
+                     "Use bright, even light, keep the phone still on a tripod, lock focus with a long press, "
+                     "and film in slow motion."),
+    "low_confidence_landmarks": ("Some body parts were hard to see",
+                                 "The tracker was unsure where some joints were (blur, low light, loose clothing "
+                                 "or a limb hidden behind the body).",
+                                 "Film side-on in good light with the whole body clearly visible."),
+    "missing_in_jump": ("The athlete was lost for some frames",
+                        "The tracker didn't find the athlete in some frames of the jump; those positions were filled in.",
+                        "Keep the whole body in frame and well lit, with nothing passing in front."),
+    "offframe_landmarks": ("Part of the body left the frame",
+                           "Some of the body went out of the picture during the jump.",
+                           "Move the phone back so takeoff to landing fits, with about 1 m to spare at each end."),
+    "not_side_on": ("The camera wasn't side-on",
+                    "The jump doesn't look side-on to the camera, which shrinks distances and skews angles.",
+                    "Put the phone at 90° to the jump line, level with the middle of the jump."),
+    "flight_time_implausible": ("Takeoff or landing wasn't found reliably",
+                                "The time in the air doesn't look like a broad jump, so takeoff or landing was "
+                                "probably detected at the wrong moment.",
+                                "Use a clip with one clean jump, standing still before and after."),
+    "distance_implausible": ("The distance doesn't look possible",
+                             "The measured distance is too short to be a broad jump, so something went wrong "
+                             "with the camera angle or the takeoff and landing.",
+                             "Film side-on with the whole jump in view, and check the skeleton in playback."),
+    "no_downward_curve": ("The flight path doesn't look right",
+                          "The body's path in the air should curve downward like a thrown ball; this one doesn't, "
+                          "so the tracking is off.",
+                          "Film side-on with nobody else in the shot, and check the skeleton in playback."),
+    "few_fit_points": ("Too few frames in the air",
+                       "There were very few frames between takeoff and landing, so speeds and the launch angle are rough.",
+                       "Film in slow motion (120-240 fps)."),
+    "low_fps": ("Normal-speed video",
+                "At 30 fps each moment is only known to about ±33 ms, so contact and flight times are rough.",
+                "Film in slow motion (120-240 fps) for accurate timing."),
+    "slow_motion_suspected": ("The frame rate looks wrong",
+                              "The timing suggests the video's frame rate isn't what the file says (common with "
+                              "slow-motion clips that were exported or shared).",
+                              "Choose the real rate under “Recorded at”, or use the original file from the phone."),
+    "variable_frame_rate": ("Uneven frame timing",
+                            "The frames in this file aren't evenly spaced in time, so timings may be slightly off.",
+                            "Use the original file straight from the phone."),
+    "scale_mismatch": ("The scale looks off",
+                       "The tape-measure scale and the one implied by gravity disagree, so distances and speeds "
+                       "may be off.",
+                       "Click exactly on the tape ends, check the length you entered, and keep the tape on the jump line."),
+    "moving_start": ("The clip starts mid-movement",
+                     "The recording doesn't start with the athlete standing still, so ground contact time is unreliable.",
+                     "Start recording a second or two before the jump."),
+    "short_after_landing": ("The clip ends right after landing",
+                            "There's barely any video after landing, so the landing heel position is less certain.",
+                            "Keep recording for a second after landing."),
+    "event_search_capped": ("Takeoff or landing may be off by a frame",
+                            "The takeoff or landing search hit its limit, so an event time may be slightly off.",
+                            "Trim the clip so it holds just one jump."),
+    "com_fallback": ("Centre of mass estimated from the hips",
+                     "Not enough of the body was tracked to place the centre of mass, so the hips were used instead.",
+                     "Keep the arms and head in the frame too."),
 }
+HEADLINES = {code: p[0] for code, p in PLAIN.items()}
 
 _ANSI = {"red": "\033[1;31m", "yellow": "\033[1;33m", "green": "\033[1;32m", "reset": "\033[0m"}
 
@@ -94,3 +161,12 @@ def verdict(warnings, color: bool = False) -> str:
         n = len(care)
         return paint(f"~  Usable with care: {n} warning{'s' if n > 1 else ''} (see Warnings above).", "yellow", color)
     return paint("OK: no problems found.", "green", color)
+
+
+def plain(w) -> dict:
+    """Plain-language version of a warning for the website: {"headline", "explain", "fix"}."""
+    w = as_warning(w)
+    if w["code"] in PLAIN:
+        h, explain, fix = PLAIN[w["code"]]
+        return {"headline": h, "explain": explain, "fix": fix}
+    return {"headline": headline(w), "explain": w["message"], "fix": ""}

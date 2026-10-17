@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import base64
 import csv
+from dataclasses import replace
 import glob
 import json
 import math
@@ -76,12 +77,13 @@ def make_bundle(results, keypoints: Keypoints, name: Optional[str] = None, still
         "name": name,
         "results": saved,
         "ratings": summary.ratings(saved),
-        "warnings": [{**as_warning(w), "headline": alerts.headline(w)} for w in saved.get("warnings", [])],
+        "warnings": [{**as_warning(w), **alerts.plain(w)} for w in saved.get("warnings", [])],
         "series": series,
         "landmarks": {
             "fps": float(keypoints.fps), "width": int(keypoints.width), "height": int(keypoints.height),
             "n_frames": int(xyv.shape[0]), "per_frame": N_LANDMARKS * 3,
             "frame_times": None if times is None or not len(times) else [_num(t, 4) for t in times],
+            "sharpness": None if keypoints.sharpness is None else [_num(v, 0) for v in keypoints.sharpness],
             "xyv": frames,
         },
     }
@@ -96,10 +98,10 @@ def keypoints_from_bundle(landmarks, name="jump"):
     flat = np.array([[np.nan if v is None else v for v in row] for row in landmarks["xyv"]], dtype=float)
     if flat.shape != (n, N_LANDMARKS * 3):
         raise ValueError(f"Expected {n} frames of {N_LANDMARKS * 3} values, got {flat.shape}.")
-    times = landmarks.get("frame_times")
+    times, sharp = landmarks.get("frame_times"), landmarks.get("sharpness")
+    as_array = lambda xs: None if not xs else np.array([np.nan if v is None else v for v in xs], dtype=float)   # noqa: E731
     return Keypoints(flat.reshape(n, N_LANDMARKS, 3), float(landmarks["fps"]), int(landmarks["width"]),
-                     int(landmarks["height"]), name, {},
-                     None if not times else np.array([np.nan if t is None else t for t in times], dtype=float))
+                     int(landmarks["height"]), name, {}, as_array(times), as_array(sharp))
 
 
 def _config(event_method):
@@ -143,7 +145,7 @@ def analyze_upload(video_path, name, fps=None, scale=None, event_method="ankle")
     from .pose_tracking import track_video
 
     kp = track_video(video_path)
-    kp = Keypoints(kp.xyv, kp.fps, kp.width, kp.height, name, kp.settings, kp.frame_times)
+    kp = replace(kp, video_path=name)                          # keeps the frame times and sharpness
     bundle = analyze_tracked(kp, name, fps, scale, event_method)
     onset = bundle["results"]["events"]["movement_onset"]["frame"]
     bundle["still"] = still_frame(video_path, max(0, onset - int(0.3 * kp.fps)))

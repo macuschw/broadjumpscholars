@@ -56,5 +56,16 @@ def test_colour_only_when_asked():
 def test_old_results_files_still_get_a_headline():
     old = {"code": "staggered_feet", "message": "The feet look staggered: ...", "severity": SERIOUS,
            "affects": ["distance"]}                   # saved before warnings had headlines
-    assert headline(old) == "Feet staggered: distance is approximate"
+    assert headline(old) == "Feet staggered at landing"
     assert headline("plain old string warning. More text") == "plain old string warning"
+
+
+def test_every_warning_the_analysis_can_raise_has_plain_language():
+    import re
+    from pathlib import Path
+    from jumplab.alerts import PLAIN, plain
+    src = "".join(p.read_text() for p in Path("jumplab").glob("*.py"))
+    codes = set(re.findall(r'warning\(\s*"([a-z_]+)"', src)) - {"unknown", "fps_corrected", "fps_override"}   # info notes
+    assert codes <= set(PLAIN), sorted(codes - set(PLAIN))
+    p = plain({"code": "limb_snap", "message": "x", "severity": SERIOUS, "affects": ["distance"]})
+    assert p["headline"] == "Someone else may be in the shot" and p["fix"]

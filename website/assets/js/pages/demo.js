@@ -15,7 +15,7 @@ import { Playback, readoutsHTML } from "../demo/playback.js";
 import { VideoPlayback } from "../demo/video-playback.js";
 import { buildCharts } from "../demo/charts.js";
 import { buildCompare } from "../demo/compare.js";
-import { bundleToAttempt, checkBundle, downloadBundle, realHeadline } from "../demo/real.js";
+import { STAT_NAMES, bundleToAttempt, checkBundle, downloadBundle, issues, realHeadline } from "../demo/real.js";
 import { calibrate } from "../demo/calibrate.js";
 import { analyzeVideo, recompute, serverURL, wake } from "../demo/server.js";
 import { formatQuantity, onUnitsChange } from "../lib/units.js";
@@ -96,6 +96,7 @@ function setAttempt(a) {
     simPlayback.seek(a.events.takeoff);
   }
   renderMoments(a);
+  renderAlert(a);
   renderChecks(a);
   renderSource(a);
   chartsFor = null;
@@ -116,24 +117,77 @@ function renderSource(a) {
   $("results-source").textContent = `${a.name} · ${fps} · ${scale} · ${r.side === "LEFT" ? "left" : "right"} side to the camera`;
 }
 
-// Ratings for each part of the analysis, and any warnings, kept in view above the tabs
+// Problems with the video (staggered feet, someone else in the shot, blur...), in plain words,
+// right above the numbers they make unreliable
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+/** ["distance", "launch"] -> "Jump distance and launch angle" */
+const statList = (ids) => {
+  const names = ids.map((id, k) => (k ? STAT_NAMES[id].toLowerCase() : STAT_NAMES[id]));
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+};
+function issueHTML(i) {
+  return `<li class="issue issue--${i.severity}">
+    <span class="issue__icon">${icon(i.icon)}</span>
+    <div class="issue__body">
+      <h4 class="issue__title">${esc(i.headline)}</h4>
+      <p>${esc(i.explain)}</p>
+      ${i.fix ? `<p class="issue__fix"><strong>How to fix it:</strong> ${esc(i.fix)}</p>` : ""}
+      <p class="issue__affects">${i.stats.length === 6 ? "Affects every result" : `Affects: ${statList(i.stats)}`}</p>
+      ${i.detail ? `<details class="issue__detail"><summary>Technical detail</summary><p>${esc(i.detail)}</p></details>` : ""}
+    </div>
+  </li>`;
+}
+function renderAlert(a) {
+  const host = $("jump-alert");
+  host.hidden = !a.real;
+  host.removeAttribute("role");
+  if (!a.real) { host.replaceChildren(); return; }
+  const all = issues(a), serious = all.filter((i) => i.severity === "serious"), care = all.filter((i) => i.severity !== "serious");
+  if (!all.length) {
+    host.className = "jump-alert jump-alert--clear";
+    const blur = a.bundle.landmarks?.sharpness?.length ? ", blur" : "";
+    host.innerHTML = `${icon("check")}<p><strong>No problems found with this video.</strong>
+      JumpLab checked for staggered feet, someone else in the shot${blur}, lost tracking and odd timing.</p>`;
+    return;
+  }
+  const bad = Object.keys(STAT_NAMES).filter((id) => serious.some((i) => i.stats.includes(id)));
+  const title = !serious.length ? "Use these results with care"
+    : bad.length === 6 ? "These results aren't reliable" : `${statList(bad)} ${bad.length > 1 ? "aren't" : "isn't"} reliable`;
+  const lead = serious.length
+    ? `We found ${plural(serious.length, "problem")} with this video, so ${bad.length > 1 ? "the numbers" : "the number"} marked “Not reliable” below could be wrong. Fix ${serious.length > 1 ? "them" : "it"} and film the jump again.`
+    : `Nothing serious, but ${plural(care.length, "thing")} could make the numbers less exact.`;
+  host.className = `jump-alert jump-alert--${serious.length ? "serious" : "caution"}`;
+  if (serious.length) host.setAttribute("role", "alert");
+  host.innerHTML = `
+    <div class="jump-alert__head">
+      <span class="jump-alert__icon">${icon("alert")}</span>
+      <div><h3 class="jump-alert__title">${title}</h3><p>${lead}</p></div>
+    </div>
+    <ul class="issues" role="list">${(serious.length ? serious : care).map(issueHTML).join("")}</ul>
+    ${serious.length && care.length ? `<details class="disclose jump-alert__more">
+      <summary>${plural(care.length, "smaller note")}</summary>
+      <div class="disclose__body"><ul class="issues issues--small" role="list">${care.map(issueHTML).join("")}</ul></div>
+    </details>` : ""}`;
+}
+
+// Ratings for each part of the analysis, kept in view above the tabs
 const RATING = { reliable: ["✓", "Reliable"], care: ["~", "Use with care"], rough: ["✗", "Rough only"] };
 function renderChecks(a) {
   const host = $("real-checks");
   host.hidden = !a.real;
   if (!a.real) { host.replaceChildren(); return; }
-  const serious = a.warnings.filter((w) => w.severity === "serious"), other = a.warnings.filter((w) => w.severity !== "serious");
+  const notes = a.warnings.filter((w) => w.severity === "info");
   host.innerHTML = `
-    ${serious.map((w) => `<div class="real-warning" role="note">${icon("info")}<div><strong>${w.headline || "Check this jump"}</strong><p>${w.message}</p></div></div>`).join("")}
     <ul class="ratings" role="list" aria-label="How reliable each result is">
       ${Object.values(a.ratings).map((r) => `<li class="rating rating--${r.rating}"><span class="rating__mark" aria-hidden="true">${RATING[r.rating][0]}</span>
         <span><strong>${r.title}</strong> ${RATING[r.rating][1]}</span></li>`).join("")}
     </ul>
     <details class="disclose real-why">
-      <summary>Why these ratings${other.length ? ` · ${other.length} other note${other.length > 1 ? "s" : ""}` : ""}</summary>
+      <summary>Why these ratings${notes.length ? ` · ${plural(notes.length, "note")}` : ""}</summary>
       <div class="disclose__body">
-        <dl>${Object.values(a.ratings).map((r) => `<dt>${r.title}</dt><dd>${r.reason}</dd>`).join("")}</dl>
-        ${other.length ? `<ul class="real-notes">${other.map((w) => `<li>${w.message}</li>`).join("")}</ul>` : ""}
+        <dl>${Object.values(a.ratings).map((r) => `<dt>${esc(r.title)}</dt><dd>${esc(r.reason)}</dd>`).join("")}</dl>
+        ${notes.length ? `<ul class="real-notes">${notes.map((w) => `<li>${esc(w.message)}</li>`).join("")}</ul>` : ""}
       </div>
     </details>`;
 }

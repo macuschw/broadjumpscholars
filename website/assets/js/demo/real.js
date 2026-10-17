@@ -89,9 +89,34 @@ function shortName(name) {
   return base.length > 14 ? `${base.slice(0, 13)}…` : base;
 }
 
+// The headline stats fed by each part of the analysis (a warning's `affects`)
+const AFFECTS = { distance: ["distance"], trajectory: ["velocity", "launch"], angles: ["trunk", "shin"], timing: ["contact"] };
+export const STAT_NAMES = { distance: "Jump distance", velocity: "Takeoff velocity", launch: "Launch angle",
+  trunk: "Trunk angle", shin: "Shin angle", contact: "Ground contact" };
+const ICONS = { staggered_feet: "feet", limb_snap: "people", blurry_video: "blur", low_confidence_landmarks: "blur",
+  missing_in_jump: "track", offframe_landmarks: "track" };
+const ORDER = { serious: 0, caution: 1 };
+
+/**
+ * The jump's problems in plain words, serious first: headline, what happened, how to fix it,
+ * the analysis's own technical message, and the headline stats it affects. Info-level notes
+ * are left out (they don't make a number less trustworthy). Older results files have only
+ * the technical message, which then stands in for the explanation.
+ */
+export function issues(a) {
+  return a.warnings.filter((w) => w.severity in ORDER).map((w) => ({
+    code: w.code, severity: w.severity, icon: ICONS[w.code] || "alert",
+    headline: w.headline || "Check this jump",
+    explain: w.explain || w.message, fix: w.fix || "", detail: w.explain ? w.message : "",
+    stats: [...new Set((w.affects || Object.keys(AFFECTS)).flatMap((k) => AFFECTS[k] || []))],
+  })).sort((x, y) => ORDER[x.severity] - ORDER[y.severity]);
+}
+
 /** The six headline metrics for a real jump (same shape as data/mock-data.js headline()). */
 export function realHeadline(a) {
   const m = a.metrics, speed = (v) => (v == null ? "—" : formatNumber("speed", v));
+  const flags = {};                                          // stat id -> the serious problems behind it
+  for (const i of issues(a)) if (i.severity === "serious") i.stats.forEach((id) => (flags[id] ??= []).push(i.headline));
   return [
     { id: "distance", label: "Jump distance", value: m.distance, unit: "m", kind: "distance", digits: 2,
       sub: a.calibrated ? "Takeoff toe to landing heel" : a.rough ? "Rough: no tape calibration" : "Needs calibration" },
@@ -103,7 +128,7 @@ export function realHeadline(a) {
     { id: "shin", label: "Shin angle", value: m.shinTakeoff, unit: "°", digits: 0, sub: "Forward lean at takeoff" },
     { id: "contact", label: "Ground contact", value: m.contactTime, unit: "s", digits: 2,
       sub: m.pushOff == null ? "" : `Push-off ${m.pushOff.toFixed(2)} s` },
-  ];
+  ].map((h) => (flags[h.id] ? { ...h, flag: flags[h.id].join(" · ") } : h));
 }
 
 /** Save a bundle as a file the visitor can open again later ("Open results"). */

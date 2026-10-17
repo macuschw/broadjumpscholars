@@ -29,6 +29,14 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   banner + "APPROXIMATE" marker + final "CHECK THIS JUMP" line (`jumplab/alerts.py`).
 - Tried and rejected: both-feet correction, measuring from the takeoff line (both made errors worse).
   A real fix needs a second camera or ~10 more tape-measured staggered jumps.
+- Blur: tracking records each frame's athlete sharpness (Laplacian variance of a 240 px crop around
+  the body). `checks.check_blur`: median during the jump < 250 → SERIOUS, < 500 → CAUTION. Our real
+  clips score 780–4400; the same clip Gaussian-blurred scores 20–310. Older `_keypoints.npz` files
+  have no sharpness, so the blur check only runs on newly tracked videos.
+- Every warning code has plain words in `alerts.PLAIN` (headline / what happened / how to fix);
+  a test fails if a new code is added without them. On the website, serious problems show as a red
+  panel right above the numbers, and the stats they affect (the warning's `affects`) get a
+  "Not reliable" tag.
 
 ## Website state
 

@@ -128,6 +128,7 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
     warnings += checks.check_jump_inside_window(to, la, lo, hi, fps)
     warnings += checks.check_flight_time(flight_time)
     warnings += checks.check_missing_frames(kp.detected, on, to, la, hi, fps)
+    warnings += checks.check_blur(kp.sharpness, on, la, hi, fps)
 
     # Limb snapping (a landmark leaping onto something else, often a person behind the
     # jumper). Only the legs the results use get a warning: the far leg is hidden and only

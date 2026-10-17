@@ -112,6 +112,32 @@ def check_landmarks(kp, landmarks, a, b):
     return out
 
 
+# Athlete sharpness (pose_tracking.athlete_sharpness) during the jump. On our 14 real clips the athlete
+# scores 780-4400 in flight; blurred copies of the same frames (Gaussian sigma 4 px) score 20-310.
+BLURRY_BELOW = 250            # clearly blurred: the tracker is guessing
+SOFT_BELOW = 500              # softer than any of our good clips
+
+
+def check_blur(sharpness, onset_i, landing_i, hi, fps):
+    """Warn when the athlete looks blurred during the jump (motion blur, focus, low light)."""
+    if sharpness is None:
+        return []
+    end = min(hi, landing_i + max(2, int(0.1 * fps)))
+    s = np.asarray(sharpness, dtype=float)[onset_i:end]
+    s = s[np.isfinite(s)]
+    if s.size < 3:
+        return []
+    level = float(np.median(s))
+    if level >= SOFT_BELOW:
+        return []
+    severe = level < BLURRY_BELOW
+    return [warning("blurry_video",
+                    f"The athlete looks {'blurred' if severe else 'soft'} during the jump (sharpness "
+                    f"{level:.0f}; sharp footage scores 800 or more), so the tracker had to guess body "
+                    "positions and every number is less certain.",
+                    SERIOUS if severe else CAUTION)]
+
+
 def check_standing_start(hip_y_window, onset_rel, depth_px, fps):
     """Movement onset and contact time assume the window starts with the athlete still."""
     n = max(3, int(0.3 * fps))

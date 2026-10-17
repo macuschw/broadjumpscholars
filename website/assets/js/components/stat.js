@@ -2,21 +2,25 @@
 // is a length or speed in SI and is shown in the visitor's units (lib/units.js): its number and
 // unit then live together in .stat__num, since 7 ft 3½ in is two numbers.
 import { fmt } from "../lib/dom.js";
+import { icon } from "./icons.js";
 import { prefersReducedMotion } from "../lib/motion.js";
 import { quantityHTML } from "../lib/units.js";
 
 const numberHTML = (value, digits, kind) => (value == null || !Number.isFinite(value) ? "—"   // not measured
   : kind ? quantityHTML(kind, value, digits) : fmt(value, digits));
 
-export function statHTML({ label, value, unit, digits = 2, sub, kind }, { key = false, tag = "div" } = {}) {
+export function statHTML({ label, value, unit, digits = 2, sub, kind, flag }, { key = false, tag = "div" } = {}) {
   const missing = value == null || !Number.isFinite(value);
   const unitHTML = kind || missing ? "" : unit === "°" ? `<span class="stat__unit stat__unit--deg">°</span>` : `<span class="stat__unit">${unit}</span>`;
-  return `<${tag} class="stat${key ? " stat--key" : ""}">
+  return `<${tag} class="stat${key ? " stat--key" : ""}${flag ? " stat--flagged" : ""}">
+    ${flag ? `<span class="stat__flag" title="${escapeHTML(flag)}">${icon("alert")}Not reliable<span class="visually-hidden">: ${escapeHTML(flag)}</span></span>` : ""}
     <span class="stat__value"><span class="stat__num"${missing ? "" : ` data-value="${value}"`} data-digits="${digits}"${kind ? ` data-kind="${kind}"` : ""}>${numberHTML(value, digits, kind)}</span>${unitHTML}</span>
     <span class="stat__label">${label}</span>
     ${sub ? `<span class="stat__sub">${sub}</span>` : ""}
   </${tag}>`;
 }
+
+const escapeHTML = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 /** Current values of the stats inside `root`, in order (to count on from them later). */
 export const statValues = (root) => [...root.querySelectorAll(".stat__num")].map((n) => (n.dataset.value == null ? null : Number(n.dataset.value)));

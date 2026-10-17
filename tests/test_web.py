@@ -84,3 +84,34 @@ def test_unreadable_video_gives_a_plain_message_without_server_paths(tmp_path):
     bad.write_bytes(b"not really a video" * 1000)
     status, body = web.handle("analyze", video_path=str(bad), options=web.options_from_query({"name": "clip.mp4"}))
     assert status == 422 and "couldn't be read" in body["error"] and str(tmp_path) not in body["error"]
+
+
+def test_blur_check_flags_blurred_jumps_and_survives_the_bundle():
+    from jumplab.checks import check_blur
+    sharp = np.full(300, 2000.0)
+    assert check_blur(sharp, 100, 200, 300, 120) == []
+    soft = check_blur(np.full(300, 400.0), 100, 200, 300, 120)
+    blurred = check_blur(np.full(300, 120.0), 100, 200, 300, 120)
+    assert soft[0]["code"] == "blurry_video" and soft[0]["severity"] == "caution"
+    assert blurred[0]["severity"] == "serious"
+    assert check_blur(None, 100, 200, 300, 120) == []
+    # The sharpness travels in the bundle, so a recompute (after calibration) still sees the blur
+    kp, r = _analysed()
+    kp.sharpness = np.full(kp.n_frames, 120.0)
+    r = analyze_keypoints(kp, T.scale, AnalysisConfig(event_method="toe_heel"))
+    b = web.make_bundle(r, kp, "jump.mov")
+    assert any(w["code"] == "blurry_video" and w["headline"] == "The video is blurry" and w["fix"] for w in b["warnings"])
+    again = web.recompute({"landmarks": b["landmarks"], "scale": T.scale, "event_method": "toe_heel"})
+    assert any(w["code"] == "blurry_video" for w in again["warnings"])
+
+
+def test_an_uploaded_video_keeps_its_sharpness(monkeypatch):
+    """analyze_upload renames the tracked video; the sharpness must survive that (it once didn't)."""
+    from jumplab import pose_tracking
+    kp, _ = _analysed()
+    kp.sharpness = np.full(kp.n_frames, 120.0)
+    monkeypatch.setattr(pose_tracking, "track_video", lambda path: kp)
+    monkeypatch.setattr(web, "still_frame", lambda path, i: None)
+    b = web.analyze_upload("/tmp/upload123.mp4", "jump.mov", scale=T.scale, event_method="toe_heel")
+    assert b["landmarks"]["sharpness"][0] == 120.0
+    assert any(w["code"] == "blurry_video" and w["severity"] == "serious" for w in b["warnings"])
