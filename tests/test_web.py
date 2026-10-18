@@ -105,13 +105,29 @@ def test_blur_check_flags_blurred_jumps_and_survives_the_bundle():
     assert any(w["code"] == "blurry_video" for w in again["warnings"])
 
 
-def test_an_uploaded_video_keeps_its_sharpness(monkeypatch):
-    """analyze_upload renames the tracked video; the sharpness must survive that (it once didn't)."""
+def test_an_uploaded_video_keeps_its_sharpness_and_is_checked_for_other_people(monkeypatch):
+    """analyze_upload renames the tracked video; the sharpness must survive that (it once didn't).
+    Then a second, short pass looks for other people around the jump the first analysis found."""
     from jumplab import pose_tracking
     kp, _ = _analysed()
     kp.sharpness = np.full(kp.n_frames, 120.0)
+    scanned = []
+
+    def scan(path, k, first, last):                            # someone right beside the jumper
+        scanned.append((first, last))
+        others = np.zeros((k.n_frames, 4))
+        for i in range(first, last + 1, 12):
+            xy = k.xyv[i, :, :2]
+            (x0, y0), (x1, y1) = np.nanmin(xy, 0), np.nanmax(xy, 0)
+            others[i] = [x1, y0, x1 + (x1 - x0), y1]
+        return others
+    monkeypatch.setattr(pose_tracking, "track_jump", lambda path, fps=None: None)     # a short clip: no trimming
     monkeypatch.setattr(pose_tracking, "track_video", lambda path: kp)
+    monkeypatch.setattr(pose_tracking, "scan_for_others", scan)
     monkeypatch.setattr(web, "still_frame", lambda path, i: None)
     b = web.analyze_upload("/tmp/upload123.mp4", "jump.mov", scale=T.scale, event_method="toe_heel")
     assert b["landmarks"]["sharpness"][0] == 120.0
-    assert any(w["code"] == "blurry_video" and w["severity"] == "serious" for w in b["warnings"])
+    codes = {w["code"]: w["severity"] for w in b["warnings"]}
+    assert codes.get("blurry_video") == "serious" and codes.get("person_near_athlete") == "serious"
+    ev = b["results"]["events"]
+    assert len(scanned) == 1 and scanned[0][0] < ev["movement_onset"]["frame"] and scanned[0][1] > ev["landing"]["frame"]

@@ -108,7 +108,8 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
             "low_fps", f"This video is {fps:.0f} fps (under 100). Angles are fine, but event "
             f"times are only good to +/-{1000 / fps:.0f} ms; contact time needs 120-240 fps to "
             "be meaningful.", checks.CAUTION, ("timing",)))
-    detected = float(kp.detected.mean())
+    tracked = slice(kp.segment[0], kp.segment[1] + 1) if kp.segment else slice(None)   # see track_jump
+    detected = float(kp.detected[tracked].mean())
 
     # Gap-filled ("raw") and smoothed positions, y flipped so UP is positive.
     raw, sm = {}, {}
@@ -121,6 +122,8 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
 
     # ---------- Events ----------
     lo, hi = _window(t, config.start_s, config.end_s)
+    if kp.segment:                                             # only this part was tracked
+        lo, hi = max(lo, kp.segment[0]), min(hi, kp.segment[1] + 1)
     w = slice(lo, hi)
     ev = _detect(config.event_method, hip_y, fps, sm, w, config).shifted(lo)
     to, la, bo, on = ev.takeoff_i, ev.landing_i, ev.bottom_i, ev.onset_i
@@ -129,6 +132,7 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
     warnings += checks.check_flight_time(flight_time)
     warnings += checks.check_missing_frames(kp.detected, on, to, la, hi, fps)
     warnings += checks.check_blur(kp.sharpness, on, la, hi, fps)
+    warnings += checks.check_other_people(kp.others, kp.xyv, on, la, fps)
 
     # Limb snapping (a landmark leaping onto something else, often a person behind the
     # jumper). Only the legs the results use get a warning: the far leg is hidden and only
@@ -187,8 +191,8 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
 
     # Both feet (official rule: front-most takeoff toe -> rearmost landing heel). The main
     # distance stays the near-foot one; this is reported alongside it.
-    trunk_px = float(np.nanmedian(np.hypot(raw["HIP"][0] - raw["SHOULDER"][0],
-                                           raw["HIP"][1] - raw["SHOULDER"][1])))
+    trunk_px = float(np.nanmedian(np.hypot(raw["HIP"][0][tracked] - raw["SHOULDER"][0][tracked],
+                                           raw["HIP"][1][tracked] - raw["SHOULDER"][1][tracked])))
     settled = slice(la + int(0.1 * fps), min(hi, la + int(0.4 * fps)))
     if settled.stop - settled.start < 3:
         settled = slice(la, hi)
@@ -378,6 +382,20 @@ def _both_feet_summary(both, scale):
             "feet_gap_cm": to_cm(both["stagger_px"]) if both["stagger_px"] is not None else None}
 
 
+def look_for_others(video_path, kp, results):
+    """Other people in the shot around the jump that `results` found: a second, short pass over the
+    video (pose_tracking.scan_for_others) unless that stretch was scanned before. Fills kp.others;
+    returns True if it scanned (then analyse again so checks.check_other_people sees it)."""
+    from .pose_tracking import others_checked, scan_for_others
+
+    ev = results["events"]
+    first, last = checks.others_window(ev["movement_onset"]["frame"], ev["landing"]["frame"], results["fps"], kp.n_frames)
+    if others_checked(kp.others, first, last, kp.fps):
+        return False
+    kp.others = scan_for_others(video_path, kp, first, last)
+    return True
+
+
 def analyze_video(video_path, scale_m_per_px=None, config=None, output_dir="output",
                   skeleton_video=True, retrack=False, fps_override=None):
     """Video in -> results dict out. MediaPipe runs once; keypoints are cached in
@@ -387,6 +405,9 @@ def analyze_video(video_path, scale_m_per_px=None, config=None, output_dir="outp
     skeleton = os.path.join(output_dir, f"{stem}_skeleton.mp4") if skeleton_video else None
     kp, ran = load_or_track(video_path, cache, skeleton, retrack)
     results = analyze_keypoints(kp, scale_m_per_px, config, fps_override)
+    if look_for_others(video_path, kp, results):              # first time for this stretch: keep it
+        kp.save(cache)
+        results = analyze_keypoints(kp, scale_m_per_px, config, fps_override)
     results["files"] = {"keypoints": cache, "skeleton_video": skeleton, "ran_mediapipe": ran}
     results["_keypoints"] = kp                                 # for the website bundle (not saved to JSON)
     return results

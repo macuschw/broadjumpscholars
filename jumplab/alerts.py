@@ -24,10 +24,19 @@ PLAIN = {
                        "One foot landed behind the other. A single side-on camera can't see the far foot well, "
                        "so the distance can be off by up to about 5 inches (12 cm), too long or too short.",
                        "Land with the feet side by side, or treat this distance as approximate."),
-    "limb_snap": ("Someone else may be in the shot",
-                  "The tracker briefly jumped onto something else, usually another person behind the jumper, "
-                  "so the skeleton was wrong for a moment.",
-                  "Film with nobody else in the frame, especially behind the jumper."),
+    "person_near_athlete": ("Someone walked right behind the jumper",
+                            "Another person was right next to or behind the jumper during the jump. The "
+                            "tracker follows one person and can mix the two up, so the skeleton, and every "
+                            "number from it, may be off.",
+                            "Film with nobody else in the frame, especially behind the jumper."),
+    "person_in_shot": ("Someone else is in the shot",
+                       "Another person was in the video during the jump. They stayed clear of the jumper, "
+                       "so the numbers are probably fine, but check the skeleton in Playback.",
+                       "Film with nobody else in the frame."),
+    "limb_snap": ("The tracking slipped",
+                  "For a moment the skeleton jumped away from the jumper, usually onto another person "
+                  "or something behind them, so it was wrong for those frames.",
+                  "Film with nobody else in the frame and a plain background behind the jumper."),
     "blurry_video": ("The video is blurry",
                      "The athlete looks blurred during the jump, so the tracker had to guess where the body was.",
                      "Use bright, even light, keep the phone still on a tripod, lock focus with a long press, "

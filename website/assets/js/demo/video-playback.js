@@ -75,10 +75,13 @@ export class VideoPlayback {
     this.a = attempt;
     const lm = (this.lm = attempt.bundle.landmarks), r = attempt.bundle.results;
     this.near = r.side === "LEFT" ? "LEFT" : "RIGHT";
+    // Someone else in the shot: outlined only when the analysis trusted the sighting enough to warn
+    this.others = attempt.warnings.some((w) => /^person_/.test(w.code)) ? lm.others || null : null;
     this.times = lm.frame_times && lm.frame_times.every((t) => t != null) ? lm.frame_times : null;
     this.rate = (r.fps || lm.fps) / lm.fps;                      // real frame rate / the file's own (slow motion)
     this.stageEl.style.aspectRatio = `${lm.width} / ${lm.height}`;
-    this.scrub.max = String(lm.n_frames - 1);
+    this.scrub.min = String(this.first);                         // a trimmed upload: only the tracked part
+    this.scrub.max = String(this.last);
     if (this.url) URL.revokeObjectURL(this.url);
     this.url = null;
     this.hasVideo = false;
@@ -125,7 +128,8 @@ export class VideoPlayback {
     this.draw();
   }
 
-  get last() { return this.lm.n_frames - 1; }
+  get first() { return this.lm.segment ? this.lm.segment[0] : 0; }
+  get last() { return this.lm.segment ? this.lm.segment[1] : this.lm.n_frames - 1; }
   timeOf(i) { return this.times ? this.times[i] : i / this.lm.fps; }
   frameAt(t) {                                                   // the frame shown at file time t
     if (!this.times) return Math.round(t * this.lm.fps);
@@ -136,7 +140,7 @@ export class VideoPlayback {
 
   /** Show an exact frame: the video seeks to it and the skeleton is drawn for it. */
   seek(i) {
-    this.show(Math.max(0, Math.min(this.last, Math.round(i))));
+    this.show(Math.max(this.first, Math.min(this.last, Math.round(i))));
     if (this.hasVideo && this.video.readyState >= 1) this.video.currentTime = this.timeOf(this.i) + 0.3 / this.lm.fps;   // inside the frame
   }
 
@@ -164,7 +168,7 @@ export class VideoPlayback {
 
   play() {
     this.pause();
-    if (this.i >= this.last) this.seek(0);
+    if (this.i >= this.last) this.seek(this.first);
     this.playing = true;
     this.playBtn.innerHTML = `${icon("pause")}<span>Pause</span>`;
     this.playBtn.setAttribute("aria-label", "Pause");
@@ -174,7 +178,9 @@ export class VideoPlayback {
       // Follow the frames the video actually presents
       const follow = (_, meta) => {
         if (!this.playing) return;
-        this.show(this.frameAt(meta ? meta.mediaTime : this.video.currentTime));
+        const i = this.frameAt(meta ? meta.mediaTime : this.video.currentTime);
+        if (i >= this.last) { this.show(this.last); this.pause(); return; }
+        this.show(i);
         this.cb = this.video.requestVideoFrameCallback ? this.video.requestVideoFrameCallback(follow) : requestAnimationFrame(() => follow());
       };
       this.cb = this.video.requestVideoFrameCallback ? this.video.requestVideoFrameCallback(follow) : requestAnimationFrame(() => follow());
@@ -206,6 +212,17 @@ export class VideoPlayback {
     }
   }
 
+  /** The other person's box [x0, y0, x1, y1] (video px) at the check nearest frame i, if any. */
+  otherAt(i) {
+    if (!this.others) return null;
+    const reach = Math.max(1, Math.round(this.lm.fps / 10));
+    for (let d = 0; d <= reach; d++) {
+      const box = this.others[i - d] || this.others[i + d];
+      if (box && box.every((v) => v != null)) return box;
+    }
+    return null;
+  }
+
   /** The skeleton for the current frame, scaled from video pixels to the stage. */
   draw() {
     if (!this.lm || this.i == null || this.i < 0) return;
@@ -226,6 +243,18 @@ export class VideoPlayback {
       oy = (h - (f.y1 - f.y0) * s) / 2 - f.y0 * s;
       c.strokeStyle = "#5a5e65"; c.lineWidth = 1.5;
       c.beginPath(); c.moveTo(0, f.floor * s + oy); c.lineTo(w, f.floor * s + oy); c.stroke();   // the floor
+    }
+    // The other person, from the nearest check (about 10 a second): a dashed box, labelled
+    const other = this.otherAt(this.i);
+    if (other) {
+      const [x0, y0, x1, y1] = other.map((v, k) => v * s + (k % 2 ? oy : ox)), pad = 8;
+      c.setLineDash([7, 5]); c.lineWidth = 2; c.strokeStyle = C.accent;
+      c.strokeRect(x0 - pad, y0 - pad, x1 - x0 + 2 * pad, y1 - y0 + 2 * pad);
+      c.setLineDash([]);
+      c.font = "600 13px Barlow, system-ui, sans-serif";
+      const text = "Someone else", tw = c.measureText(text).width;
+      c.fillStyle = C.accent; c.fillRect(x0 - pad - 1, y0 - pad - 22, tw + 12, 22);
+      c.fillStyle = "#121315"; c.fillText(text, x0 - pad + 5, y0 - pad - 6);
     }
     const row = this.lm.xyv[this.i] || [];
     const P = (j) => (row[j * 3] == null ? null : { x: row[j * 3] * s + ox, y: row[j * 3 + 1] * s + oy, v: row[j * 3 + 2] ?? 0 });

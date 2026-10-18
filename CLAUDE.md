@@ -14,7 +14,7 @@ this repo (GitHub: macuschw/broadjumpscholars):
 
 ```bash
 python3 -m pip install -r requirements.txt          # mediapipe==0.10.14 is required (newer removed the API)
-python3 -m pytest -q                                 # 160 tests should pass
+python3 -m pytest -q                                 # 173 tests should pass
 python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration output/calibration.json
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
 cd website && python3 -m http.server 8000           # then http://localhost:8000
@@ -33,6 +33,15 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   the body). `checks.check_blur`: median during the jump < 250 → SERIOUS, < 500 → CAUTION. Our real
   clips score 780–4400; the same clip Gaussian-blurred scores 20–310. Older `_keypoints.npz` files
   have no sharpness, so the blur check only runs on newly tracked videos.
+- Other people in the shot: after tracking and a first analysis, a short second pass over the
+  video (0.5 s before the dip to 1 s after landing, ~10 checks a second, ~1 s in all) covers the
+  athlete in grey and asks MediaPipe for another body (`pose_tracking.scan_for_others`,
+  `pipeline.look_for_others`). `checks.check_other_people` ignores bodies under 30% of the athlete's
+  height or seen in fewer than 3 checks (false hits on a building corner / a speck). SERIOUS if
+  they come within 0.25x the athlete's height, or switch sides unseen (= passed right behind the
+  jumper while covered), between the dip and 0.5 s after landing; otherwise CAUTION. On our 15
+  videos it flags exactly the 3 with someone walking behind (Jump 7, bjbd1, bjbg2). Seeking uses
+  the tracked frame timestamps, because it lands late on files with uneven frame timing.
 - Every warning code has plain words in `alerts.PLAIN` (headline / what happened / how to fix);
   a test fails if a new code is added without them. On the website, serious problems show as a red
   panel right above the numbers, and the stats they affect (the warning's `affects`) get a
@@ -59,6 +68,13 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   changing `jumplab/` or `server/`. Cloud results can differ from a Mac run by a few mm / ~2% (MediaPipe on Linux).
   Local test server: `python scripts/serve_local.py`, then open the local site's
   `demo.html?server=http://localhost:8765`.
+- Auto-trim (uploads only, clips over 6.5 s): a quick look (MediaPipe on 5 frames/s) finds the crouch
+  followed by fast sideways hip travel, then only 2.5 s before to 1.8 s after it is tracked
+  (`pose_tracking.track_jump`; `Keypoints.segment`, and the analysis stays inside it). If that stretch
+  doesn't hold a whole jump, the whole video is tracked. On Modal: 38 s clip 34 s → 11.5 s, 11 s
+  slow-mo clip 35 s → 20 s. Found the jump in all 14 test videos. Results move by MediaPipe's own
+  run-to-run noise (~1 px, a few mm), and the "standing" reference is now just before the jump
+  (fixed Jump 7's contact time and a false "not side-on"). The command line still tracks everything.
 - Flow: upload → server tracks (MediaPipe) + analyses → returns bundle + a still → visitor clicks the
   tape ends → `/recompute` with the scale (re-analyses saved landmarks, < 1 mm difference).
 - Shared server logic: `jumplab/web.py` (`make_bundle`, `analyze_upload`, `recompute`, `handle`).

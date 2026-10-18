@@ -112,6 +112,66 @@ def check_landmarks(kp, landmarks, a, b):
     return out
 
 
+
+# Other people in the shot (pose_tracking.find_other_person, ~10 checks a second). On our 15 test
+# videos: the 3 with someone walking behind the jumper had 9-18 hits around the jump; the false
+# hits (a building corner, a speck on a path) were in 2 checks or under 15% of the athlete's height.
+OTHER_MIN_HEIGHT = 0.30       # x the athlete's height: anything smaller is far away or not a person
+OTHER_MIN_HITS = 3            # checks that must find them around the jump
+OTHER_NEAR = 0.25             # gap to the athlete's box, x their height, that counts as right by them
+OTHER_CROSS_S = 1.5           # longest gap between sightings for a side switch to count as passing by
+
+
+def others_window(onset_i, landing_i, fps, n_frames):
+    """The frames checked for other people: 0.5 s before the dip to 1 s after landing."""
+    return max(0, onset_i - int(0.5 * fps)), min(n_frames - 1, landing_i + int(1.0 * fps))
+
+
+def check_other_people(others, xyv, onset_i, landing_i, fps):
+    """Warn when someone else is in the shot around the jump: SERIOUS if they come right next to,
+    behind or in front of the jumper between the dip and just after landing (MediaPipe follows one
+    person and can mix the two up), CAUTION if they stay clear.
+
+    The athlete is covered while looking for others, so someone passing right behind them goes
+    unseen for those frames. That shows up as the person switching sides between two sightings,
+    which counts as passing by the jumper over that stretch."""
+    if others is None:
+        return []
+    others = np.asarray(others, dtype=float)
+    lo, last = others_window(onset_i, landing_i, fps, len(xyv))
+    close_lo, close_hi = onset_i - int(0.2 * fps), landing_i + int(0.5 * fps)   # when it matters
+    hits = []                                       # (frame, gap x athlete height, side of the athlete)
+    for i in range(lo, last + 1):
+        o = others[i]                               # zeros: checked, nobody (fails the height test)
+        ok = ~np.isnan(xyv[i, :, 0])
+        if not np.all(np.isfinite(o)) or ok.sum() < 5:
+            continue
+        (ax0, ay0), (ax1, ay1) = xyv[i, ok, :2].min(0), xyv[i, ok, :2].max(0)
+        tall = ay1 - ay0
+        if tall <= 0 or (o[3] - o[1]) < OTHER_MIN_HEIGHT * tall:
+            continue
+        gap = max(o[0] - ax1, ax0 - o[2], o[1] - ay1, ay0 - o[3], 0.0) / tall      # 0 when overlapping
+        hits.append((i, gap, np.sign((o[0] + o[2]) - (ax0 + ax1))))
+    if len(hits) < OTHER_MIN_HITS:
+        return []
+    near = [(i, i) for i, g, _ in hits if g < OTHER_NEAR and close_lo <= i <= close_hi]
+    near += [(a[0], b[0]) for a, b in zip(hits, hits[1:])                     # switched sides unseen
+             if a[2] * b[2] < 0 and b[0] - a[0] <= OTHER_CROSS_S * fps and a[0] <= close_hi and b[0] >= close_lo]
+    when = lambda a, b: f"{a / fps:.1f} s" if a == b else f"{a / fps:.1f}-{b / fps:.1f} s"     # noqa: E731
+    if near:
+        a, b = min(f for f, _ in near), max(f for _, f in near)
+        return [warning("person_near_athlete",
+                        f"Another person was in {len(hits)} of the frames checked around the jump, and "
+                        f"right next to, behind or in front of the jumper at {when(a, b)} (frames {a}-{b}). "
+                        "MediaPipe follows one person and can mix the two up, so every result is less "
+                        "certain. Check the skeleton video.", SERIOUS)]
+    return [warning("person_in_shot",
+                    f"Another person was in {len(hits)} of the frames checked around the jump (frames "
+                    f"{hits[0][0]}-{hits[-1][0]}) but never close to the jumper (nearest gap "
+                    f"{min(g for _, g, _ in hits):.1f}x their height), so the numbers are probably fine. "
+                    "Check the skeleton video.", CAUTION)]
+
+
 # Athlete sharpness (pose_tracking.athlete_sharpness) during the jump. On our 14 real clips the athlete
 # scores 780-4400 in flight; blurred copies of the same frames (Gaussian sigma 4 px) score 20-310.
 BLURRY_BELOW = 250            # clearly blurred: the tracker is guessing

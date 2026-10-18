@@ -30,7 +30,7 @@ import numpy as np
 
 from . import alerts, summary
 from .checks import as_warning
-from .pipeline import AnalysisConfig, analyze_keypoints
+from .pipeline import AnalysisConfig, analyze_keypoints, look_for_others
 from .pose_tracking import N_LANDMARKS, Keypoints
 
 FORMAT = "jumplab-web/1"
@@ -70,7 +70,8 @@ def make_bundle(results, keypoints: Keypoints, name: Optional[str] = None, still
     s = results["series"]
     series = {k: [_num(v, 3 if k == "time_s" else 2) for v in np.asarray(s[k], dtype=float)] for k in SERIES_KEYS if k in s}
     xyv = np.asarray(keypoints.xyv, dtype=float)
-    frames = [[_num(v, 2 if (j % 3) == 2 else 1) for j, v in enumerate(row.reshape(-1))] for row in xyv]
+    frames = [None if np.isnan(row[:, 0]).all() else [_num(v, 2 if (j % 3) == 2 else 1) for j, v in enumerate(row.reshape(-1))]
+              for row in xyv]                                    # None: nobody found, or not tracked
     times = keypoints.frame_times
     bundle = {
         "format": FORMAT,
@@ -84,6 +85,11 @@ def make_bundle(results, keypoints: Keypoints, name: Optional[str] = None, still
             "n_frames": int(xyv.shape[0]), "per_frame": N_LANDMARKS * 3,
             "frame_times": None if times is None or not len(times) else [_num(t, 4) for t in times],
             "sharpness": None if keypoints.sharpness is None else [_num(v, 0) for v in keypoints.sharpness],
+            # Other people found in the shot: {frame: [x0, y0, x1, y1]}, {} if nobody, None if not checked
+            "others": None if keypoints.others is None else {
+                str(i): [_num(v, 0) for v in box] for i, box in enumerate(np.asarray(keypoints.others, dtype=float))
+                if np.all(np.isfinite(box)) and box[2] > box[0] and box[3] > box[1]},
+            "segment": None if keypoints.segment is None else [int(v) for v in keypoints.segment],
             "xyv": frames,
         },
     }
@@ -95,13 +101,21 @@ def make_bundle(results, keypoints: Keypoints, name: Optional[str] = None, still
 def keypoints_from_bundle(landmarks, name="jump"):
     """Rebuild Keypoints from a bundle's "landmarks" (to analyse them again)."""
     n = int(landmarks["n_frames"])
-    flat = np.array([[np.nan if v is None else v for v in row] for row in landmarks["xyv"]], dtype=float)
+    empty = [np.nan, np.nan, 0.0] * N_LANDMARKS
+    flat = np.array([empty if row is None else [np.nan if v is None else v for v in row] for row in landmarks["xyv"]], dtype=float)
     if flat.shape != (n, N_LANDMARKS * 3):
         raise ValueError(f"Expected {n} frames of {N_LANDMARKS * 3} values, got {flat.shape}.")
     times, sharp = landmarks.get("frame_times"), landmarks.get("sharpness")
     as_array = lambda xs: None if not xs else np.array([np.nan if v is None else v for v in xs], dtype=float)   # noqa: E731
+    others = None
+    if landmarks.get("others") is not None:
+        others = np.full((n, 4), np.nan)
+        for i, box in landmarks["others"].items():
+            if 0 <= int(i) < n:
+                others[int(i)] = box
+    segment = tuple(int(v) for v in landmarks["segment"]) if landmarks.get("segment") else None
     return Keypoints(flat.reshape(n, N_LANDMARKS, 3), float(landmarks["fps"]), int(landmarks["width"]),
-                     int(landmarks["height"]), name, {}, as_array(times), as_array(sharp))
+                     int(landmarks["height"]), name, {}, as_array(times), as_array(sharp), others, segment)
 
 
 def _config(event_method):
@@ -141,12 +155,24 @@ def still_frame(video_path, frame_index, max_width=1600, quality=85):
 
 def analyze_upload(video_path, name, fps=None, scale=None, event_method="ankle"):
     """A visitor's video: track it with MediaPipe, analyse it, and include a still from before the
-    jump for calibrating. Raises NoJumpFound / ValueError with a message meant for the visitor."""
-    from .pose_tracking import track_video
+    jump for calibrating. Raises NoJumpFound / ValueError with a message meant for the visitor.
 
-    kp = track_video(video_path)
-    kp = replace(kp, video_path=name)                          # keeps the frame times and sharpness
-    bundle = analyze_tracked(kp, name, fps, scale, event_method)
+    Clips over 6.5 s are trimmed automatically: a quick look finds the jump and only the 4-5 s around
+    it are tracked (pose_tracking.track_jump), so standing around before and after costs little.
+    If that stretch turns out not to hold the whole jump, the whole video is tracked instead."""
+    from .events import NoJumpFound
+    from .pose_tracking import track_jump, track_video
+
+    kp = replace(track_jump(video_path, fps) or track_video(video_path), video_path=name)
+    try:
+        bundle = analyze_tracked(kp, name, fps, scale, event_method)
+    except NoJumpFound:
+        if kp.segment is None:
+            raise
+        kp = replace(track_video(video_path), video_path=name)    # the quick look picked the wrong moment
+        bundle = analyze_tracked(kp, name, fps, scale, event_method)
+    if look_for_others(video_path, kp, bundle["results"]):    # other people around the jump it found
+        bundle = analyze_tracked(kp, name, fps, scale, event_method)
     onset = bundle["results"]["events"]["movement_onset"]["frame"]
     bundle["still"] = still_frame(video_path, max(0, onset - int(0.3 * kp.fps)))
     return bundle

@@ -93,8 +93,8 @@ function shortName(name) {
 const AFFECTS = { distance: ["distance"], trajectory: ["velocity", "launch"], angles: ["trunk", "shin"], timing: ["contact"] };
 export const STAT_NAMES = { distance: "Jump distance", velocity: "Takeoff velocity", launch: "Launch angle",
   trunk: "Trunk angle", shin: "Shin angle", contact: "Ground contact" };
-const ICONS = { staggered_feet: "feet", limb_snap: "people", blurry_video: "blur", low_confidence_landmarks: "blur",
-  missing_in_jump: "track", offframe_landmarks: "track" };
+const ICONS = { staggered_feet: "feet", person_near_athlete: "people", person_in_shot: "people", limb_snap: "track",
+  blurry_video: "blur", low_confidence_landmarks: "blur", missing_in_jump: "track", offframe_landmarks: "track" };
 const ORDER = { serious: 0, caution: 1 };
 
 /**

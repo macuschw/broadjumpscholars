@@ -146,9 +146,11 @@ function renderAlert(a) {
   const all = issues(a), serious = all.filter((i) => i.severity === "serious"), care = all.filter((i) => i.severity !== "serious");
   if (!all.length) {
     host.className = "jump-alert jump-alert--clear";
-    const blur = a.bundle.landmarks?.sharpness?.length ? ", blur" : "";
+    const lm = a.bundle.landmarks || {};
+    const checked = ["staggered feet", lm.others ? "other people in the shot" : null, lm.sharpness?.length ? "blur" : null,
+      "lost tracking", "odd timing"].filter(Boolean);
     host.innerHTML = `${icon("check")}<p><strong>No problems found with this video.</strong>
-      JumpLab checked for staggered feet, someone else in the shot${blur}, lost tracking and odd timing.</p>`;
+      JumpLab checked for ${checked.slice(0, -1).join(", ")} and ${checked.at(-1)}.</p>`;
     return;
   }
   const bad = Object.keys(STAT_NAMES).filter((id) => serious.some((i) => i.stats.includes(id)));

@@ -68,4 +68,4 @@ def test_every_warning_the_analysis_can_raise_has_plain_language():
     codes = set(re.findall(r'warning\(\s*"([a-z_]+)"', src)) - {"unknown", "fps_corrected", "fps_override"}   # info notes
     assert codes <= set(PLAIN), sorted(codes - set(PLAIN))
     p = plain({"code": "limb_snap", "message": "x", "severity": SERIOUS, "affects": ["distance"]})
-    assert p["headline"] == "Someone else may be in the shot" and p["fix"]
+    assert p["headline"] == "The tracking slipped" and p["fix"]
