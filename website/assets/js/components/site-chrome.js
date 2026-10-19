@@ -21,7 +21,7 @@ class JlHeader extends HTMLElement {
       <header class="site-header">
         <div class="container site-header__inner">
           <a class="brand" href="index.html"${current === "home" ? ' aria-current="page"' : ""}>
-            ${logoMark}<span>JumpLab</span><span class="brand__sub">working name</span>
+            ${logoMark}<span>JumpLab</span>
           </a>
           <nav class="site-nav" id="site-nav" aria-label="Main">
             <ul class="nav-list">
@@ -78,7 +78,7 @@ class JlFooter extends HTMLElement {
     this.innerHTML = `
       <footer class="site-footer">
         <div class="container site-footer__inner">
-          <p><strong style="color:var(--paper)">JumpLab</strong> (working name) · a student biomechanics project.
+          <p><strong style="color:var(--paper)">JumpLab</strong> · a student biomechanics project.
              The sample jump and figures on these pages are simulated demo data.</p>
           <nav aria-label="Footer">
             <ul>

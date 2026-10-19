@@ -1,4 +1,4 @@
-# JumpLab website (working name)
+# JumpLab website
 
 Front-end site for JumpLab: standing broad jump analysis from one phone camera.
 Seven pages, a persistent nav, and a dashboard that shows **real analyses** of your own jumps
@@ -39,7 +39,7 @@ rsync -a --exclude '.DS_Store' "../jumplab-site/" website/ && git add website &&
 | `science.html` | Three tabs: the pipeline and its formulas; a worked example (parabola fitted live to the sample flight); calibration with depth correction and three short "why" answers (`#example` and `#calibration` link straight to a tab) |
 | `analyze.html` | Your own jump. A video goes to the analysis server, then the visitor clicks the tape to set the scale; a `_web.json` from the JumpLab app opens directly (with its video). Real jumps play as the video with the tracked skeleton, with the analysis's ratings and warnings |
 | `demo.html` | The simulated sample jump on its own: three attempts, straight into the results (3D playback, charts, key moments, compare), marked as demo data |
-| `about.html` | Team ([NAME 1], [NAME 2]), audiences, FAQ |
+| `about.html` | Team (Reece, Macus), audiences, FAQ |
 
 The home testimonials are **placeholder quotes**, marked with a "Placeholder quotes" tag. Before
 sharing the site, replace each quote, `[NAME]` and role in `index.html` with a real quote from someone

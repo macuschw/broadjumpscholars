@@ -51,7 +51,7 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
 
 - Pages: Home (3D draggable hero, testimonials = **placeholder quotes**, call to action), How it works,
   Metrics (3D sculpted mannequin, drag 360°, in-scene metric overlays + callout labels), Setup,
-  Science (KaTeX formulas, tabs), About (team names are placeholders `[NAME 1]`/`[NAME 2]`), Analyze
+  Science (KaTeX formulas, tabs), About (team: Reece, Macus), Analyze
   (upload your own video; the header's "Upload a video" button), Demo (the simulated sample jump, its own
   page). Both use one script (`pages/demo.js`, picks by `<body data-page>`) and one shared dashboard
   markup (`demo/dashboard-html.js`).
@@ -94,6 +94,6 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
 
 ## Open to-dos / ideas
 - Test an upload from a real phone (large 4K slow-motion files; iPhone HEVC playback).
-- Replace placeholder testimonials and team names; pick a final project name ("JumpLab" is a working name).
+- Replace placeholder testimonials; pick a final project name if "JumpLab" changes.
 - Accuracy page (parked in `website/_parked/`) could return with the tape-check data.
 - Collect more tape-measured jumps (esp. staggered) to validate / correct.
