@@ -33,10 +33,10 @@ class JlHeader extends HTMLElement {
                   <button type="button" class="units-switch__btn" data-units="imperial" aria-label="ft (feet and inches)" title="Imperial: feet and inches">ft</button>
                 </div>
               </li>
-              <li class="nav-item--cta"><a class="btn btn--primary" href="analyze.html"${isAnalyze ? ' aria-current="page"' : ""}>${icon("upload")}Upload a video</a></li>
+              <li class="nav-item--cta"><a class="btn btn--primary" href="analyze.html"${isAnalyze ? ' aria-current="page"' : ""}>${icon("upload")}Upload</a></li>
             </ul>
           </nav>
-          <a class="btn btn--primary btn--nav" href="analyze.html"${isAnalyze ? ' aria-current="page"' : ""}>${icon("upload")}Upload<span class="btn__more"> a video</span></a>
+          <a class="btn btn--primary btn--nav" href="analyze.html"${isAnalyze ? ' aria-current="page"' : ""}>${icon("upload")}Upload</a>
           <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
             ${icon("menu")}<span>Menu</span>
           </button>
