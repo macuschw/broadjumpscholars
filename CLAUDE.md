@@ -85,9 +85,10 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
 
 ## How we work
 
-- The original author edits the site in a separate local folder and copies it into `website/` with
-  `rsync` before pushing. **Agree on one place to edit the site** (e.g. everyone edits `website/`
-  directly from now on) or changes can be overwritten. Always `git pull` before starting.
+- **Both of us work in this repo now. Run `git pull` before editing anything**, and push soon after
+  finishing, so the two of us rarely change the same file at once.
+- Edit the site in `website/` directly. (The old separate `jumplab-site` folder is retired: copying
+  it over `website/` would undo the other person's changes.)
 - Keep placeholders as placeholders (names, testimonial quotes) until real ones are supplied.
 - Verify UI changes in a browser at desktop and phone widths; run `pytest` after Python changes.
 
