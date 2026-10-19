@@ -16,8 +16,8 @@ let STATS = statsNow();
 // Plain-language copy for each metric (what it is, how it's measured, which body parts)
 const INFO = {
   distance: { parts: ["foot"],
-    what: "How far the athlete travelled, measured like the official test: from the toe at takeoff to the back of the heel at landing.",
-    how: () => `Foot landmarks at takeoff and landing, converted from pixels to ${isImperial() ? "feet and inches" : "metres"} using a tape measure filmed along the jump line.` },
+    what: "How far the athlete traveled, measured like the official test: from the toe at takeoff to the back of the heel at landing.",
+    how: () => `Foot landmarks at takeoff and landing, converted from pixels to ${isImperial() ? "feet and inches" : "meters"} using a tape measure filmed along the jump line.` },
   velocity: { parts: [],
     what: "How fast the body was moving the instant the feet left the ground, split into a forward (horizontal) and an upward (vertical) part.",
     how: "A projectile path is fitted to the body during flight; its slope at takeoff gives both components." },

@@ -8,11 +8,11 @@ A *bundle* is one JSON file holding everything the website shows for a real jump
   landmarks  all 33 MediaPipe points per frame (x, y in image pixels with y DOWN, visibility) and
              each frame's timestamp in the file, for drawing the skeleton over the video
   still      (uploads only) one frame from before the jump, for clicking the tape to calibrate
-The website converts pixels to metres with the bundle's own scale, so every number it shows is the
+The website converts pixels to meters with the bundle's own scale, so every number it shows is the
 one the Python summary prints.
 
 The same functions serve the site's upload, on a laptop (scripts/serve_local.py) or in the cloud
-(server/modal_app.py): analyze_upload() tracks a video and analyses it; recompute() analyses saved
+(server/modal_app.py): analyze_upload() tracks a video and analyzes it; recompute() analyzes saved
 landmarks again, e.g. with a scale once the visitor has clicked the tape. Neither keeps anything.
 """
 from __future__ import annotations
@@ -99,7 +99,7 @@ def make_bundle(results, keypoints: Keypoints, name: Optional[str] = None, still
 
 
 def keypoints_from_bundle(landmarks, name="jump"):
-    """Rebuild Keypoints from a bundle's "landmarks" (to analyse them again)."""
+    """Rebuild Keypoints from a bundle's "landmarks" (to analyze them again)."""
     n = int(landmarks["n_frames"])
     empty = [np.nan, np.nan, 0.0] * N_LANDMARKS
     flat = np.array([empty if row is None else [np.nan if v is None else v for v in row] for row in landmarks["xyv"]], dtype=float)
@@ -125,9 +125,9 @@ def _config(event_method):
 
 
 def analyze_tracked(kp: Keypoints, name, fps=None, scale=None, event_method="ankle", still=None):
-    """Analyse tracked keypoints (the same analyze_keypoints the command line uses) -> bundle."""
+    """Analyze tracked keypoints (the same analyze_keypoints the command line uses) -> bundle."""
     if scale is not None and not (0 < scale < 1):
-        raise ValueError("scale (metres per pixel) must be between 0 and 1.")
+        raise ValueError("scale (meters per pixel) must be between 0 and 1.")
     if fps is not None and not (1 <= fps <= 1000):
         raise ValueError("fps must be between 1 and 1000.")
     results = analyze_keypoints(kp, scale, _config(event_method), fps_override=fps)
@@ -154,7 +154,7 @@ def still_frame(video_path, frame_index, max_width=1600, quality=85):
 
 
 def analyze_upload(video_path, name, fps=None, scale=None, event_method="ankle"):
-    """A visitor's video: track it with MediaPipe, analyse it, and include a still from before the
+    """A visitor's video: track it with MediaPipe, analyze it, and include a still from before the
     jump for calibrating. Raises NoJumpFound / ValueError with a message meant for the visitor.
 
     Clips over 6.5 s are trimmed automatically: a quick look finds the jump and only the 4-5 s around
@@ -179,7 +179,7 @@ def analyze_upload(video_path, name, fps=None, scale=None, event_method="ankle")
 
 
 def recompute(payload):
-    """Analyse a bundle's landmarks again (no video needed): {"landmarks", "name", "fps", "scale",
+    """Analyze a bundle's landmarks again (no video needed): {"landmarks", "name", "fps", "scale",
     "event_method", "still"} -> bundle. This is how a scale clicked on the still is applied."""
     kp = keypoints_from_bundle(payload["landmarks"], payload.get("name") or "jump")
     return analyze_tracked(kp, payload.get("name") or "jump", payload.get("fps"), payload.get("scale"),

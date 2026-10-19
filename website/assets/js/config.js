@@ -1,7 +1,7 @@
-// Where the Demo page sends a video for analysis: the JumpLab analysis server
+// Where the Analyze page sends a video for analysis: the JumpLab analysis server
 // (server/modal_app.py in the jumplab-analysis repo; deploy it, then paste its URL here).
-// While this is empty, the Demo page still opens results files from the JumpLab app, and the
-// sample jump; only "analyse a video" waits for the server.
+// While this is empty, the Analyze page still opens results files from the JumpLab app, and the
+// sample jump; only "analyze a video" waits for the server.
 export const ANALYSIS_URL = "https://macuschw--jumplab-analysis-web.us-east.modal.run";
 
 /**

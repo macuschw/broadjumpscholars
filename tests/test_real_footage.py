@@ -11,7 +11,7 @@ Ground truth (see tests/data/real_jump_120fps.json and the two .jpg evidence ima
     landing = frame 431, first frame the heel touches the floor (foot flat at 433)
 Labels are good to about +/-1 frame, so the benchmark allows +/-2 frames (17 ms).
 
-To add more labelled jumps, see tests/data/make_benchmark_clip.py.
+To add more labeled jumps, see tests/data/make_benchmark_clip.py.
 """
 import json
 import os
@@ -48,10 +48,10 @@ def assert_events_match(kp, meta, method):
     _, takeoff, landing = run(kp, meta, method)
     true_to, true_la = meta["true_takeoff_frame"], meta["true_landing_frame"]
     assert abs(takeoff - true_to) <= TOLERANCE_FRAMES, (
-        f"{method}: takeoff detected at frame {takeoff}, hand-labelled {true_to} "
+        f"{method}: takeoff detected at frame {takeoff}, hand-labeled {true_to} "
         f"({takeoff - true_to:+d} frames, allowed +/-{TOLERANCE_FRAMES})")
     assert abs(landing - true_la) <= TOLERANCE_FRAMES, (
-        f"{method}: landing detected at frame {landing}, hand-labelled {true_la} "
+        f"{method}: landing detected at frame {landing}, hand-labeled {true_la} "
         f"({landing - true_la:+d} frames, allowed +/-{TOLERANCE_FRAMES})")
 
 
@@ -84,7 +84,7 @@ def test_no_false_warnings_on_a_good_real_jump(real, method):
 
 
 def test_center_of_mass_behaves_like_a_projectile(real):
-    """Over the hand-labelled flight, the CoM should have ~zero horizontal acceleration
+    """Over the hand-labeled flight, the CoM should have ~zero horizontal acceleration
     (no horizontal force) and follow a parabola more closely than the hip does."""
     kp, meta = real
     r, _, _ = run(kp, meta, "toe_heel")

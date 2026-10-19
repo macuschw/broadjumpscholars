@@ -1,8 +1,11 @@
-// Demo dashboard. Three ways in:
-//   1. A video  -> the JumpLab analysis server (demo/server.js) -> click the tape to set the scale
-//      (demo/calibrate.js) -> results. Real numbers, the same analysis as the command line.
-//   2. A results file from the JumpLab app (<video>_web.json, with the video if available) -> results.
-//   3. The sample jump: three simulated attempts (data/mock-data.js), clearly marked as demo data.
+// The jump dashboard, on two pages (<body data-page>):
+//   Analyze (analyze.html), your own jumps:
+//     1. A video -> the JumpLab analysis server (demo/server.js) -> click the tape to set the scale
+//        (demo/calibrate.js) -> results. Real numbers, the same analysis as the command line.
+//     2. A results file from the JumpLab app (<video>_web.json, with the video if available) -> results.
+//   Demo (demo.html): the sample jump, three simulated attempts (data/mock-data.js), clearly marked
+//     as demo data, shown straight away.
+// The dashboard itself (progress, calibration, results) is shared: demo/dashboard-html.js.
 // Real jumps play back as the video with the tracked skeleton (demo/video-playback.js); the sample
 // plays on the 3D stage. Charts, key moments and the comparison are shared.
 import { fmt } from "../lib/dom.js";
@@ -10,7 +13,8 @@ import { icon } from "../components/icons.js";
 import { countUp, statHTML, statValues } from "../components/stat.js";
 import { initTabs } from "../components/tabs.js";
 import { ATTEMPTS, DEMO_NOTICE, SAMPLE, headline, keyMoments } from "../data/mock-data.js";
-import { createSteps, runAnalysis } from "../demo/analysis.js";
+import { createSteps } from "../demo/analysis.js";
+import { DASHBOARD_HTML } from "../demo/dashboard-html.js";
 import { Playback, readoutsHTML } from "../demo/playback.js";
 import { VideoPlayback } from "../demo/video-playback.js";
 import { buildCharts } from "../demo/charts.js";
@@ -21,8 +25,10 @@ import { analyzeVideo, recompute, serverURL, wake } from "../demo/server.js";
 import { formatQuantity, onUnitsChange } from "../lib/units.js";
 
 const $ = (id) => document.getElementById(id);
+const PAGE = document.body.dataset.page === "demo" ? "demo" : "analyze";
+$("dashboard").outerHTML = DASHBOARD_HTML;
 const views = { start: $("demo-start"), progress: $("demo-progress"), calibrate: $("demo-calibrate"), results: $("demo-results") };
-const show = (name) => Object.entries(views).forEach(([k, v]) => { v.hidden = k !== name; });
+const show = (name) => Object.entries(views).forEach(([k, v]) => { if (v) v.hidden = k !== name; });   // Demo: no start
 const MAX_REAL = 6;                                            // real jumps kept for comparing
 
 document.querySelectorAll("[data-icon]").forEach((n) => { n.innerHTML = icon(n.dataset.icon); });
@@ -30,18 +36,20 @@ function setNotice(mode) {
   $("demo-notice").innerHTML = mode === "sample"
     ? `${icon("info")}<p><strong>Demo data.</strong> ${DEMO_NOTICE}</p>`
     : mode === "real"
-      ? `${icon("info")}<p><strong>Your jump.</strong> Analysed with the same pose tracking and physics as the JumpLab app; see the Science page for how.</p>`
-      : `${icon("info")}<p>The sample jump is simulated demo data. A video of your own is analysed for real.</p>`;
+      ? `${icon("info")}<p><strong>Your jump.</strong> Analyzed with the same pose tracking and physics as the JumpLab app; see the Science page for how.</p>`
+      : `${icon("info")}<p>Want to see what you get first? <a href="demo.html">Try the demo</a> with a simulated sample jump.</p>`;
 }
-setNotice("start");
+setNotice(PAGE === "demo" ? "sample" : "start");
 
 // The start card says what this site can do right now
-if (serverURL) {
-  $("drop-privacy").textContent = "Your video is sent to the JumpLab analysis server, analysed, and deleted straight away. Nothing is stored.";
+if (PAGE === "demo") {
+  // nothing to upload here
+} else if (serverURL) {
+  $("drop-privacy").textContent = "Your video is sent to the JumpLab analysis server, analyzed, and deleted straight away. Nothing is stored.";
   wake();                                                      // start a sleeping server while the visitor gets the video
 } else {
   $("drop-title").textContent = "Open your results";
-  $("drop-lede").innerHTML = "Analysing videos on this site is being set up. Meanwhile, run the JumpLab app on a computer and open the <code>_web.json</code> it saves, with the video if you have it.";
+  $("drop-lede").innerHTML = "Analyzing videos on this site is being set up. Meanwhile, run the JumpLab app on a computer and open the <code>_web.json</code> it saves, with the video if you have it.";
   $("drop-button").textContent = "Open results";
   $("drop-fps").hidden = true;
   $("drop-help").textContent = "or drag the files here";
@@ -225,7 +233,7 @@ initTabs($("result-tabs"), {
 });
 
 /** Show results for a list of attempts (the sample session, or the real jumps so far). */
-function showResults(list, which, m) {
+function showResults(list, which, m, { focus = true } = {}) {
   mode = m;
   session = list;
   current = which;
@@ -240,7 +248,7 @@ function showResults(list, which, m) {
   show("results");
   $("results-stats").replaceChildren();
   setAttempt(which);
-  $("results-title").focus();
+  if (focus) $("results-title").focus();
 }
 
 function addReal(attempt) {
@@ -249,17 +257,11 @@ function addReal(attempt) {
   showResults(realSession.slice(), attempt, "real");
 }
 
-// ---------------------------------------------------------------- 3. the sample
-async function startSample() {
-  $("progress-source").textContent = "the sample jump";
-  $("analysis-error").hidden = true;
-  $("analysis-cancel").hidden = true;
-  show("progress");
-  $("progress-title").focus();
-  await runAnalysis($("analysis"));
-  showResults(ATTEMPTS, SAMPLE, "sample");
+// ---------------------------------------------------------------- 3. the sample (Demo page)
+function showSample() {
+  $("start-over").hidden = true;                               // nothing to start over: it's the sample
+  showResults(ATTEMPTS, SAMPLE, "sample", { focus: false });
 }
-$("use-sample").addEventListener("click", startSample);
 
 // ---------------------------------------------------------------- 1. a video -> the analysis server
 let job = null;
@@ -284,7 +286,7 @@ async function startUpload(file) {
     bundle = checkBundle(await job.promise);
   } catch (e) {
     steps.fail();
-    if (e.cancelled) { show("start"); return; }
+    if (e.canceled) { show("start"); return; }
     return fail(e.message);
   } finally {
     job = null;
@@ -342,7 +344,7 @@ async function openFiles(fileList) {
       let last = null;
       for (const f of results) {
         const bundle = checkBundle(JSON.parse(await f.text()));
-        // The matching video: same name as the one analysed, or the only one given
+        // The matching video: same name as the one analyzed, or the only one given
         const video = videos.find((v) => stem(v.name) === stem(bundle.name)) || (videos.length === 1 && results.length === 1 ? videos[0] : null);
         last = bundleToAttempt(bundle, { video });
         realSession.push(last);
@@ -350,7 +352,7 @@ async function openFiles(fileList) {
       }
       showResults(realSession.slice(), last, "real");
     } else if (videos.length) {
-      if (!serverURL) throw new Error("Analysing videos on this site isn't switched on yet. Run the JumpLab app on a computer, then open the _web.json it saves.");
+      if (!serverURL) throw new Error("Analyzing videos on this site isn't switched on yet. Run the JumpLab app on a computer, then open the _web.json it saves.");
       startUpload(videos[0]);
     } else {
       throw new Error("Choose a video (MP4 or MOV), or a JumpLab results file (_web.json).");
@@ -361,10 +363,12 @@ async function openFiles(fileList) {
   }
 }
 const input = $("file-input"), zone = $("dropzone");
-input.addEventListener("change", () => { if (input.files.length) openFiles(input.files); });
-["dragenter", "dragover"].forEach((t) => zone.addEventListener(t, (e) => { e.preventDefault(); zone.classList.add("is-over"); }));
-["dragleave", "drop"].forEach((t) => zone.addEventListener(t, () => zone.classList.remove("is-over")));
-zone.addEventListener("drop", (e) => { e.preventDefault(); openFiles(e.dataTransfer.files); });
+if (zone) {
+  input.addEventListener("change", () => { if (input.files.length) openFiles(input.files); });
+  ["dragenter", "dragover"].forEach((t) => zone.addEventListener(t, (e) => { e.preventDefault(); zone.classList.add("is-over"); }));
+  ["dragleave", "drop"].forEach((t) => zone.addEventListener(t, () => zone.classList.remove("is-over")));
+  zone.addEventListener("drop", (e) => { e.preventDefault(); openFiles(e.dataTransfer.files); });
+}
 
 // ---------------------------------------------------------------- results actions
 $("start-over").addEventListener("click", () => {
@@ -375,7 +379,7 @@ $("start-over").addEventListener("click", () => {
   input.value = "";
   show("start");
   setNotice("start");
-  $("use-sample").focus();
+  $("drop-button").focus();
 });
 $("add-jump").addEventListener("click", () => {
   realPlayback?.pause();
@@ -397,4 +401,5 @@ onUnitsChange(() => {
   compare?.render();
 });
 
-if (location.hash === "#sample") startSample();
+if (PAGE === "demo") showSample();
+else if (location.hash === "#sample") location.replace("demo.html");   // old links to the sample

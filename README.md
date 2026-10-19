@@ -11,7 +11,7 @@ and vector geometry do the rest.
 3. Run the tests: `python -m pytest tests`
    - `tests/test_real_footage.py` is the **accuracy benchmark**: it runs the pipeline on
      keypoints from a real 120 fps jump (`tests/data/`) and checks takeoff/landing against
-     frames labelled by eye (+/-2 frames). Add more labelled jumps with
+     frames labeled by eye (+/-2 frames). Add more labeled jumps with
      `tests/data/make_benchmark_clip.py`.
    - `tests/test_limb_snap.py` also uses real footage: a 30 fps jump with a bystander
      walking behind the jumper, where the far leg snaps onto the bystander at frame 36
@@ -70,13 +70,13 @@ Every run also saves `<video>_web.json`: everything the website shows for that j
 the five ratings, warnings, the per-frame curves and the tracked skeleton). Open it on the
 website's **Demo** page, with the video if you have it, to see the jump there: real numbers,
 the video with the skeleton drawn on top, charts, key moments, and comparisons between jumps.
-For runs made before this existed, build the files from what they saved (nothing is re-analysed):
+For runs made before this existed, build the files from what they saved (nothing is re-analyzed):
 
 ```bash
 python scripts/export_web.py output
 ```
 
-### Analysing uploads (the analysis server)
+### Analyzing uploads (the analysis server)
 
 The Demo page can also take a video directly. It sends it to the JumpLab analysis server, which
 runs exactly this analysis (`jumplab/web.py`: MediaPipe, then `analyze_keypoints`), returns the
@@ -136,7 +136,7 @@ the tape on the still, and the server recalculates with that scale from the save
   any rating.
 - Trajectory: `x = x0 + vx t`, `y = y0 + vy t - g t^2 / 2`, least-squares fitted to the
   (unsmoothed) whole-body **center of mass** during flight (`--trajectory-point hip` for the
-  old behaviour). CoM = sum(m_i r_i) / sum(m_i) over 14 body segments, using segment mass
+  old behavior). CoM = sum(m_i r_i) / sum(m_i) over 14 body segments, using segment mass
   fractions and CoM locations from Dempster via Winter. By default the camera-side limbs
   are used for both sides (`--com-mode symmetric`), because MediaPipe mostly guesses the
   hidden far-side limbs. One free fit (g is fitted, not forced to 9.81) gives every
@@ -170,7 +170,7 @@ onto something else - is listed under Warnings, marked caution or serious. The s
 lowers the rating of each result the warning affects.
 
 **Limb snapping** (`limb_snap`): a leg, hip or shoulder landmark that leaps more than 30% of
-the trunk length away from where its neighbouring frames put it (40% over two frames) -
+the trunk length away from where its neighboring frames put it (40% over two frames) -
 usually a limb attaching to a person behind the jumper. It is **warn-only: the data is not
 changed**. The thresholds are provisional (set from 2 clean and 2 bystander clips, with one
 snap confirmed by eye); once they're validated on more real videos, automatically

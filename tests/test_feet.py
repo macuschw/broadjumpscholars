@@ -142,7 +142,7 @@ def test_left_right_label_swaps_do_not_change_the_comparison():
 
 def test_uncalibrated_uses_trunk_based_threshold():
     r = run(scale=None, far_visibility=0.7, far_heel_offset_m=-0.15)
-    assert r["distance"]["jump_distance_both_feet_m"] is None        # no metres without calibration
+    assert r["distance"]["jump_distance_both_feet_m"] is None        # no meters without calibration
     assert r["pixels"]["jump_distance_both_feet_px"] < r["pixels"]["jump_distance_px"]
     assert len(stagger_warnings(r)) == 1
 

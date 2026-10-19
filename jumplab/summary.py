@@ -1,4 +1,4 @@
-"""Plain-language summary of pipeline results, organised by the project's five categories:
+"""Plain-language summary of pipeline results, organized by the project's five categories:
 
     1. Jump distance      2. Trajectory      3. Trunk angle
     4. Shin angle         5. Ground contact time
@@ -279,7 +279,7 @@ def _contact(r):
 
 
 def format_summary(r, color=False):
-    """The plain-language summary. color=True adds terminal colours to the alert banner."""
+    """The plain-language summary. color=True adds terminal colors to the alert banner."""
     name = r["video"].replace("\\", "/").split("/")[-1]
     cal = "calibrated" if r["scale_m_per_px"] else "NOT calibrated"
     bar = "═" * WIDTH
@@ -303,7 +303,7 @@ _RATING_KEYS = {RELIABLE: "reliable", CAREFUL: "care", ROUGH: "rough"}
 
 def ratings(r):
     """The five categories' ratings as data: {category: {"title", "rating", "label", "reason"}},
-    rating in "reliable" / "care" / "rough" (the same judgement as format_summary)."""
+    rating in "reliable" / "care" / "rough" (the same judgment as format_summary)."""
     out = {}
     for key, section in (("distance", _distance(r)), ("trajectory", _trajectory(r)), ("trunk", _trunk(r)),
                          ("shin", _shin(r)), ("contact", _contact(r))):

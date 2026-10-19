@@ -1,4 +1,4 @@
-// A side-view jump scene: ground, takeoff line and a metre scale, with layers to draw into.
+// A side-view jump scene: ground, takeoff line and a meter scale, with layers to draw into.
 // Used by the home hero, the Metrics figure and the demo playback.
 import { svg } from "../lib/dom.js";
 import { makeMap } from "./athlete.js";
@@ -25,5 +25,5 @@ export function createScene(host, { xRange = [-0.7, 2.6], yMax = 1.75, width = 6
   return { root, map, pxPerM, layers, width, height };
 }
 
-/** Polyline through metre points. */
+/** Polyline through meter points. */
 export const pathFrom = (map, pts) => pts.map((p, i) => `${i ? "L" : "M"}${map(p).map((v) => v.toFixed(1)).join(",")}`).join("");

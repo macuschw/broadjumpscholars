@@ -9,7 +9,7 @@ as the foundation for layout, typography, accessibility and chart rules.
   sports/athletic pairing.
 - **Pattern:** hero-centric home with one primary action, a sticky nav action, and a static
   hero under reduced motion.
-- **Charts:** SVG line charts, series told apart by line style and direct labels (not colour
+- **Charts:** SVG line charts, series told apart by line style and direct labels (not color
   alone), keyboard cursor, visible data-table fallback.
 - **UX:** skip link, full keyboard navigation, no content hidden by the sticky nav, 44 px
   targets (the hero timeline's Takeoff / Peak / Landing shortcuts are 24 px, the WCAG 2.2
@@ -17,7 +17,7 @@ as the foundation for layout, typography, accessibility and chart rules.
   SVG icons (no emoji), 150–300 ms transitions.
 - **Refinement pass (skill review):** every page was audited at 1280 px and 375 px for heading
   order, text contrast, target size and horizontal scroll. Fixes from it: timeline phase labels
-  raised to 7.6:1 with an underline for the current phase (not colour alone), clickable key-moment
+  raised to 7.6:1 with an underline for the current phase (not color alone), clickable key-moment
   buttons as a one-tap alternative to dragging (WCAG 2.5.7), a small drag threshold so taps don't
   jump the timeline, reserved height for the timeline (no layout shift), a "Loading 3D view…"
   status shown only if loading takes over half a second, playback that pauses off-screen or in a
@@ -25,7 +25,7 @@ as the foundation for layout, typography, accessibility and chart rules.
   plus a fallback to the flat view if the graphics context is lost.
 - **Overridden:** the skill's suggested palette (bright red on pink) and "vibrant/playful"
   style conflicted with the brief (charcoal/off-white base, one restrained accent, no
-  pastels). The brief wins; no palette in the skill database matched, so colours below
+  pastels). The brief wins; no palette in the skill database matched, so colors below
   come from the brief.
 
 ## Responsive rules (checked at 1440, 1280, 1024, 768, 414, 375, 360 px)
@@ -44,10 +44,10 @@ as the foundation for layout, typography, accessibility and chart rules.
   about 1.1-1.6 screens on desktop and 1.7-2.3 on a phone.
 - Pipeline steps all have the same five parts (number, title, description, one formula box, one note)
   and line up across the row, so boxes match in size and notes share a baseline. Derived formulas
-  (launch angle, peak height, centre of mass) live in the note line. Every formula on the site uses
+  (launch angle, peak height, center of mass) live in the note line. Every formula on the site uses
   the same dark box; `formula--small` only makes it smaller.
 - Formulas are typeset from LaTeX with KaTeX (`data-tex` on the element, `lib/math.js`): displayed
-  equations centred in full-width dark boxes, inline maths in the text and notes. The plain HTML
+  equations centered in full-width dark boxes, inline maths in the text and notes. The plain HTML
   inside each element is the fallback if KaTeX can't load.
 
 ## Home: testimonials and call to action
@@ -58,9 +58,9 @@ as the foundation for layout, typography, accessibility and chart rules.
   The quotes are placeholders, tagged "Placeholder quotes" like every other stand-in on the site, until real
   quotes replace them.
 - **Call to action** ("Try it", off-white, just above the footer): one main action, "Explore the sample
-  analysis" (`demo.html#sample`, straight into the results), with three short reassurances under it. Beside
+  analysis" (`demo.html`, straight into the results), with three short reassurances under it. Beside
   it, a card answering "Filming your own jumps?" with the three things needed and a link to the setup guide.
-  It promises nothing the demo can't do: uploaded videos aren't analysed yet, so the main action is the sample.
+  It promises nothing the demo can't do: uploaded videos aren't analyzed yet, so the main action is the sample.
 - The home page alternates charcoal and off-white all the way down: hero, problem, testimonials, call to
   action, footer.
 
@@ -75,11 +75,11 @@ as the foundation for layout, typography, accessibility and chart rules.
 
 ## Metrics figure (3D)
 - The sample athlete at takeoff on the same charcoal lane as the home hero, in a charcoal panel like the
-  demo playback. The athlete is a sculpted sports mannequin, modelled on studio renders of athletic
+  demo playback. The athlete is a sculpted sports mannequin, modeled on studio renders of athletic
   display mannequins: every body part is one smooth, continuous surface whose cross-section changes along
   its length (separate front, back and side radii), so quads, hamstrings, calves high on the back of the
   shin, a deltoid cap over each shoulder, a ribcage, glutes and a narrow waist under broad shoulders are
-  all part of the silhouette rather than added lumps. Joints are the body's own colour and blend in;
+  all part of the silhouette rather than added lumps. Joints are the body's own color and blend in;
   featureless egg head, mitten hands; a warm, matte off-white, the far side a shade darker for depth.
   Lit like a product shot: a studio environment built in code (a dim room with an overhead softbox, a key
   softbox ~60° off the camera, a weak fill and a strip light behind) gives long, soft gradients that show
@@ -111,14 +111,14 @@ as the foundation for layout, typography, accessibility and chart rules.
 - Phones: the 3D / Side and rotate buttons get their own strip above the scene. Without WebGL or three.js the flat
   side-view drawing (`metrics-2d.js`) takes over, as before.
 
-## Demo: real analyses
+## Analyze: real analyses
 - One drop area takes a video (sent for analysis) or a `_web.json` from the JumpLab app (opened in the
   browser, with the video if dropped too); a "Recorded at" choice covers slow-motion files whose own
   frame rate is wrong. Without a configured server the card becomes "Open your results".
 - Progress is honest: the upload percentage, then the tracking step with a running clock, then done.
   Errors read as a sentence the visitor can act on, with "Try another video".
 - Calibration happens after tracking, on a still the server sends back (exactly the frame the tracking
-  saw, whatever the browser can decode): click both ends of the tape, enter its length (metres or feet
+  saw, whatever the browser can decode): click both ends of the tape, enter its length (meters or feet
   and inches, remembered), with a 3x loupe, draggable points and keyboard placement. "Skip" gives
   rough results from the gravity check, marked as such.
 - Real results reuse the dashboard. The tag says "Your jump" (or "Rough: no calibration"); the line
@@ -145,7 +145,7 @@ Every control has hover, visible focus (3 px ring) and a press state: buttons an
 press down 1 px; toggles and segmented buttons tint; text links thicken their underline; the logo
 dims slightly. The mobile menu closes when focus leaves it, so focus never lands on hidden content.
 
-## Colour (one accent, used sparingly)
+## Color (one accent, used sparingly)
 | Token | Hex | Use | Contrast |
 |---|---|---|---|
 | `--ink` | #121315 | dark sections | |
@@ -167,7 +167,7 @@ decorates. Nothing loops, bounces or autoplays.
   On the home page, blocks that start below the fold hold that same entrance until they scroll into view
   (`lib/reveal.js`), so it isn't spent off-screen; nothing waits under reduced motion, without
   IntersectionObserver, or when printing.
-- **Buttons:** colour changes in 150 ms, a 1 px press on click, arrows lean 3 px on hover. Still flat:
+- **Buttons:** color changes in 150 ms, a 1 px press on click, arrows lean 3 px on hover. Still flat:
   no shadows, no scaling.
 - **Nav:** the underline draws in from the left on hover; the mobile menu slides down 8 px and fades.
 - **Tabs:** one accent underline slides to the selected tab; the panel fades in.
@@ -191,7 +191,7 @@ decorates. Nothing loops, bounces or autoplays.
 - **Looking around (hero):** dragging the athlete orbits the camera around it - a full turn per stage
   width, tilting up to 60° with a mouse - without changing the moment in the jump. The chosen angle
   holds while the timeline, the key-moment buttons or Play move time, and the camera keeps the athlete
-  centred. Rotate buttons (bottom corner) and the arrow keys do the same; 3D or Side returns to a
+  centered. Rotate buttons (bottom corner) and the arrow keys do the same; 3D or Side returns to a
   guided view. (The demo playback still drags to scrub.)
 - **Timeline:** a scrub bar with the five phases shaded along the track, ticks at takeoff, peak and
   landing, the current phase highlighted, and a play / pause / replay button. It is a real slider

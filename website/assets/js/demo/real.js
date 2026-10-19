@@ -1,6 +1,6 @@
 // Real jumps: a results bundle from the JumpLab analysis (jumplab/web.py: the command line's
 // _web.json, or the analysis server's reply) turned into the attempt shape the dashboard draws
-// (frames with hip position in metres, trunk / shin / knee angles; events; metrics).
+// (frames with hip position in meters, trunk / shin / knee angles; events; metrics).
 // Every number comes from the bundle; nothing is re-estimated here. Lengths use the bundle's
 // tape-measure scale; without one, the analysis's rough gravity-based scale, flagged as rough.
 import { formatNumber, formatQuantity } from "../lib/units.js";

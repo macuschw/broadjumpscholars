@@ -1,4 +1,4 @@
-// A simple 2-D body model (side view, metres, y up, +x = jump direction).
+// A simple 2-D body model (side view, meters, y up, +x = jump direction).
 // Segment angles are measured from VERTICAL, forward-positive - the same convention the
 // JumpLab analysis uses for trunk and shin angle.
 

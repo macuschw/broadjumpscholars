@@ -2,7 +2,7 @@
 
 Front-end site for JumpLab: standing broad jump analysis from one phone camera.
 Seven pages, a persistent nav, and a dashboard that shows **real analyses** of your own jumps
-as well as a simulated sample jump (always labelled as demo data). No login or payment.
+as well as a simulated sample jump (always labeled as demo data). No login or payment.
 
 ## Run it
 
@@ -37,7 +37,8 @@ rsync -a --exclude '.DS_Store' "../jumplab-site/" website/ && git add website &&
 | `metrics.html` | The six metrics drawn on a 3D athlete at takeoff, with a 3D / Side view (`?m=trunk` deep-links a metric) |
 | `setup.html` | Top-down camera diagram + pre-recording checklist |
 | `science.html` | Three tabs: the pipeline and its formulas; a worked example (parabola fitted live to the sample flight); calibration with depth correction and three short "why" answers (`#example` and `#calibration` link straight to a tab) |
-| `demo.html` | Dashboard. A video goes to the analysis server, then the visitor clicks the tape to set the scale; a `_web.json` from the JumpLab app opens directly (with its video); or the simulated sample jump (`#sample`). Real jumps play as the video with the tracked skeleton, with the analysis's ratings and warnings |
+| `analyze.html` | Your own jump. A video goes to the analysis server, then the visitor clicks the tape to set the scale; a `_web.json` from the JumpLab app opens directly (with its video). Real jumps play as the video with the tracked skeleton, with the analysis's ratings and warnings |
+| `demo.html` | The simulated sample jump on its own: three attempts, straight into the results (3D playback, charts, key moments, compare), marked as demo data |
 | `about.html` | Team ([NAME 1], [NAME 2]), audiences, FAQ |
 
 The home testimonials are **placeholder quotes**, marked with a "Placeholder quotes" tag. Before
@@ -51,7 +52,7 @@ The Accuracy page (placeholder validation table and known limitations) is parked
 
 ```
 assets/
-  css/  tokens.css      colour, type, spacing tokens (the design system)
+  css/  tokens.css      color, type, spacing tokens (the design system)
         base.css        reset, typography, layout primitives, reduced motion
         components.css  nav, buttons, scoreboard stats, tables, tabs, charts, footer
         pages.css       per-page layouts (one section per page)
@@ -88,21 +89,21 @@ three.js yourself, download that file into the site and change the import at the
 ## Units (m / ft)
 
 The switch in the header shows every distance and speed in metric (2.21 m, 3.34 m/s) or imperial
-(7 ft 3½ in, 10.9 ft/s), and the choice is remembered on that device. The data stays in metres and
+(7 ft 3½ in, 10.9 ft/s), and the choice is remembered on that device. The data stays in meters and
 seconds; `assets/js/lib/units.js` formats it for display, and each page redraws its numbers, charts and
 the 3D tape when the choice changes. Fixed wording in the HTML gives its imperial version in a
 `data-imperial` attribute (e.g. `<span data-imperial="13–16 ft">4–5 m</span>`), and a typeset formula
 with a number in it uses `data-tex-imperial`. When adding a new distance or speed to a page, format it
 with `formatQuantity` / `quantityHTML` from `units.js` rather than writing "m" by hand.
 
-## Real analyses on the Demo page
+## Real analyses on the Analyze page
 
 - **Results files:** every run of the JumpLab app (jumplab-analysis repo) saves `<video>_web.json`.
-  Drop it on the Demo page, with the video if you have it, to see that jump: nothing is uploaded.
+  Drop it on the Analyze page, with the video if you have it, to see that jump: nothing is uploaded.
 - **Videos:** need the analysis server (`server/modal_app.py` in the jumplab-analysis repo). Deploy
-  it, then put its URL in `assets/js/config.js` as `ANALYSIS_URL`. Until then the Demo page offers
+  it, then put its URL in `assets/js/config.js` as `ANALYSIS_URL`. Until then the Analyze page offers
   results files and the sample only. For testing, run `scripts/serve_local.py` there and open
-  `demo.html?server=http://localhost:8765` (only localhost addresses are accepted from the address bar).
+  `analyze.html?server=http://localhost:8765` (only localhost addresses are accepted from the address bar).
 - Code: `demo/real.js` turns a results file into the dashboard's attempt shape (every number from
   the analysis; nothing re-estimated), `demo/server.js` talks to the server, `demo/calibrate.js` is
   the click-the-tape step, `demo/video-playback.js` draws the skeleton over the video.
@@ -116,7 +117,7 @@ KaTeX can't load.
 
 ## How the sample jump is simulated
 
-`mock-data.js` drives the hip (the stand-in for the centre of mass) along one smooth path:
+`mock-data.js` drives the hip (the stand-in for the center of mass) along one smooth path:
 a countermovement dip, a push-off that ends at exactly the takeoff velocity, a projectile
 flight (`y = y0 + vy·t − ½gt²`), and a landing that brakes it to a stop over about 0.3 s.
 The feet stay planted (toe at takeoff, heel after landing) and the knees are solved to fit,

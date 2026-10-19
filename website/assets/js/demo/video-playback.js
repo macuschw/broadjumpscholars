@@ -244,7 +244,7 @@ export class VideoPlayback {
       c.strokeStyle = "#5a5e65"; c.lineWidth = 1.5;
       c.beginPath(); c.moveTo(0, f.floor * s + oy); c.lineTo(w, f.floor * s + oy); c.stroke();   // the floor
     }
-    // The other person, from the nearest check (about 10 a second): a dashed box, labelled
+    // The other person, from the nearest check (about 10 a second): a dashed box, labeled
     const other = this.otherAt(this.i);
     if (other) {
       const [x0, y0, x1, y1] = other.map((v, k) => v * s + (k % 2 ? oy : ox)), pad = 8;

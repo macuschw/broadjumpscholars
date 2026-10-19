@@ -1,6 +1,6 @@
 // Accessible SVG line chart.
 // Series are told apart by line STYLE (solid / dashed / dotted) and direct labels, not
-// colour alone. Keyboard: focus the chart, then Left/Right (Shift = bigger steps),
+// color alone. Keyboard: focus the chart, then Left/Right (Shift = bigger steps),
 // Home/End move a cursor; values are announced in a live readout.
 import { el, fmt, svg } from "../lib/dom.js";
 
@@ -54,7 +54,7 @@ function draw(host, opts, W, remember) {
   y0 -= padY; y1 += padY;
   if (opts.yMin != null) y0 = Math.min(y0, opts.yMin);
   const iw = W - M.l - M.r, ih = H - M.t - M.b;
-  if (equal) {                                       // same metres-per-pixel on both axes
+  if (equal) {                                       // same meters-per-pixel on both axes
     const k = Math.max((x1 - x0) / iw, (y1 - y0) / ih);
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
     [x0, x1] = [cx - (k * iw) / 2, cx + (k * iw) / 2];

@@ -169,7 +169,7 @@ export class Playback {
     this.playing = false;
     cancelAnimationFrame(this.raf);
     cancelAnimationFrame(this.glide);
-    this.glideToken = (this.glideToken || 0) + 1;               // a cancelled glide stays cancelled
+    this.glideToken = (this.glideToken || 0) + 1;               // a canceled glide stays canceled
     if (wasPlaying && this.pos < this.last) this.seek(this.i);   // settle on the frame the readouts show
     if (this.playBtn) {
       const atEnd = this.a && this.i >= this.a.frames.length - 1;

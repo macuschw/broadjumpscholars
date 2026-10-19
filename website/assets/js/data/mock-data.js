@@ -2,7 +2,7 @@
 //  JumpLab mock data - the ONLY source of numbers shown on this site.
 //  Everything here is SIMULATED demo data, not results from a real athlete.
 //  A simple body model performs a standing broad jump. The hip (the site's stand-in for
-//  the centre of mass) follows one smooth path: a countermovement dip, a push-off that
+//  the center of mass) follows one smooth path: a countermovement dip, a push-off that
 //  ends at exactly the takeoff velocity, a projectile flight, and a landing that brakes
 //  it to a stop. Feet stay planted on the ground and the knees are solved to fit, so
 //  nothing slides, floats or jumps between frames. Poses, charts and stats all come
@@ -252,7 +252,7 @@ export function keyMoments(attempt) {
 
 /**
  * The flight as a pose tracker would report it: the hip in every airborne frame plus a few
- * millimetres of simulated tracking noise (seeded, so it is identical on every visit).
+ * millimeters of simulated tracking noise (seeded, so it is identical on every visit).
  * Time runs from the takeoff instant, half a frame before the first airborne frame.
  */
 export function trackedFlight(attempt, { noise = 0.005, seed = SCIENCE_SEED } = {}) {
@@ -278,8 +278,8 @@ export const VALIDATION_PLACEHOLDER = {
   note: "Placeholder layout. These rows show how results will be reported once a validation study is complete; the numbers are illustrative, not measured.",
   rows: [
     { metric: "Jump distance", reference: "Tape measure (official rule)", n: "—", bias: "± — cm", limits: "— to — cm" },
-    { metric: "Flight time", reference: "Hand-labelled video frames", n: "—", bias: "± — ms", limits: "— to — ms" },
-    { metric: "Takeoff / landing frame", reference: "Hand-labelled video frames", n: "—", bias: "± — frames", limits: "— to — frames" },
+    { metric: "Flight time", reference: "Hand-labeled video frames", n: "—", bias: "± — ms", limits: "— to — ms" },
+    { metric: "Takeoff / landing frame", reference: "Hand-labeled video frames", n: "—", bias: "± — frames", limits: "— to — frames" },
     { metric: "Trunk & shin angle", reference: "Marker-based motion capture", n: "—", bias: "± — °", limits: "— to — °" },
     { metric: "Takeoff velocity", reference: "Force plate", n: "—", bias: "± — m/s", limits: "— to — m/s" },
   ],

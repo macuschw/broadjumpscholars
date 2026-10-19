@@ -64,7 +64,7 @@
         <li class="pipeline__step pipeline__step--key">
           <span class="num">3</span>
           <h2>Parabola fit</h2>
-          <p>In the air only gravity acts, so the centre of mass follows a parabola. Fitting it gives the takeoff velocity.</p>
+          <p>In the air only gravity acts, so the center of mass follows a parabola. Fitting it gives the takeoff velocity.</p>
           <div class="formula" role="math" aria-label="x of t equals x0 plus v x t; y of t equals y0 plus v y t minus one half g t squared" data-tex="\begin{aligned} x(t) &amp;= x_0 + v_x t \\ y(t) &amp;= y_0 + v_y t - \tfrac{1}{2} g t^2 \end{aligned}" data-display><span class="formula__body">
             <var>x</var>(<var>t</var>) = <var>x</var><sub>0</sub> + <var>v</var><sub><var>x</var></sub><var>t</var><br>
             <var>y</var>(<var>t</var>) = <var>y</var><sub>0</sub> + <var>v</var><sub><var>y</var></sub><var>t</var> − ½<var>g</var><var>t</var><sup>2</sup>
@@ -74,11 +74,11 @@
         <li class="pipeline__step">
           <span class="num">4</span>
           <h2>Vector geometry</h2>
-          <p>Body angles come from the line between two landmarks, measured from vertical. The centre of mass is a weighted average of 14 body segments.</p>
+          <p>Body angles come from the line between two landmarks, measured from vertical. The center of mass is a weighted average of 14 body segments.</p>
           <div class="formula" role="math" aria-label="alpha equals atan2 of delta x and delta y" data-tex="\alpha = \operatorname{atan2}(\Delta x,\, \Delta y)" data-display><span class="formula__body">
             α = atan2(Δ<var>x</var>, Δ<var>y</var>)
           </span></div>
-          <p class="pipeline__note"><span class="tex" data-tex="r_{\text{CoM}} = \textstyle\sum m_i r_i \,/\, \sum m_i" role="math" aria-label="centre of mass r equals sum of m i r i over sum of m i"><var>r</var><sub>CoM</sub> = Σ<var>m</var><sub><var>i</var></sub><var>r</var><sub><var>i</var></sub>/Σ<var>m</var><sub><var>i</var></sub></span></p>
+          <p class="pipeline__note"><span class="tex" data-tex="r_{\text{CoM}} = \textstyle\sum m_i r_i \,/\, \sum m_i" role="math" aria-label="center of mass r equals sum of m i r i over sum of m i"><var>r</var><sub>CoM</sub> = Σ<var>m</var><sub><var>i</var></sub><var>r</var><sub><var>i</var></sub>/Σ<var>m</var><sub><var>i</var></sub></span></p>
         </li>
         <li class="pipeline__step">
           <span class="num">5</span>
@@ -96,7 +96,7 @@
       <div class="tabpanel science-example" role="tabpanel" id="panel-example" aria-labelledby="tab-example" tabindex="0" hidden>
       <div class="science-example__head">
         <h2 id="example-title">One flight, fitted.</h2>
-        <p>The dots are the sample athlete's hip in every frame of the flight, with <span data-imperial="a fraction of an inch">a few millimetres</span> of simulated tracking noise.
+        <p>The dots are the sample athlete's hip in every frame of the flight, with <span data-imperial="a fraction of an inch">a few millimeters</span> of simulated tracking noise.
           The red line is the parabola fitted through them; every number beside it is calculated from that fit, live.
           <span class="demo-tag">Demo data</span></p>
       </div>
@@ -147,7 +147,7 @@
 
       <div class="tabpanel science-more" role="tabpanel" id="panel-calibration" aria-labelledby="tab-calibration" tabindex="0" hidden>
       <div class="science-cal">
-        <h2 data-imperial="Pixels to feet">Pixels to metres</h2>
+        <h2 data-imperial="Pixels to feet">Pixels to meters</h2>
         <p>A tape measure filmed along the jump line sets the scale:</p>
         <div class="formula formula--small" role="math" aria-label="scale equals known distance divided by pixel distance" data-tex="\text{scale} = \dfrac{\text{known distance}}{\text{pixel distance}}" data-display>scale = known distance ÷ pixel distance</div>
         <p>If the tape is nearer to or farther from the camera than the jump, the scale is corrected by the ratio of those distances, because
@@ -161,14 +161,14 @@
         <h2>Why it's done this way</h2>
         <details class="disclose" open>
           <summary>Why fit a curve instead of timing one frame?</summary>
-          <div class="disclose__body"><p>Each tracked position is off by <span data-imperial="a fraction of an inch">a few millimetres</span>. At 120 fps, <span data-imperial="0.2 in">5 mm</span> of noise between two frames swings a
+          <div class="disclose__body"><p>Each tracked position is off by <span data-imperial="a fraction of an inch">a few millimeters</span>. At 120 fps, <span data-imperial="0.2 in">5 mm</span> of noise between two frames swings a
             frame-to-frame speed by about <span data-imperial="±2.6 ft/s">±0.8 m/s</span>. A parabola through 50 frames averages that out, and physics says the path has to be a
             parabola, so the fit can't wander.</p></div>
         </details>
         <details class="disclose">
-          <summary>Why the centre of mass, not the hips or hands?</summary>
-          <div class="disclose__body"><p>In the air, gravity is the only force on the body as a whole, so only its centre of mass follows a true
-            parabola; arms and legs swing around it. JumpLab estimates the centre of mass from 14 body segments with standard mass fractions.
+          <summary>Why the center of mass, not the hips or hands?</summary>
+          <div class="disclose__body"><p>In the air, gravity is the only force on the body as a whole, so only its center of mass follows a true
+            parabola; arms and legs swing around it. JumpLab estimates the center of mass from 14 body segments with standard mass fractions.
             This demo uses the hip as a stand-in.</p></div>
         </details>
         <details class="disclose">

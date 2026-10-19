@@ -9,7 +9,7 @@ export const THEMES = {
   dark: { near: "#f3f1ec", far: "#5d6167", head: "#f3f1ec" },
 };
 
-/** A pose part-way between two neighbouring frames (u = 0..1), so slow motion stays fluid
+/** A pose part-way between two neighboring frames (u = 0..1), so slow motion stays fluid
  *  between the 120 fps samples. */
 export function lerpPose(a, b, u) {
   const L = (p, q) => [p[0] + (q[0] - p[0]) * u, p[1] + (q[1] - p[1]) * u];
@@ -17,7 +17,7 @@ export function lerpPose(a, b, u) {
   return { head: L(a.head, b.head), neck: L(a.neck, b.neck), hip: L(a.hip, b.hip), near: side(a.near, b.near), far: side(a.far, b.far) };
 }
 
-/** Map metres (y up) to SVG pixels (y down). */
+/** Map meters (y up) to SVG pixels (y down). */
 export function makeMap({ pxPerM, originPx, heightPx }) {
   return ([x, y]) => [originPx[0] + x * pxPerM, heightPx - originPx[1] - y * pxPerM];
 }

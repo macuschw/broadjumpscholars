@@ -4,8 +4,8 @@ A warning at the bottom of a long report is easy to scroll past, so serious ones
   * a banner at the top of the report and of the summary,
   * a marker beside the numbers they affect (e.g. the jump distance),
   * a one-line verdict at the very end of a run, the last thing on screen.
-In a terminal that supports it the banner and verdict are coloured (red: serious, yellow:
-use with care, green: fine). Saved text files never contain colour codes.
+In a terminal that supports it the banner and verdict are colored (red: serious, yellow:
+use with care, green: fine). Saved text files never contain color codes.
 """
 from __future__ import annotations
 
@@ -92,8 +92,8 @@ PLAIN = {
     "event_search_capped": ("Takeoff or landing may be off by a frame",
                             "The takeoff or landing search hit its limit, so an event time may be slightly off.",
                             "Trim the clip so it holds just one jump."),
-    "com_fallback": ("Centre of mass estimated from the hips",
-                     "Not enough of the body was tracked to place the centre of mass, so the hips were used instead.",
+    "com_fallback": ("Center of mass estimated from the hips",
+                     "Not enough of the body was tracked to place the center of mass, so the hips were used instead.",
                      "Keep the arms and head in the frame too."),
 }
 HEADLINES = {code: p[0] for code, p in PLAIN.items()}
@@ -102,7 +102,7 @@ _ANSI = {"red": "\033[1;31m", "yellow": "\033[1;33m", "green": "\033[1;32m", "re
 
 
 def use_color(stream=None) -> bool:
-    """Colour only for a real terminal, and never when NO_COLOR is set (https://no-color.org)."""
+    """Color only for a real terminal, and never when NO_COLOR is set (https://no-color.org)."""
     stream = stream or sys.stdout
     if os.environ.get("NO_COLOR") or not getattr(stream, "isatty", lambda: False)():
         return False
@@ -111,8 +111,8 @@ def use_color(stream=None) -> bool:
     return True
 
 
-def paint(text: str, colour: str, color: bool) -> str:
-    return f"{_ANSI[colour]}{text}{_ANSI['reset']}" if color else text
+def paint(text: str, tone: str, color: bool) -> str:
+    return f"{_ANSI[tone]}{text}{_ANSI['reset']}" if color else text
 
 
 def headline(w) -> str:

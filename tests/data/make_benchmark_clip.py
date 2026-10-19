@@ -1,4 +1,4 @@
-"""Save a labelled real-footage benchmark clip for tests/test_real_footage.py.
+"""Save a labeled real-footage benchmark clip for tests/test_real_footage.py.
 
 Keeps only the tracked keypoints (not the video) for a frame range around one jump, plus
 the takeoff/landing frames a person read off the video by eye. To label a jump:

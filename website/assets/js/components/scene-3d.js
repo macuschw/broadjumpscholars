@@ -1,6 +1,6 @@
 // Shared pieces of the 3D jump scenes (home hero, demo playback, Metrics figure): the renderer,
 // lights, the jump lane with its tape measure, the contact shadow and the mannequin.
-// Everything works in the side-view coordinates of data/mock-data.js (x forward, y up, metres);
+// Everything works in the side-view coordinates of data/mock-data.js (x forward, y up, meters);
 // the 3D scenes add z, across the lane: near limbs at +z (toward the camera), far limbs at -z.
 // Every limb keeps its real length, so a pose is exactly the simulated one.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
@@ -47,7 +47,7 @@ export function createRenderer({ className, onContextLost }) {
 /**
  * Soft sky fill, a key light that casts the shadow, a cool rim from behind. Returns the key light.
  * `studio` (Metrics figure) turns the fill down: the soft studio environment (studioEnvironment)
- * does the modelling there, and the key light mainly casts the shadow.
+ * does the modeling there, and the key light mainly casts the shadow.
  */
 export function addLights(scene, { studio = false } = {}) {
   scene.add(new THREE.HemisphereLight(0xe6eaf0, 0x0b0b0d, studio ? 0.12 : 1.2));
@@ -118,7 +118,7 @@ export function createLane(scene, { landingX }) {
   const glow = { emissive: C.accent, emissiveIntensity: 0.35 };
   flat(0.05, 1.5, C.accent, -0.025, 0, 0.003, glow);           // takeoff line, just behind the toes
   flat(3.0, 0.028, C.tape, 1.5, TAPE_Z, 0.003);
-  // Tick marks: every 10 cm with a long one each half metre, or every 3 in with a long one each foot
+  // Tick marks: every 10 cm with a long one each half meter, or every 3 in with a long one each foot
   const tapeTicks = new THREE.Group(), tickMat = new THREE.MeshStandardMaterial({ color: C.tape, roughness: 0.95, metalness: 0 });
   scene.add(tapeTicks);
   function markTape() {
@@ -137,7 +137,7 @@ export function createLane(scene, { landingX }) {
   return { markTape, landMark };
 }
 
-/** Where the tape's labels go, in the current units: each metre, or every 2 ft. [[x, text], ...] */
+/** Where the tape's labels go, in the current units: each meter, or every 2 ft. [[x, text], ...] */
 export const tapeMarks = () => (isImperial()
   ? [0, 2, 4, 6, 8].map((ft) => [ft * FOOT, ft ? `${ft} ft` : "0"])
   : [0, 1, 2, 3].map((m) => [m, m ? `${m} m` : "0"]));
@@ -244,7 +244,7 @@ export function createMannequin(scene, materials, { shadows = true, detailed = f
  * Smooth sweep geometry for a body part: rings along y (0 -> 1, stretched to the part's length when
  * posed) whose cross-section is an ellipse with separate front, back and side radii, so a calf can
  * swell at the back and a quad at the front in one seamless surface. `rings` lists
- * [t, front, back, side] (metres); between them the radii follow a smooth curve. The front is local
+ * [t, front, back, side] (meters); between them the radii follow a smooth curve. The front is local
  * -x for limbs (it faces forward with the limb hanging down) and +x for the trunk (`frontX`).
  */
 function sweep(rings, { frontX = -1, around = 40, along = 44 } = {}) {
@@ -279,7 +279,7 @@ function sweep(rings, { frontX = -1, around = 40, along = 44 } = {}) {
   return g;
 }
 
-// Body-part shapes, [t, front, back, side] in metres; t runs from the first joint (0) to the second (1).
+// Body-part shapes, [t, front, back, side] in meters; t runs from the first joint (0) to the second (1).
 // Read against a standing figure: quads at the front of the thigh, calves at the back of the shin,
 // the deltoid cap at the top of the upper arm, broad shoulders over a narrow waist.
 const SHAPES = {
@@ -320,7 +320,7 @@ function createSculpted(scene, materials, { shadows }) {
     limbs[side] = {
       thigh: add(geo.thigh, mat), shin: add(geo.shin, mat), upperArm: add(geo.upperArm, mat), forearm: add(geo.forearm, mat),
       foot: add(geo.foot, materials.shoe),
-      // Joints in the body's own colour, sized to the limb ends, so the surface reads as continuous
+      // Joints in the body's own color, sized to the limb ends, so the surface reads as continuous
       knee: blob(mat), ankle: blob(mat), shoulder: blob(mat), elbow: blob(mat), wrist: blob(mat), hand: blob(mat),
     };
   }
@@ -336,7 +336,7 @@ function createSculpted(scene, materials, { shadows }) {
     mesh.scale.set(1, len, 1);
   };
   const ball = (mesh, p, r, z) => { mesh.position.set(p[0], p[1], z); mesh.scale.setScalar(r); };
-  /** An ellipsoid centred at fraction t along a->b, half-sizes [front-back, along, across]. */
+  /** An ellipsoid centered at fraction t along a->b, half-sizes [front-back, along, across]. */
   const egg = (mesh, a, b, t, size, z = 0) => {
     mesh.position.set(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, z);
     mesh.rotation.set(0, 0, Math.atan2(b[1] - a[1], b[0] - a[0]) - Math.PI / 2);

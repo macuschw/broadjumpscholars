@@ -1,4 +1,4 @@
-"""Frame rate: trust the frames' own timestamps over the file header, and recognise slow-motion
+"""Frame rate: trust the frames' own timestamps over the file header, and recognize slow-motion
 saved for slowed-down playback (real case: IMG_6171 said 30 fps, was 120 fps, and gave g = 0.61)."""
 from dataclasses import replace
 

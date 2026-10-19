@@ -40,7 +40,7 @@ def main():
         r = json.load(f)
     color = use_color()
     print(format_summary(r, color=color))
-    text = format_summary(r)                                 # the saved copy has no colour codes
+    text = format_summary(r)                                 # the saved copy has no color codes
 
     txt = path.replace("_results.json", "_summary.txt") if path.endswith("_results.json") \
         else os.path.splitext(path)[0] + "_summary.txt"

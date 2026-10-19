@@ -1,12 +1,12 @@
 /* Demo dashboard. */
-/* Each view (start, analysing, results) rises in as soon as it is shown: no stagger delay */
+/* Each view (start, analyzing, results) rises in as soon as it is shown: no stagger delay */
 #demo-start, #demo-progress, #demo-results { animation-delay: 0s; }
 .demo-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-6); align-items: end; padding-bottom: var(--s-5); }
 .demo-head h1 { font-size: var(--step-4); }
 .demo-head .notice p { max-width: none; }
 
 /* ---------- Start ---------- */
-.demo-start { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: var(--s-5); align-items: stretch; padding-bottom: clamp(32px, 5vw, 64px); }
+.demo-start { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--s-5); align-items: stretch; padding-bottom: clamp(32px, 5vw, 64px); }
 .dropzone {
   position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3);
   padding: var(--s-6); background: var(--white); border: 2px dashed var(--line-strong); border-radius: var(--radius);
@@ -15,7 +15,7 @@
 .dropzone:hover { border-color: var(--text); }
 .dropzone.is-over { border-color: var(--accent); background: var(--paper); }
 .dropzone:focus-within { outline: 3px solid var(--focus); outline-offset: 3px; }
-.dropzone h2, .sample-card h2 { font-size: var(--step-3); }
+.dropzone h2, .film-check h2 { font-size: var(--step-3); }
 .dropzone p { color: var(--muted); }
 .dropzone__icon { color: var(--accent); }
 .dropzone__icon .icon { width: 36px; height: 36px; }
@@ -23,11 +23,17 @@
 .dropzone__input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .dropzone__hint { font-size: 0.92rem; }
 .field-error { color: var(--accent); font-weight: 600; }
-.demo-start__or { display: grid; place-items: center; }
-.demo-start__or span { font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; color: var(--muted); }
-.sample-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); padding: var(--s-6); border-radius: var(--radius); }
-.sample-card p:not(.eyebrow) { color: var(--muted-dark); }
-.sample-card .btn { margin-top: auto; }
+.film-check { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); padding: var(--s-6); border-radius: var(--radius); }
+.film-check__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.film-check__list li { display: flex; gap: var(--s-2); align-items: flex-start; color: var(--paper); }
+.film-check__list .icon { width: 20px; height: 20px; flex: none; margin-top: 3px; color: var(--accent-on-dark); }
+.film-check .btn { margin-top: auto; }
+
+/* Demo page: what the sample is, and the way to your own jump */
+.demo-head__lede { margin-top: var(--s-2); color: var(--muted); max-width: 52ch; }
+.demo-head__cta { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+.demo-head__cta .icon { width: 18px; height: 18px; transition: transform var(--dur-fast) var(--ease); }
+.demo-head__cta:hover .icon { transform: translateX(3px); }
 
 /* ---------- Simulated analysis ---------- */
 /* The loading view holds the screen, so nothing visible moves when the (taller) results replace it */
@@ -226,7 +232,7 @@
 .jump-alert--clear p { margin: 0; max-width: none; }
 .jump-alert--clear strong { color: var(--text); }
 
-/* A number a serious problem affects: tinted and outlined in red, a tag on its top edge, the number greyed */
+/* A number a serious problem affects: tinted and outlined in red, a tag on its top edge, the number grayed */
 .results__stats > .stat { position: relative; }
 .results__stats > .stat.stat--flagged { background: #fbefed; box-shadow: inset 0 0 0 2px var(--accent); }
 .stat__flag { position: absolute; top: 0; left: var(--s-4); transform: translateY(-50%); display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 6px; background: var(--accent); color: var(--white); border-radius: var(--radius); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; line-height: 1.2; white-space: nowrap; }

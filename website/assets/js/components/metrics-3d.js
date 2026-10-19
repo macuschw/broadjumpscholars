@@ -5,7 +5,7 @@
 //   launch   - the launch angle against the horizontal, and the peak height above takeoff
 //   trunk / shin - the segment's lean from vertical, as an arc
 //   contact  - the lowest point of the dip as a ghost, and a timeline of the ground phases
-// Lines are drawn over the body (like a diagram) and labelled with callouts in the site's type,
+// Lines are drawn over the body (like a diagram) and labeled with callouts in the site's type,
 // each joined to the exact point it describes. Choosing a metric glides the camera to frame it;
 // "Side" is level and side-on - what the phone sees, where every angle reads true. Dragging (or the
 // rotate buttons / arrow keys) turns the camera all the way round; the chosen angle holds as metrics
@@ -51,7 +51,7 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
   scene.traverse((o) => { if (o.isMesh && o.material?.isMeshStandardMaterial) o.material.envMapIntensity = 0.25; });
 
   // ---- the athlete at takeoff: the sculpted mannequin in a warm, matte off-white (the far side a
-  //      shade darker, for depth). No coloured shoes here, so the accent only ever marks the metric ----
+  //      shade darker, for depth). No colored shoes here, so the accent only ever marks the metric ----
   const std = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0, ...extra });
   const matte = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0, envMapIntensity: 0.8 });
   const athlete = createMannequin(scene, { near: matte(0xdfd9cf), far: matte(0xb7b1a6), shoe: matte(0xc9c3b8) }, { detailed: true });
@@ -131,7 +131,7 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
   }
 
   // ---- one overlay per metric: what is drawn, where the camera looks, what the labels say ----
-  const H = V(TO.hip[0], TO.hip[1]);                            // hips (centre of mass stand-in) at takeoff
+  const H = V(TO.hip[0], TO.hip[1]);                            // hips (center of mass stand-in) at takeoff
   const bodyPts = (p) => [p.hip, p.head, ...["near", "far"].flatMap((s) => Object.values(p[s]))];
   const overlays = {};
   function build(id, frameBox, r, draw, { planar = true } = {}) {
@@ -154,7 +154,7 @@ export function createMetricsFigure3D(host, attempt, { reducedMotion = false, on
     ];
   }, { planar: false });                                         // on the floor, readable from any side
 
-  const kv = 0.22;                                               // metres of arrow per m/s
+  const kv = 0.22;                                               // meters of arrow per m/s
   const vxTip = V(H.x + m.vx * kv, H.y), vyTip = V(H.x, H.y + m.vy * kv), vTip = V(H.x + m.vx * kv, H.y + m.vy * kv);
   build("velocity", { pts: [...bodyPts(TO.pose), [vTip.x + 0.55, vTip.y + 0.1], [H.x - 0.55, H.y]], pad: [0.08, 0.1], az: 0.28 }, 0.0075, (k) => {
     k.dotted(vxTip, vTip, "ref"); k.dotted(vyTip, vTip, "ref");    // the parallelogram: the two parts add up

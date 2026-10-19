@@ -1,6 +1,6 @@
 // Calibration: on a still from the visitor's video (sent back by the analysis server, so it is
 // exactly the frame the tracking saw), click both ends of the tape measure and enter its length.
-// metres per pixel = length / distance between the clicks (in full-resolution pixels), the same
+// meters per pixel = length / distance between the clicks (in full-resolution pixels), the same
 // rule as jumplab.calibration.scale_from_points. A loupe magnifies around the pointer; points can be
 // dragged; keyboard: arrow keys move a cross (Shift = faster), Enter or Space places a point.
 import { store } from "../lib/dom.js";
@@ -35,7 +35,7 @@ export function calibrate(host, still, { onDone, onSkip }) {
             ${imperial
               ? `<label><input type="number" min="0" step="1" inputmode="numeric" class="cal__ft" aria-label="Feet"> ft</label>
                  <label><input type="number" min="0" max="11.99" step="0.25" inputmode="decimal" class="cal__in" aria-label="Inches"> in</label>`
-              : `<label><input type="number" min="0" step="0.01" inputmode="decimal" class="cal__m" aria-label="Metres"> m</label>`}
+              : `<label><input type="number" min="0" step="0.01" inputmode="decimal" class="cal__m" aria-label="Meters"> m</label>`}
           </fieldset>
           <p class="cal__readout" aria-live="polite"></p>
           <div class="cal__actions">
@@ -62,7 +62,7 @@ export function calibrate(host, still, { onDone, onSkip }) {
     if (imperial) { const inches = last / INCH; lenIn[0].value = Math.floor(inches / 12); lenIn[1].value = +(inches % 12).toFixed(2); }
     else lenIn[0].value = +last.toFixed(3);
   }
-  const metres = () => {
+  const meters = () => {
     const v = lenIn.map((i) => parseFloat(i.value) || 0);
     return imperial ? v[0] * FOOT + v[1] * INCH : v[0];
   };
@@ -130,7 +130,7 @@ export function calibrate(host, still, { onDone, onSkip }) {
 
   // Steps, readout and the button follow the state
   function status() {
-    const len = metres(), px = pts.length === 2 ? Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]) * toFull : 0;
+    const len = meters(), px = pts.length === 2 ? Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]) * toFull : 0;
     host.querySelector('[data-step="a"]').classList.toggle("is-done", pts.length >= 1);
     host.querySelector('[data-step="b"]').classList.toggle("is-done", pts.length >= 2);
     host.querySelector('[data-step="len"]').classList.toggle("is-done", len > 0);
@@ -182,8 +182,8 @@ export function calibrate(host, still, { onDone, onSkip }) {
   q(".cal__use").addEventListener("click", () => {
     const scale = status();
     if (!scale) return;
-    store.set("jl-tape-m", metres());
-    onDone({ scale, p1: pts[0].map((v) => v * toFull), p2: pts[1].map((v) => v * toFull), distance_m: metres() });
+    store.set("jl-tape-m", meters());
+    onDone({ scale, p1: pts[0].map((v) => v * toFull), p2: pts[1].map((v) => v * toFull), distance_m: meters() });
   });
   q(".cal__skip").addEventListener("click", () => onSkip());
 

@@ -20,7 +20,7 @@ def _fmt(v, spec, unit=""):
 
 
 def format_report(r, color=False):
-    """The full printed report. color=True adds terminal colours to the alerts."""
+    """The full printed report. color=True adds terminal colors to the alerts."""
     lines = []
     warnings = r.get("warnings", [])
 

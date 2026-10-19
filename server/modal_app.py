@@ -3,7 +3,7 @@
 It runs the same analysis as the command line (jumplab/web.py: MediaPipe 0.10.14, then
 analyze_keypoints), for videos uploaded from the website's Demo page. Modal starts it when a
 request arrives and stops it a few minutes after the last one, so it costs nothing while idle.
-Uploaded videos are written to a temporary file, analysed, and deleted; nothing is stored.
+Uploaded videos are written to a temporary file, analyzed, and deleted; nothing is stored.
 
 One-time setup (from this repo's folder):
     python3 -m pip install modal

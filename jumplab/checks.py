@@ -329,7 +329,7 @@ def check_frame_timing(frame_times, fps):
 
 
 # ---------------------------------------------------------------- limb snapping
-# A landmark that leaps away from where its neighbouring frames put it, then comes back, is
+# A landmark that leaps away from where its neighboring frames put it, then comes back, is
 # usually MediaPipe briefly attaching that limb to something else - often another person
 # standing behind the jumper. Measured as a fraction of trunk length, so it doesn't depend
 # on resolution. Thresholds were set from real footage (provisional: one confirmed snap):
@@ -379,7 +379,7 @@ def check_limb_snaps(snaps, onset_i, takeoff_i, landing_i, hi, fps):
     near_events = [f for f in inside if takeoff_i - margin <= f <= landing_i + margin]
     parts = sorted({n for names in inside.values() for n in names})
     frames = sorted(inside)
-    msg = (f"MediaPipe briefly put the {', '.join(parts)} far from where the neighbouring "
+    msg = (f"MediaPipe briefly put the {', '.join(parts)} far from where the neighboring "
            f"frames had them, at frame(s) {', '.join(map(str, frames[:8]))}"
            f"{' ...' if len(frames) > 8 else ''}. This is usually a limb snapping onto "
            "something else, often another person behind the jumper. Results near those "

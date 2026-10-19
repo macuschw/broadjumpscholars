@@ -1,5 +1,5 @@
-// Units: metric (metres, m/s) or imperial (feet and inches, ft/s), chosen with the switch in the
-// header and remembered on this device. All data stays in SI (metres, seconds); only what is shown
+// Units: metric (meters, m/s) or imperial (feet and inches, ft/s), chosen with the switch in the
+// header and remembered on this device. All data stays in SI (meters, seconds); only what is shown
 // changes. Every page reads the choice before it first draws, so there is no flash of the other
 // units, and redraws its numbers when the choice changes (onUnitsChange).
 //
@@ -53,7 +53,7 @@ const KINDS = {
   short: (m) => (current === "metric" ? [[fmt(m * 100, 0), "cm"]] : [[fmt(m / INCH, 1), "in"]]),
   /** Tracking noise: 5 mm, or 0.20 in. */
   tiny: (m) => (current === "metric" ? [[fmt(m * 1000, 0), "mm"]] : [[fmt(m / INCH, 2), "in"]]),
-  /** Speeds: 3.33 m/s, or 10.9 ft/s (one decimal fewer: a foot is about a third of a metre). */
+  /** Speeds: 3.33 m/s, or 10.9 ft/s (one decimal fewer: a foot is about a third of a meter). */
   speed: (v, digits = 2) => (current === "metric" ? [[fmt(v, digits), "m/s"]] : [[fmt(v / FOOT, Math.max(0, digits - 1)), "ft/s"]]),
   /** Accelerations (gravity): 9.81 m/s², or 32.2 ft/s². */
   accel: (a, digits = 2) => (current === "metric" ? [[fmt(a, digits), "m/s²"]] : [[fmt(a / FOOT, Math.max(0, digits - 1)), "ft/s²"]]),
@@ -69,8 +69,8 @@ export const unitOf = (kind) => KINDS[kind](1)[0][1];
 export const quantityHTML = (kind, value, digits, unitClass = "stat__unit") =>
   KINDS[kind](value, digits).map(([n, u], i, all) => `${n}<span class="${unitClass}${i < all.length - 1 ? ` ${unitClass}--mid` : ""}">${u}</span>`).join("");
 
-/** Chart axes for lengths: metres, or feet. scale converts metres to the shown unit. */
-export const lengthAxis = () => (current === "metric" ? { scale: 1, unit: "m", word: "metres" } : { scale: 1 / FOOT, unit: "ft", word: "feet" });
+/** Chart axes for lengths: meters, or feet. scale converts meters to the shown unit. */
+export const lengthAxis = () => (current === "metric" ? { scale: 1, unit: "m", word: "meters" } : { scale: 1 / FOOT, unit: "ft", word: "feet" });
 
 // ---------------------------------------------------------------- fixed text in the HTML
 function swapStaticText() {

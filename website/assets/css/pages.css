@@ -94,7 +94,7 @@
 .scrub__tick--start { transform: translateX(-6px); }
 .scrub__phase { display: flex; justify-content: center; height: 20px; line-height: 20px; transition: color var(--dur) var(--ease); }
 .scrub__phase.is-current { color: var(--paper); }
-/* The current phase is marked by a bar too, not by colour alone */
+/* The current phase is marked by a bar too, not by color alone */
 .scrub__phase::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 16px; height: 2px; margin-left: -8px; background: var(--accent-on-dark); transform: scaleX(0); transition: transform var(--dur) var(--ease); }
 .scrub__phase.is-current::after { transform: scaleX(1); }
 .scrub__rail { position: relative; height: var(--rail); }
@@ -426,7 +426,7 @@
 /* One treatment for every formula on the site: the dark box. --small only sets a smaller size. */
 .formula--small { font-size: 0.98rem; }
 
-/* LaTeX typesetting (KaTeX, lib/math.js): equations centred in their box, sized to the column */
+/* LaTeX typesetting (KaTeX, lib/math.js): equations centered in their box, sized to the column */
 .formula { text-align: center; }
 .formula .katex-display { margin: 0; }
 .formula .katex { font-size: 1.12em; }

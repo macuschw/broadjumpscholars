@@ -138,7 +138,7 @@ def click_two_points(frame, max_display=(1280, 800)):
             if key == ord("r"):
                 pts.clear()
             if key in (ord("q"), 27):
-                raise KeyboardInterrupt("Calibration cancelled.")
+                raise KeyboardInterrupt("Calibration canceled.")
     finally:
         cv2.destroyWindow(win)
         cv2.waitKey(1)

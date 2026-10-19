@@ -1,4 +1,4 @@
-"""Limb-snap check: a landmark leaping away from where the neighbouring frames put it
+"""Limb-snap check: a landmark leaping away from where the neighboring frames put it
 (usually a limb attaching to a person behind the jumper). Warn only - data is never changed.
 
 Thresholds (checks.SNAP_ONE_FRAME = 30%, SNAP_TWO_FRAME = 40% of trunk length) are

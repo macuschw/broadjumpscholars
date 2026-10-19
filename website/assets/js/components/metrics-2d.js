@@ -24,7 +24,7 @@ export function createMetricsFigure2D(host, attempt, { partsOf }) {
   const athlete = new Athlete(layers.mid, map, { pxPerM });
   athlete.update(TO.pose);
 
-  // Drawing helpers (inputs in metres, output SVG)
+  // Drawing helpers (inputs in meters, output SVG)
   const line = (a, b, cls = "mx-line") => { const [x1, y1] = map(a), [x2, y2] = map(b); return svg("line", { x1, y1, x2, y2, class: cls }); };
   function arrow(a, b, cls = "mx-arrow") {
     const [x1, y1] = map(a), [x2, y2] = map(b), ang = Math.atan2(y2 - y1, x2 - x1), s = 13;
@@ -47,7 +47,7 @@ export function createMetricsFigure2D(host, attempt, { partsOf }) {
   const V90 = Math.PI / 2;
 
   const H = TO.hip, S = TO.pose.near.shoulder, A = TO.pose.near.ankle, K = TO.pose.near.knee;
-  const k = 0.2;                                         // metres of arrow per m/s
+  const k = 0.2;                                         // meters of arrow per m/s
   const vEnd = [H[0] + m.vx * k, H[1] + m.vy * k];
   const yDim = -0.16, yTime = -0.36;
   const tx = (t) => -0.5 + (t / LAND.t) * 2.75;          // time -> x position for the contact timeline

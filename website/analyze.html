@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analyze · JumpLab</title>
+  <meta name="description" content="Upload a side-on video of a standing broad jump and get its distance, takeoff speed and angles, body angles and contact time, with the tracked skeleton and checks for anything that makes the numbers unreliable.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <link rel="stylesheet" href="assets/css/demo.css">
+  <script type="module" src="assets/js/components/site-chrome.js" blocking="render"></script>
+  <script type="module" src="assets/js/pages/demo.js" blocking="render"></script>
+</head>
+<body data-page="analyze">
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <jl-header current="analyze"></jl-header>
+
+  <main id="main">
+    <header class="page-head container demo-head">
+      <div>
+        <p class="eyebrow">Analyze</p>
+        <h1>Analyze your jump</h1>
+      </div>
+      <div class="notice" role="note" id="demo-notice"></div>
+    </header>
+
+    <!-- 1. Choose a video (or a results file) -->
+    <section class="container demo-start" id="demo-start" aria-label="Upload a video">
+      <div class="dropzone" id="dropzone">
+        <span class="dropzone__icon" data-icon="upload"></span>
+        <h2 id="drop-title">Upload a video</h2>
+        <p id="drop-lede">A side-on video, ideally in slow motion with a tape measure on the floor in shot.
+          <a href="setup.html">How to film it</a>.</p>
+        <div class="dropzone__actions">
+          <label class="btn btn--primary dropzone__button" for="file-input" id="drop-button">Choose a video</label>
+          <label class="dropzone__fps" id="drop-fps">Recorded at
+            <select id="fps-select">
+              <option value="">Auto (from the file)</option>
+              <option value="30">30 fps</option><option value="60">60 fps</option>
+              <option value="120">120 fps (slow motion)</option><option value="240">240 fps (slow motion)</option>
+            </select>
+          </label>
+        </div>
+        <input id="file-input" class="dropzone__input" type="file" accept="video/*,.mov,.mp4,.json,application/json" multiple aria-describedby="drop-help file-error">
+        <p class="dropzone__hint" id="drop-help">or drag it here · MP4, MOV. Results from the JumpLab app? Drop its <code>_web.json</code> here, with the video if you have it.</p>
+        <p class="dropzone__privacy" id="drop-privacy"></p>
+        <p class="field-error" id="file-error" role="alert" hidden></p>
+      </div>
+      <aside class="film-check is-dark" aria-labelledby="film-check-title">
+        <p class="eyebrow">Before you upload</p>
+        <h2 id="film-check-title">A video that measures well</h2>
+        <ul class="film-check__list" role="list">
+          <li><span data-icon="check"></span>Phone on a tripod, side-on to the jump</li>
+          <li><span data-icon="check"></span>Slow motion: 120 or 240 fps</li>
+          <li><span data-icon="check"></span>A tape measure on the floor, in shot</li>
+          <li><span data-icon="check"></span>Feet together at takeoff and landing</li>
+          <li><span data-icon="check"></span>Nobody else in the frame</li>
+        </ul>
+        <a class="btn btn--ghost btn--sm" href="setup.html">Full setup guide</a>
+      </aside>
+    </section>
+
+    <div id="dashboard"></div>
+  </main>
+
+  <jl-footer></jl-footer>
+</body>
+</html>

@@ -1,4 +1,4 @@
-// Projectile-fit figure for the Science page: tracked hip heights during the flight (grey
+// Projectile-fit figure for the Science page: tracked hip heights during the flight (gray
 // dots, one per frame) and the parabola fitted through them (accent line). The first time
 // it scrolls into view, the dots appear in time order and then the curve draws through
 // them - data first, then the model. Hover, touch or arrow keys move a crosshair that
@@ -26,12 +26,12 @@ export function fitChart(host, { points, fit }) {
   let revealed = prefersReducedMotion(), lastW = 0, api = null, active = null;
 
   function draw(W) {
-    // Heights in the visitor's units: metres with 0.1 m gridlines, or feet with 0.25 ft gridlines
+    // Heights in the visitor's units: meters with 0.1 m gridlines, or feet with 0.25 ft gridlines
     const L = lengthAxis(), sc = L.scale, metric = L.unit === "m";
     const snap = metric ? 0.05 : 0.125, step = metric ? 0.1 : 0.25, dp = metric ? 1 : 2;
     const yMin = Math.floor(((Math.min(...ys) - 0.02) * sc) / snap) * snap, yMax = Math.ceil(((Math.max(...ys) + 0.04) * sc) / snap) * snap;
     const hy = (t) => fit.height(t) * sc, peakY = hy(peakT);
-    const perSecond = metric ? "metres per second" : "feet per second";
+    const perSecond = metric ? "meters per second" : "feet per second";
     const H = Math.round(Math.min(340, Math.max(240, W * 0.56)));
     const M = { l: 46, r: 14, t: 26, b: 38 };
     const iw = W - M.l - M.r, ih = H - M.t - M.b;

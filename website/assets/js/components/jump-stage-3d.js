@@ -58,7 +58,7 @@ export function createStage3D(host, attempt, { onContextLost, reducedMotion = fa
     aimKeyLight(key, p.hip[0]);
   }
 
-  // ---- distance labels on the tape (HTML, so they use the site's type): each metre, or every 2 ft ----
+  // ---- distance labels on the tape (HTML, so they use the site's type): each meter, or every 2 ft ----
   const labelLayer = document.createElement("div");
   labelLayer.className = "jump-stage__labels";
   labelLayer.setAttribute("aria-hidden", "true");
@@ -183,7 +183,7 @@ export function createStage3D(host, attempt, { onContextLost, reducedMotion = fa
       pose(p);
       goal.progress = current / last;
       goal.mark = current >= events.landing ? 1 : 0;
-      goal.focus = p.hip[0];                                    // the free camera keeps the athlete centred
+      goal.focus = p.hip[0];                                    // the free camera keeps the athlete centered
       if (snap) now.focus = p.hip[0];
       pathIdx.forEach((fi, k) => dots.setColorAt(k, fi <= current ? lit : dim));
       dots.instanceColor.needsUpdate = true;

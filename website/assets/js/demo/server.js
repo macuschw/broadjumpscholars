@@ -16,8 +16,8 @@ const message = (xhrOrRes, text) => {
 };
 
 /**
- * Upload a video and analyse it. onProgress(stage, fraction): "upload" with 0..1 while sending,
- * then "analyse" once the server has it. Returns { promise, abort }.
+ * Upload a video and analyze it. onProgress(stage, fraction): "upload" with 0..1 while sending,
+ * then "analyze" once the server has it. Returns { promise, abort }.
  */
 export function analyzeVideo(file, { fps = null, onProgress } = {}) {
   const xhr = new XMLHttpRequest();
@@ -29,7 +29,7 @@ export function analyzeVideo(file, { fps = null, onProgress } = {}) {
     xhr.setRequestHeader("Content-Type", "application/octet-stream");
     xhr.timeout = 15 * 60 * 1000;
     xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.("upload", e.loaded / e.total); };
-    xhr.upload.onload = () => onProgress?.("analyse", 0);
+    xhr.upload.onload = () => onProgress?.("analyze", 0);
     xhr.onload = () => {
       if (xhr.status === 200) {
         try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error("The server's reply couldn't be read.")); }
@@ -37,13 +37,13 @@ export function analyzeVideo(file, { fps = null, onProgress } = {}) {
     };
     xhr.onerror = () => reject(new Error("Couldn't reach the analysis server. Check the connection and try again."));
     xhr.ontimeout = () => reject(new Error("The analysis took too long. Try a shorter clip, trimmed to the jump."));
-    xhr.onabort = () => reject(Object.assign(new Error("Cancelled."), { cancelled: true }));
+    xhr.onabort = () => reject(Object.assign(new Error("Canceled."), { canceled: true }));
     xhr.send(file);
   });
   return { promise, abort: () => xhr.abort() };
 }
 
-/** Analyse a bundle's landmarks again with a new scale (no video upload). */
+/** Analyze a bundle's landmarks again with a new scale (no video upload). */
 export async function recompute(bundle, { scale }) {
   const r = bundle.results;
   const res = await fetch(`${serverURL}/recompute`, {

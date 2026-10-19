@@ -134,7 +134,7 @@ def movement_onset(hip_y, bottom_i, fps, fraction=0.05):
 def detect_events(hip_y, fps, takeoff_signal, landing_signal=None, refine=False,
                   threshold_fraction=0.15, min_rise=20.0):
     """Detect all events. With landing_signal=None and refine=False this is exactly the
-    original analyze_events.py behaviour (one signal, usually the ankle)."""
+    original analyze_events.py behavior (one signal, usually the ankle)."""
     hip_y = np.asarray(hip_y, dtype=float)
     takeoff_signal = np.asarray(takeoff_signal, dtype=float)
     landing_signal = takeoff_signal if landing_signal is None else np.asarray(landing_signal, float)

@@ -2,7 +2,7 @@
 
 run_analysis.py writes a _web.json for every new run. For older runs, this builds one from the
 files they saved (_results.json, _keypoints_and_angles.csv, _keypoints.npz) - nothing is
-re-analysed, so the numbers are exactly the ones you already have. Open the _web.json on the
+re-analyzed, so the numbers are exactly the ones you already have. Open the _web.json on the
 website's Demo page ("Open results"), optionally with the video, to see the jump there.
 
 Examples

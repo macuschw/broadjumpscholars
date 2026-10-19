@@ -76,6 +76,7 @@ jl-header { display: block; min-height: var(--nav-h); background: var(--ink); } 
   .nav-list .btn { margin-top: var(--s-3); justify-content: center; }
 }
 @media (min-width: 1081px) { .nav-list .nav-item--cta { display: none; } }
+@media (min-width: 1081px) and (max-width: 1119px) { .btn--nav .btn__more { display: none; } }   /* "Upload": the full label wraps here */
 
 /* ---------- Buttons: flat fills, minimal rounding, no shadows ---------- */
 .btn {

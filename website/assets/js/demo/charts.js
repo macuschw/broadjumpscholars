@@ -21,7 +21,7 @@ export function buildCharts(host, attempt, { onSeekTime } = {}) {
   const every = Math.max(1, Math.round(0.05 * (attempt.fps || 120)));
   const sample = frames.filter((_, i) => i % every === 0);      // every 0.05 s for the tables
   const nearestByX = (x) => frames.reduce((b, f) => (Math.abs(f.hip[0] - x) < Math.abs(b.hip[0] - x) ? f : b), frames[0]);
-  const L = lengthAxis(), at = (p) => [p[0] * L.scale, p[1] * L.scale];   // positions in metres or feet
+  const L = lengthAxis(), at = (p) => [p[0] * L.scale, p[1] * L.scale];   // positions in meters or feet
 
   const card = (title, sub) => {
     const c = el("section", { class: "panel chart-card" },

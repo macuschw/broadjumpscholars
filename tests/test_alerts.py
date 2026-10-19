@@ -48,7 +48,7 @@ def test_caution_is_marked_mildly_and_not_bannered():
     assert verdict(w).startswith("~  Usable with care: 1 warning")
 
 
-def test_colour_only_when_asked():
+def test_color_only_when_asked():
     assert "\033[" not in banner([STAGGER]) + verdict([STAGGER])
     assert banner([STAGGER], color=True).startswith("\033[1;31m")
 

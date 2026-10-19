@@ -9,12 +9,13 @@ export const ROUTES = [
   { id: "setup", href: "setup.html", label: "Setup" },
   { id: "science", href: "science.html", label: "Science" },
   { id: "about", href: "about.html", label: "About" },
+  { id: "demo", href: "demo.html", label: "Demo" },
 ];
 
 class JlHeader extends HTMLElement {
   connectedCallback() {
     const current = this.getAttribute("current");
-    const isDemo = current === "demo";
+    const isAnalyze = current === "analyze";
     const link = (r) => `<li><a class="nav-link" href="${r.href}"${r.id === current ? ' aria-current="page"' : ""}>${r.label}</a></li>`;
     this.innerHTML = `
       <header class="site-header">
@@ -28,14 +29,14 @@ class JlHeader extends HTMLElement {
               <li class="nav-item--units">
                 <div class="units-switch" role="group" aria-label="Units">
                   <span class="units-switch__label" aria-hidden="true">Units</span>
-                  <button type="button" class="units-switch__btn" data-units="metric" aria-label="m (metres)" title="Metric: metres">m</button>
+                  <button type="button" class="units-switch__btn" data-units="metric" aria-label="m (meters)" title="Metric: meters">m</button>
                   <button type="button" class="units-switch__btn" data-units="imperial" aria-label="ft (feet and inches)" title="Imperial: feet and inches">ft</button>
                 </div>
               </li>
-              <li class="nav-item--cta"><a class="btn btn--primary" href="demo.html"${isDemo ? ' aria-current="page"' : ""}>Open demo ${icon("arrow")}</a></li>
+              <li class="nav-item--cta"><a class="btn btn--primary" href="analyze.html"${isAnalyze ? ' aria-current="page"' : ""}>${icon("upload")}Upload a video</a></li>
             </ul>
           </nav>
-          <a class="btn btn--primary btn--nav" href="demo.html"${isDemo ? ' aria-current="page"' : ""}>Open demo</a>
+          <a class="btn btn--primary btn--nav" href="analyze.html"${isAnalyze ? ' aria-current="page"' : ""}>${icon("upload")}Upload<span class="btn__more"> a video</span></a>
           <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
             ${icon("menu")}<span>Menu</span>
           </button>
@@ -83,7 +84,7 @@ class JlFooter extends HTMLElement {
             <ul>
               <li><a href="index.html">Home</a></li>
               ${ROUTES.map((r) => `<li><a href="${r.href}">${r.label}</a></li>`).join("")}
-              <li><a href="demo.html">Demo</a></li>
+              <li><a href="analyze.html">Analyze a video</a></li>
             </ul>
           </nav>
         </div>

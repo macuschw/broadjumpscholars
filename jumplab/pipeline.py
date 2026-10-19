@@ -385,7 +385,7 @@ def _both_feet_summary(both, scale):
 def look_for_others(video_path, kp, results):
     """Other people in the shot around the jump that `results` found: a second, short pass over the
     video (pose_tracking.scan_for_others) unless that stretch was scanned before. Fills kp.others;
-    returns True if it scanned (then analyse again so checks.check_other_people sees it)."""
+    returns True if it scanned (then analyze again so checks.check_other_people sees it)."""
     from .pose_tracking import others_checked, scan_for_others
 
     ev = results["events"]
@@ -399,7 +399,7 @@ def look_for_others(video_path, kp, results):
 def analyze_video(video_path, scale_m_per_px=None, config=None, output_dir="output",
                   skeleton_video=True, retrack=False, fps_override=None):
     """Video in -> results dict out. MediaPipe runs once; keypoints are cached in
-    output_dir so re-analysing (new window, new calibration) is instant."""
+    output_dir so re-analyzing (new window, new calibration) is instant."""
     stem = os.path.splitext(os.path.basename(video_path))[0]
     cache = os.path.join(output_dir, f"{stem}_keypoints.npz")
     skeleton = os.path.join(output_dir, f"{stem}_skeleton.mp4") if skeleton_video else None

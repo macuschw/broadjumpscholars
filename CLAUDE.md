@@ -4,7 +4,7 @@ Scholars Math 2026–27 project: measure a **standing broad jump** from one phon
 this repo (GitHub: macuschw/broadjumpscholars):
 
 1. **Analysis (Python, `jumplab/`, `scripts/`, `tests/`)**: MediaPipe pose tracking → smoothing →
-   takeoff/landing events → parabola fit of the centre of mass → distance, velocity, launch angle,
+   takeoff/landing events → parabola fit of the center of mass → distance, velocity, launch angle,
    trunk/shin/knee angles, contact times → warnings + five reliability ratings.
 2. **Website (`website/`)**: static site on GitHub Pages: https://macuschw.github.io/broadjumpscholars/
    Vanilla HTML/CSS/ES modules, no build step. Republishes automatically on every push that changes
@@ -35,7 +35,7 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   have no sharpness, so the blur check only runs on newly tracked videos.
 - Other people in the shot: after tracking and a first analysis, a short second pass over the
   video (0.5 s before the dip to 1 s after landing, ~10 checks a second, ~1 s in all) covers the
-  athlete in grey and asks MediaPipe for another body (`pose_tracking.scan_for_others`,
+  athlete in gray and asks MediaPipe for another body (`pose_tracking.scan_for_others`,
   `pipeline.look_for_others`). `checks.check_other_people` ignores bodies under 30% of the athlete's
   height or seen in fewer than 3 checks (false hits on a building corner / a speck). SERIOUS if
   they come within 0.25x the athlete's height, or switch sides unseen (= passed right behind the
@@ -51,12 +51,16 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
 
 - Pages: Home (3D draggable hero, testimonials = **placeholder quotes**, call to action), How it works,
   Metrics (3D sculpted mannequin, drag 360°, in-scene metric overlays + callout labels), Setup,
-  Science (KaTeX formulas, tabs), About (team names are placeholders `[NAME 1]`/`[NAME 2]`), Demo.
+  Science (KaTeX formulas, tabs), About (team names are placeholders `[NAME 1]`/`[NAME 2]`), Analyze
+  (upload your own video; the header's "Upload a video" button), Demo (the simulated sample jump, its own
+  page). Both use one script (`pages/demo.js`, picks by `<body data-page>`) and one shared dashboard
+  markup (`demo/dashboard-html.js`).
+- Spelling: American throughout (analyze, meter, center, color), site and analysis messages alike.
 - Units switch m / ft in the header (`assets/js/lib/units.js`); all lengths/speeds go through it.
-- Design rules are in `website/DESIGN.md` (one accent colour, flat buttons, motion tokens, reduced motion).
+- Design rules are in `website/DESIGN.md` (one accent color, flat buttons, motion tokens, reduced motion).
 - Shared 3D code: `assets/js/components/scene-3d.js` (lane, lights, studio light, both mannequins).
 
-### Demo page: real analyses
+### Analyze page: real analyses
 - **Open results** works now: drop a `_web.json` (+ the video) → real numbers, video with tracked
   skeleton, ratings/warnings, charts, compare. `python scripts/export_web.py output` rebuilds these
   for old runs.
@@ -67,7 +71,7 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   "macuschw", free Starter plan: $1 credit until a payment method is added, ~400-500 analyses). Redeploy after
   changing `jumplab/` or `server/`. Cloud results can differ from a Mac run by a few mm / ~2% (MediaPipe on Linux).
   Local test server: `python scripts/serve_local.py`, then open the local site's
-  `demo.html?server=http://localhost:8765`.
+  `analyze.html?server=http://localhost:8765`.
 - Auto-trim (uploads only, clips over 6.5 s): a quick look (MediaPipe on 5 frames/s) finds the crouch
   followed by fast sideways hip travel, then only 2.5 s before to 1.8 s after it is tracked
   (`pose_tracking.track_jump`; `Keypoints.segment`, and the analysis stays inside it). If that stretch
@@ -75,8 +79,8 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   slow-mo clip 35 s → 20 s. Found the jump in all 14 test videos. Results move by MediaPipe's own
   run-to-run noise (~1 px, a few mm), and the "standing" reference is now just before the jump
   (fixed Jump 7's contact time and a false "not side-on"). The command line still tracks everything.
-- Flow: upload → server tracks (MediaPipe) + analyses → returns bundle + a still → visitor clicks the
-  tape ends → `/recompute` with the scale (re-analyses saved landmarks, < 1 mm difference).
+- Flow: upload → server tracks (MediaPipe) + analyzes → returns bundle + a still → visitor clicks the
+  tape ends → `/recompute` with the scale (re-analyzes saved landmarks, < 1 mm difference).
 - Shared server logic: `jumplab/web.py` (`make_bundle`, `analyze_upload`, `recompute`, `handle`).
 
 ## How we work

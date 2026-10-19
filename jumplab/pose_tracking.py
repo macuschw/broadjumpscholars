@@ -195,7 +195,7 @@ def scan_for_others(video_path, kp, first, last, model_complexity=1):
 
 def find_other_person(frame, xy, detector):
     """Look for someone else in the frame: cover the athlete (box around their landmarks + 15% /
-    10%) in grey and ask MediaPipe (`detector`: a Pose in static_image_mode) for another body.
+    10%) in gray and ask MediaPipe (`detector`: a Pose in static_image_mode) for another body.
     Returns that body's box [x0, y0, x1, y1] (landmarks with visibility > 0.5), or None.
 
     MediaPipe can also "see" a body in clutter (a building corner, a tree); those hits are small or

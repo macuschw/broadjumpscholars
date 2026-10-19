@@ -12,13 +12,13 @@ from synthetic import Truth, jumper_keypoints
 T = Truth()
 
 
-def _analysed():
+def _analyzed():
     kp = jumper_keypoints()
     return kp, analyze_keypoints(kp, T.scale, AnalysisConfig(event_method="toe_heel"))
 
 
 def test_bundle_is_strict_json_with_everything_the_site_shows():
-    kp, r = _analysed()
+    kp, r = _analyzed()
     b = web.make_bundle(r, kp, "jump.mov")
     text = json.dumps(b, allow_nan=False)                     # strict JSON: no NaN anywhere
     assert b["format"] == web.FORMAT and b["name"] == "jump.mov" and b["results"]["video"] == "jump.mov"
@@ -32,7 +32,7 @@ def test_bundle_is_strict_json_with_everything_the_site_shows():
 
 
 def test_recompute_reproduces_the_analysis_from_the_bundle_alone():
-    kp, r = _analysed()
+    kp, r = _analyzed()
     b = web.make_bundle(r, kp, "jump.mov")
     again = web.recompute({"landmarks": b["landmarks"], "name": "jump.mov", "scale": T.scale, "event_method": "toe_heel"})
     d0, d1 = r["distance"]["jump_distance_m"], again["results"]["distance"]["jump_distance_m"]
@@ -40,7 +40,7 @@ def test_recompute_reproduces_the_analysis_from_the_bundle_alone():
 
 
 def test_recompute_without_scale_is_uncalibrated_and_with_a_new_scale_scales():
-    kp, r = _analysed()
+    kp, r = _analyzed()
     b = web.make_bundle(r, kp, "jump.mov")
     raw = web.recompute({"landmarks": b["landmarks"], "event_method": "toe_heel"})["results"]
     assert raw["scale_m_per_px"] is None and raw["distance"]["jump_distance_m"] is None
@@ -49,7 +49,7 @@ def test_recompute_without_scale_is_uncalibrated_and_with_a_new_scale_scales():
 
 
 def test_bundle_from_saved_files_matches_a_direct_bundle(tmp_path):
-    kp, r = _analysed()
+    kp, r = _analyzed()
     r = dict(r, video="/somewhere/jump.mov")
     save_json(r, str(tmp_path / "jump_results.json"))
     save_csv(r, str(tmp_path / "jump_keypoints_and_angles.csv"))
@@ -68,7 +68,7 @@ def test_options_from_the_query_are_parsed_and_safe():
 
 
 def test_problems_the_visitor_can_fix_are_422_with_a_message():
-    kp, r = _analysed()
+    kp, r = _analyzed()
     b = web.make_bundle(r, kp, "jump.mov")
     still = {k: v for k, v in b["landmarks"].items()}
     still["xyv"] = [[None] * 99 for _ in still["xyv"]]          # nobody in the video
@@ -96,7 +96,7 @@ def test_blur_check_flags_blurred_jumps_and_survives_the_bundle():
     assert blurred[0]["severity"] == "serious"
     assert check_blur(None, 100, 200, 300, 120) == []
     # The sharpness travels in the bundle, so a recompute (after calibration) still sees the blur
-    kp, r = _analysed()
+    kp, r = _analyzed()
     kp.sharpness = np.full(kp.n_frames, 120.0)
     r = analyze_keypoints(kp, T.scale, AnalysisConfig(event_method="toe_heel"))
     b = web.make_bundle(r, kp, "jump.mov")
@@ -109,7 +109,7 @@ def test_an_uploaded_video_keeps_its_sharpness_and_is_checked_for_other_people(m
     """analyze_upload renames the tracked video; the sharpness must survive that (it once didn't).
     Then a second, short pass looks for other people around the jump the first analysis found."""
     from jumplab import pose_tracking
-    kp, _ = _analysed()
+    kp, _ = _analyzed()
     kp.sharpness = np.full(kp.n_frames, 120.0)
     scanned = []
 
