@@ -12,7 +12,7 @@
 // orbit() switches to a free camera that circles the athlete (any angle, tilted up to 60°)
 // and keeps that angle while the timeline moves; setView() returns to a guided view.
 // The renderer, lights, lane and mannequin are shared with the Metrics figure (scene-3d.js).
-import { lerpPose } from "./athlete.js";
+import { furthestX, lerpPose } from "./athlete.js";
 import {
   THREE, C, TAPE_Z, addLights, aimKeyLight, createContactShadow, createLane, createMannequin, createRenderer, tapeMarks,
 } from "./scene-3d.js";
@@ -25,6 +25,9 @@ const PITCH = [(3 * Math.PI) / 180, (60 * Math.PI) / 180];   // free camera: fro
 
 export function createStage3D(host, attempt, { onContextLost, reducedMotion = false } = {}) {
   const { frames, events } = attempt, last = frames.length - 1;
+  // The framing below fits the sample jump (the body reaches ~2.97 m forward); a longer jump
+  // widens the shot and moves its center along by half the difference
+  const extra = Math.max(0, furthestX(frames) - 2.97) / 2;
 
   const { renderer, canvas, release } = createRenderer({ className: "jump-stage__canvas", onContextLost });
   const scene = new THREE.Scene();
@@ -85,7 +88,7 @@ export function createStage3D(host, attempt, { onContextLost, reducedMotion = fa
   function guided() {
     const s = now.progress * now.progress * (3 - 2 * now.progress), v = now.side;
     return {
-      tx: lerp(0.6 + 0.95 * s, 1.05, v), ty: lerp(0.92, 0.9, v),
+      tx: lerp(0.6 + (0.95 + extra) * s, 1.05 + extra, v), ty: lerp(0.92, 0.9, v),
       az: lerp(((30 - 12 * s) * Math.PI) / 180, 0, v), h: lerp(0.5, 0.06, v),
     };
   }
@@ -104,7 +107,7 @@ export function createStage3D(host, attempt, { onContextLost, reducedMotion = fa
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     const tv = Math.tan((camera.fov * Math.PI) / 360), th = tv * camera.aspect;
-    fit = Math.max(1.85 / th, 1.32 / tv) + 0.3;                // keep the whole jump, arms up, in frame at any shape
+    fit = Math.max((1.85 + extra) / th, 1.32 / tv) + 0.3;                // keep the whole jump, arms up, in frame at any shape
     camera.updateProjectionMatrix();
   }
   const projected = new THREE.Vector3();

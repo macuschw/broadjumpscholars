@@ -1,12 +1,13 @@
 // 2D jump stage: the flat side-view athlete, used when 3D can't load (offline, no WebGL).
 // Same interface as the 3D stage, so the timeline drives either one.
 import { svg } from "../lib/dom.js";
-import { Athlete, lerpPose } from "./athlete.js";
+import { Athlete, furthestX, lerpPose } from "./athlete.js";
 import { createScene, pathFrom } from "./scene.js";
 
 export function createStage2D(host, attempt) {
   const { frames, events } = attempt, last = frames.length - 1;
-  const scene = createScene(host, { xRange: [-0.75, 2.85], yMax: 2.15, below: 20, theme: "dark" });
+  const reach = furthestX(frames) - 0.12;                     // a long jump widens the view to fit
+  const scene = createScene(host, { xRange: [-0.75, Math.max(2.85, reach)], yMax: 2.15, below: 20, theme: "dark" });
   const { map, layers, pxPerM } = scene;
   scene.root.classList.add("jump-stage__svg");
   const flight = frames.slice(events.takeoff, events.landing + 1).map((f) => f.hip);

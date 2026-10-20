@@ -207,8 +207,8 @@ function simulate(p) {
 // relative to the ankle (m); vxBot: forward speed there. Times in seconds from the clip start;
 // each takeoff instant falls halfway between two frames, which is what the analysis assumes.
 const PARAMS = [
-  { id: "a1", label: "Attempt 1", vx: 2.72, vy: 1.66, legLean: 31, kneeTO: 161, footTO: 54, trunkTO: 35, trunkBottom: 57,
-    botAhead: 0.03, botHeight: 0.6, vxBot: 0.7, tOn: 0.28, tBot: 0.8, tTO: 128.5 / FPS },
+  { id: "a1", label: "Attempt 1", vx: 3.4, vy: 2.1, legLean: 36, kneeTO: 166, footTO: 58, trunkTO: 38, trunkBottom: 60,
+    botAhead: 0.04, botHeight: 0.57, vxBot: 0.9, tOn: 0.28, tBot: 0.8, tTO: 128.5 / FPS },
   { id: "a2", label: "Attempt 2", vx: 2.86, vy: 1.72, legLean: 33, kneeTO: 165, footTO: 57, trunkTO: 31, trunkBottom: 62,
     botAhead: 0.04, botHeight: 0.58, vxBot: 0.8, tOn: 0.3, tBot: 0.78, tTO: 124.5 / FPS },
   { id: "a3", label: "Attempt 3", vx: 2.8, vy: 1.58, legLean: 31, kneeTO: 163, footTO: 55, trunkTO: 37, trunkBottom: 55,

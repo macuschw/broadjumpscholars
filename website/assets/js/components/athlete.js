@@ -17,6 +17,15 @@ export function lerpPose(a, b, u) {
   return { head: L(a.head, b.head), neck: L(a.neck, b.neck), hip: L(a.hip, b.hip), near: side(a.near, b.near), far: side(a.far, b.far) };
 }
 
+/** The furthest forward any joint gets over a whole clip (m), so a stage can fit the jump. */
+export function furthestX(frames) {
+  let max = -Infinity;
+  for (const { pose: p } of frames) {
+    for (const pt of [p.head, p.neck, p.hip, ...Object.values(p.near), ...Object.values(p.far)]) max = Math.max(max, pt[0]);
+  }
+  return max;
+}
+
 /** Map meters (y up) to SVG pixels (y down). */
 export function makeMap({ pxPerM, originPx, heightPx }) {
   return ([x, y]) => [originPx[0] + x * pxPerM, heightPx - originPx[1] - y * pxPerM];
