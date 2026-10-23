@@ -65,6 +65,36 @@
         </ul>
         <a class="btn btn--ghost btn--sm" href="setup.html">Full setup guide</a>
       </aside>
+
+      <!-- My jumps: earlier analyses kept in this browser (demo/history.js); shown once there is one -->
+      <section class="my-jumps" id="my-jumps" hidden aria-labelledby="my-jumps-title">
+        <div class="my-jumps__head">
+          <div>
+            <h2 id="my-jumps-title">My jumps</h2>
+            <p class="my-jumps__lede">Every jump you analyze is kept here, in this browser only. Nothing is uploaded,
+              and other people can't see it. Videos aren't kept: add one back to see it under the skeleton.</p>
+          </div>
+          <div class="my-jumps__actions">
+            <button type="button" class="btn btn--primary btn--sm" id="my-jumps-compare" disabled>Compare selected</button>
+            <button type="button" class="btn btn--quiet btn--sm" id="my-jumps-clear">Clear my jumps</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data my-jumps__table">
+            <caption class="visually-hidden">Your saved jumps, newest first. Tick up to 6 to compare them.</caption>
+            <thead><tr>
+              <th scope="col" class="my-jumps__pick"><span class="visually-hidden">Select</span></th>
+              <th scope="col">Jump</th>
+              <th scope="col" class="my-jumps__date-col">Saved</th>
+              <th scope="col" class="num-cell">Distance</th>
+              <th scope="col" class="my-jumps__check-col">Checks</th>
+              <th scope="col"><span class="visually-hidden">Delete</span></th>
+            </tr></thead>
+            <tbody id="my-jumps-rows"></tbody>
+          </table>
+        </div>
+        <p class="my-jumps__status" id="my-jumps-status" role="status"></p>
+      </section>
     </section>
 
     <div id="dashboard"></div>

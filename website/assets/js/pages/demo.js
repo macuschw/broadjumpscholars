@@ -3,6 +3,7 @@
 //     1. A video -> the JumpLab analysis server (demo/server.js) -> click the tape to set the scale
 //        (demo/calibrate.js) -> results. Real numbers, the same analysis as the command line.
 //     2. A results file from the JumpLab app (<video>_web.json, with the video if available) -> results.
+//     Every real jump is also kept in this browser ("My jumps", demo/history.js) to open again later.
 //   Demo (demo.html): the sample jump, three simulated attempts (data/mock-data.js), clearly marked
 //     as demo data, shown straight away.
 // The dashboard itself (progress, calibration, results) is shared: demo/dashboard-html.js.
@@ -22,6 +23,7 @@ import { buildCompare } from "../demo/compare.js";
 import { STAT_NAMES, bundleToAttempt, checkBundle, downloadBundle, issues, realHeadline } from "../demo/real.js";
 import { calibrate } from "../demo/calibrate.js";
 import { analyzeVideo, recompute, serverURL, wake } from "../demo/server.js";
+import { clearJumps, listJumps, loadJump, removeJumps, saveJump } from "../demo/history.js";
 import { formatQuantity, onUnitsChange } from "../lib/units.js";
 
 const $ = (id) => document.getElementById(id);
@@ -45,7 +47,7 @@ setNotice(PAGE === "demo" ? "sample" : "start");
 if (PAGE === "demo") {
   // nothing to upload here
 } else if (serverURL) {
-  $("drop-privacy").textContent = "Your video is sent to the JumpLab analysis server, analyzed, and deleted straight away. Nothing is stored.";
+  $("drop-privacy").textContent = "Your video is sent to the JumpLab analysis server, analyzed, and deleted straight away. Your results are kept only in this browser, under My jumps.";
   wake();                                                      // start a sleeping server while the visitor gets the video
 } else {
   $("drop-title").textContent = "Open your results";
@@ -122,7 +124,8 @@ function renderSource(a) {
   const r = a.bundle.results;
   const fps = `${Math.round(r.fps)} fps${r.fps_source === "override" ? " (as you set)" : ""}`;
   const scale = a.calibrated ? `calibrated, 1 px = ${formatQuantity("tiny", r.scale_m_per_px)}` : "no tape calibration";
-  $("results-source").textContent = `${a.name} · ${fps} · ${scale} · ${r.side === "LEFT" ? "left" : "right"} side to the camera`;
+  const kept = a.historyId ? " · saved in My jumps" : "";
+  $("results-source").textContent = `${a.name} · ${fps} · ${scale} · ${r.side === "LEFT" ? "left" : "right"} side to the camera${kept}`;
 }
 
 // Problems with the video (staggered feet, someone else in the shot, blur...), in plain words,
@@ -255,6 +258,17 @@ function addReal(attempt) {
   realSession.push(attempt);
   if (realSession.length > MAX_REAL) realSession.shift();
   showResults(realSession.slice(), attempt, "real");
+  remember(attempt);
+}
+
+/** Keep a real jump in My jumps; the source line says so once it's saved. */
+async function remember(attempt) {
+  if (attempt.historyId) return;
+  const id = await saveJump(attempt.bundle);
+  if (!id) return;                                             // storage off: nothing changes
+  attempt.historyId = id;
+  if (current === attempt) renderSource(attempt);
+  renderMyJumps();
 }
 
 // ---------------------------------------------------------------- 3. the sample (Demo page)
@@ -351,6 +365,7 @@ async function openFiles(fileList) {
         if (realSession.length > MAX_REAL) realSession.shift();
       }
       showResults(realSession.slice(), last, "real");
+      for (const a of realSession) remember(a);
     } else if (videos.length) {
       if (!serverURL) throw new Error("Analyzing videos on this site isn't switched on yet. Run the JumpLab app on a computer, then open the _web.json it saves.");
       startUpload(videos[0]);
@@ -379,15 +394,90 @@ $("start-over").addEventListener("click", () => {
   input.value = "";
   show("start");
   setNotice("start");
+  renderMyJumps();
   $("drop-button").focus();
 });
 $("add-jump").addEventListener("click", () => {
   realPlayback?.pause();
   input.value = "";
+  renderMyJumps();
   show("start");
   $("drop-button").focus();
 });
 $("download-results").addEventListener("click", () => current.real && downloadBundle(current));
+
+// ---------------------------------------------------------------- My jumps (this browser only)
+const dateText = (ms) => new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+function checkCell(j) {
+  if (j.serious) return `<span class="my-jumps__check my-jumps__check--serious">${icon("alert")}${plural(j.serious, "problem")}</span>`;
+  if (j.caution) return `<span class="my-jumps__check my-jumps__check--caution">${icon("info")}Use with care</span>`;
+  return `<span class="my-jumps__check my-jumps__check--ok">${icon("check")}No problems</span>`;
+}
+let saved = [];
+async function renderMyJumps() {
+  const box = $("my-jumps");
+  if (!box) return;
+  saved = await listJumps();
+  box.hidden = !saved.length;
+  $("my-jumps-rows").innerHTML = saved.map((j) => `
+    <tr data-id="${esc(j.id)}">
+      <td class="my-jumps__pick"><input type="checkbox" aria-label="Select ${esc(j.name)}"></td>
+      <th scope="row" class="my-jumps__name"><button type="button" class="my-jumps__open">${esc(j.name)}</button>
+        <span class="my-jumps__rough my-jumps__date-sub">${dateText(j.savedAt)}</span>
+        <span class="my-jumps__check-sub">${checkCell(j)}</span></th>
+      <td class="my-jumps__date my-jumps__date-col">${dateText(j.savedAt)}</td>
+      <td class="num-cell">${j.distance == null ? "—" : formatQuantity("distance", j.distance)}${j.calibrated ? "" : `<span class="my-jumps__rough">${j.distance == null ? "not measured" : "rough"}</span>`}</td>
+      <td class="my-jumps__check-col">${checkCell(j)}</td>
+      <td><button type="button" class="btn btn--quiet btn--sm my-jumps__delete" aria-label="Delete ${esc(j.name)}"><span>Delete</span>${icon("close")}</button></td>
+    </tr>`).join("");
+  updateCompare();
+}
+function picked() { return [...$("my-jumps-rows").querySelectorAll("input:checked")].map((c) => c.closest("tr").dataset.id); }
+function updateCompare() {
+  const n = picked().length, btn = $("my-jumps-compare");
+  btn.disabled = n < 1 || n > MAX_REAL;
+  btn.textContent = n > MAX_REAL ? `Pick up to ${MAX_REAL}` : n > 1 ? `Compare ${n} jumps` : n === 1 ? "Open selected" : "Compare selected";
+}
+/** Open saved jumps as a fresh session (the video is added back from the playback, if wanted). */
+async function openSaved(ids) {
+  const list = [];
+  for (const id of ids) {
+    const b = await loadJump(id);
+    if (!b) continue;
+    try { list.push(Object.assign(bundleToAttempt(checkBundle(b)), { historyId: id, fromHistory: true })); } catch { /* skip a damaged entry */ }
+  }
+  if (!list.length) { $("my-jumps-status").textContent = "That jump couldn't be opened. It may have been cleared from this browser."; renderMyJumps(); return; }
+  $("my-jumps-status").textContent = "";
+  realSession.length = 0;
+  realSession.push(...list);
+  showResults(realSession.slice(), list[0], "real");
+}
+if ($("my-jumps")) {
+  const rows = $("my-jumps-rows");
+  rows.addEventListener("change", updateCompare);
+  rows.addEventListener("click", async (e) => {
+    const id = e.target.closest("tr")?.dataset.id;
+    if (!id) return;
+    if (e.target.closest(".my-jumps__open")) openSaved([id]);
+    else if (e.target.closest(".my-jumps__delete")) {
+      const j = saved.find((x) => x.id === id);
+      await removeJumps([id]);
+      realSession.forEach((a) => { if (a.historyId === id) delete a.historyId; });
+      await renderMyJumps();
+      $("my-jumps-status").textContent = `Deleted ${j ? `“${j.name}”` : "the jump"}.`;
+      (rows.querySelector(".my-jumps__open") || $("drop-button")).focus();
+    }
+  });
+  $("my-jumps-compare").addEventListener("click", () => { const ids = picked(); if (ids.length && ids.length <= MAX_REAL) openSaved(ids); });
+  $("my-jumps-clear").addEventListener("click", async () => {
+    if (!window.confirm(`Delete all ${plural(saved.length, "saved jump")} from this browser? This can't be undone.`)) return;
+    await clearJumps();
+    realSession.forEach((a) => delete a.historyId);
+    await renderMyJumps();
+    $("drop-button").focus();
+  });
+  renderMyJumps();
+}
 
 // New units: redraw every number in place (no count-up; the values themselves haven't changed)
 onUnitsChange(() => {
@@ -399,6 +489,7 @@ onUnitsChange(() => {
   chartsFor = null;
   if (activeTab === "charts" && !views.results.hidden) { ensureCharts(); charts.setFrame(f); }
   compare?.render();
+  if ($("my-jumps") && !$("my-jumps").hidden) renderMyJumps();
 });
 
 if (PAGE === "demo") showSample();

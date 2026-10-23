@@ -93,7 +93,9 @@ export class VideoPlayback {
       this.hasVideo = true;
       this.video.addEventListener("loadeddata", () => this.seek(this.i ?? 0), { once: true });
     } else {
-      this.noVideo("Skeleton only: open the video together with the results file to see it underneath.");
+      this.noVideo(attempt.fromHistory
+        ? "Skeleton only: videos aren't kept in My jumps."
+        : "Skeleton only: open the video together with the results file to see it underneath.", { canAdd: true });
     }
     this.fit = this.fitAthlete();
     this.i = -1;
@@ -119,12 +121,28 @@ export class VideoPlayback {
     return { x0: x0 - pad, x1: x1 + pad, y0: y0 - pad, y1: y1 + pad * 0.6, floor: y1 };
   }
 
-  noVideo(text) {
+  /** Skeleton on its own. canAdd: the video is just missing (not unplayable), so offer to add it back. */
+  noVideo(text, { canAdd = false } = {}) {
     this.hasVideo = false;
     this.video.removeAttribute("src");
     this.video.load();
     this.video.hidden = true;
     this.note.textContent = text;
+    if (canAdd) {
+      const label = document.createElement("label");
+      label.className = "vpb__add";
+      label.innerHTML = `Add the video<input type="file" accept="video/*,.mov,.mp4,.m4v" class="visually-hidden">`;
+      const input = label.querySelector("input");
+      input.addEventListener("change", () => {
+        const file = input.files[0];
+        if (!file) return;
+        const at = this.i;
+        this.a.video = file;                                     // kept for this visit (compare, switching jumps)
+        this.load(this.a);
+        this.seek(at);
+      });
+      this.note.append(" ", label);
+    }
     this.draw();
   }
 

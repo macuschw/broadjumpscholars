@@ -29,6 +29,42 @@
 .film-check__list .icon { width: 20px; height: 20px; flex: none; margin-top: 3px; color: var(--accent-on-dark); }
 .film-check .btn { margin-top: auto; }
 
+/* My jumps: earlier analyses kept in this browser, under the upload card */
+.my-jumps { grid-column: 1 / -1; min-width: 0; margin-top: var(--s-6); }
+.my-jumps__head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-5); margin-bottom: var(--s-4); }
+.my-jumps__head h2 { font-size: var(--step-3); }
+.my-jumps__lede { margin-top: var(--s-1); color: var(--muted); max-width: 62ch; }
+.my-jumps__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+table.data.my-jumps__table td, table.data.my-jumps__table th { vertical-align: middle; }
+.my-jumps .table-wrap { position: relative; }   /* keeps the hidden header labels inside the scroll box */
+.my-jumps__pick { width: 1%; }
+.my-jumps__pick input { width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer; }
+table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap: anywhere; }
+.my-jumps__open {
+  padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--text); text-align: left;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); cursor: pointer;
+}
+.my-jumps__open:hover { color: var(--accent); text-decoration-color: currentColor; }
+.my-jumps__date, .my-jumps__rough { color: var(--muted); }
+.my-jumps__rough { display: block; font-size: 0.85rem; }
+.my-jumps__check { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.92rem; }
+.my-jumps__check .icon { width: 16px; height: 16px; flex: none; }
+.my-jumps__check--serious { color: var(--accent); }
+.my-jumps__check--caution, .my-jumps__check--ok { color: var(--muted); }
+.my-jumps__delete { min-height: 36px; padding: 0 10px; font-size: 0.92rem; }
+.my-jumps__delete .icon { display: none; width: 18px; height: 18px; }
+.my-jumps__status { margin-top: var(--s-2); color: var(--muted); font-size: 0.92rem; }
+.my-jumps__status:empty { display: none; }
+.my-jumps__check-sub { display: block; margin-top: 2px; }
+@media (max-width: 640px) {
+  .my-jumps__date-col, .my-jumps__check-col { display: none; }   /* phones: date and checks move under the name */
+  table.data.my-jumps__table td, table.data.my-jumps__table th { padding-inline: var(--s-2); }
+  .my-jumps__delete { min-width: 40px; padding: 0 8px; }
+  .my-jumps__delete .icon { display: block; }
+  .my-jumps__delete span { display: none; }
+}
+@media (min-width: 641px) { .my-jumps__date-sub, .my-jumps__check-sub { display: none; } }
+
 /* Demo page: what the sample is, and the way to your own jump */
 .demo-head__lede { margin-top: var(--s-2); color: var(--muted); max-width: 52ch; }
 .demo-head__cta { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--accent); white-space: nowrap; }
@@ -188,6 +224,9 @@
 .vpb__hud { padding: 6px 10px; background: rgba(18, 19, 21, 0.78); border-radius: var(--radius); }   /* readable over any video */
 .vpb__note { position: absolute; left: var(--s-4); right: var(--s-4); bottom: var(--s-3); margin: 0; max-width: none; color: var(--muted-dark); font-size: 0.9rem; }
 .vpb__note:empty { display: none; }
+.vpb__add { color: var(--paper); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; white-space: nowrap; }
+.vpb__add:hover { color: var(--accent-on-dark); }
+.vpb__add:focus-within { outline: 2px solid var(--paper); outline-offset: 2px; }
 .vpb__check { display: inline-flex; align-items: center; gap: var(--s-2); min-height: 44px; font-weight: 600; font-size: 0.95rem; cursor: pointer; }
 .vpb__check input { width: 20px; height: 20px; accent-color: var(--accent); }
 
