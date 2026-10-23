@@ -125,7 +125,7 @@ jl-header { display: block; min-height: var(--nav-h); background: var(--ink); } 
 .num { font-family: var(--font-display); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--key); line-height: 1; }
 
 /* ---------- Tables ---------- */
-.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); container-type: inline-size; }
+.table-wrap { position: relative; overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); container-type: inline-size; }
 table.data { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 0.98rem; }
 /* The caption stays the width of the visible box and doesn't scroll away with a wide table */
 table.data caption { position: sticky; left: 0; max-width: 100cqi; text-align: left; padding: var(--s-3) var(--s-4); font-weight: 600; color: var(--fg-muted); caption-side: top; }

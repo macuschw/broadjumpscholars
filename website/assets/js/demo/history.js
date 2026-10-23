@@ -96,6 +96,19 @@ export async function loadJump(id) {
   return (await tx("readonly", ({ bundles }) => done(bundles.get(id)), null)) ?? null;
 }
 
+/** Give a saved jump a name of its own ("Reece, try 3"); an empty name goes back to the file name. */
+export const MAX_LABEL = 40;
+export async function renameJump(id, label) {
+  const clean = String(label || "").replace(/\s+/g, " ").trim().slice(0, MAX_LABEL);
+  return tx("readwrite", async ({ list }) => {
+    const entry = await done(list.get(id));
+    if (!entry) return false;
+    if (clean) entry.label = clean; else delete entry.label;
+    list.put(entry);
+    return true;
+  }, false);
+}
+
 export async function removeJumps(ids) {
   return tx("readwrite", ({ list, bundles }) => { ids.forEach((id) => { list.delete(id); bundles.delete(id); }); return true; }, false);
 }

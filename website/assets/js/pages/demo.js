@@ -23,7 +23,7 @@ import { buildCompare } from "../demo/compare.js";
 import { STAT_NAMES, bundleToAttempt, checkBundle, downloadBundle, issues, realHeadline } from "../demo/real.js";
 import { calibrate } from "../demo/calibrate.js";
 import { analyzeVideo, recompute, serverURL, wake } from "../demo/server.js";
-import { canSave, clearJumps, listJumps, loadJump, removeJumps, saveJump } from "../demo/history.js";
+import { MAX_LABEL, canSave, clearJumps, listJumps, loadJump, removeJumps, renameJump, saveJump } from "../demo/history.js";
 import { formatQuantity, onUnitsChange } from "../lib/units.js";
 
 const $ = (id) => document.getElementById(id);
@@ -72,7 +72,7 @@ const playback = () => (current.real ? realPlayback : simPlayback);
 
 function renderPicker() {
   $("attempt-pick").innerHTML = session.map((a) =>
-    `<button type="button" class="attempt-btn" data-attempt="${a.id}" aria-pressed="${a === current}" title="${a.name || a.label}">${a.label}</button>`).join("");
+    `<button type="button" class="attempt-btn" data-attempt="${a.id}" aria-pressed="${a === current}" title="${esc(a.name || a.label)}${a.sub ? ` · ${esc(a.sub)}` : ""}">${esc(a.label)}</button>`).join("");
   $("attempt-pick").setAttribute("aria-label", mode === "sample" ? "Attempt" : "Jump");
   $("attempt-pick").querySelectorAll(".attempt-btn").forEach((b) => b.addEventListener("click", () => setAttempt(session.find((a) => a.id === b.dataset.attempt))));
 }
@@ -125,7 +125,8 @@ function renderSource(a) {
   const fps = `${Math.round(r.fps)} fps${r.fps_source === "override" ? " (as you set)" : ""}`;
   const scale = a.calibrated ? `calibrated, 1 px = ${formatQuantity("tiny", r.scale_m_per_px)}` : "no tape calibration";
   const kept = a.historyId ? " · saved in My jumps" : "";
-  $("results-source").textContent = `${a.name} · ${fps} · ${scale} · ${r.side === "LEFT" ? "left" : "right"} side to the camera${kept}`;
+  const file = a.custom ? `${a.label} (${a.name})` : a.name;
+  $("results-source").textContent = `${file} · ${fps} · ${scale} · ${r.side === "LEFT" ? "left" : "right"} side to the camera${kept}`;
 }
 
 // Problems with the video (staggered feet, someone else in the shot, blur...), in plain words,
@@ -428,13 +429,17 @@ async function renderMyJumps() {
   $("my-jumps-rows").innerHTML = saved.map((j) => `
     <tr data-id="${esc(j.id)}">
       <td class="my-jumps__pick"><input type="checkbox" aria-label="Select ${esc(j.name)}"></td>
-      <th scope="row" class="my-jumps__name"><button type="button" class="my-jumps__open">${esc(j.name)}</button>
+      <th scope="row" class="my-jumps__name"><button type="button" class="my-jumps__open">${esc(j.label || j.name)}</button>
+        ${j.label ? `<span class="my-jumps__rough">${esc(j.name)}</span>` : ""}
         <span class="my-jumps__rough my-jumps__date-sub">${dateText(j.savedAt)}</span>
         <span class="my-jumps__check-sub">${checkCell(j)}</span></th>
       <td class="my-jumps__date my-jumps__date-col">${dateText(j.savedAt)}</td>
       <td class="num-cell">${j.distance == null ? "—" : formatQuantity("distance", j.distance)}${j.calibrated ? "" : `<span class="my-jumps__rough">${j.distance == null ? "not measured" : "rough"}</span>`}</td>
       <td class="my-jumps__check-col">${checkCell(j)}</td>
-      <td><button type="button" class="btn btn--quiet btn--sm my-jumps__delete" aria-label="Delete ${esc(j.name)}"><span>Delete</span>${icon("close")}</button></td>
+      <td class="my-jumps__row-actions">
+        <button type="button" class="btn btn--quiet btn--sm my-jumps__rename" aria-label="Rename ${esc(j.label || j.name)}"><span>Rename</span>${icon("edit")}</button>
+        <button type="button" class="btn btn--quiet btn--sm my-jumps__delete" aria-label="Delete ${esc(j.label || j.name)}"><span>Delete</span>${icon("close")}</button>
+      </td>
     </tr>`).join("");
   updateCompare();
 }
@@ -450,13 +455,58 @@ async function openSaved(ids) {
   for (const id of ids) {
     const b = await loadJump(id);
     if (!b) continue;
-    try { list.push(Object.assign(bundleToAttempt(checkBundle(b)), { historyId: id, fromHistory: true })); } catch { /* skip a damaged entry */ }
+    const entry = saved.find((j) => j.id === id);
+    try {
+      const a = Object.assign(bundleToAttempt(checkBundle(b)), { historyId: id, fromHistory: true });
+      if (entry) {
+        a.sub = dateText(entry.savedAt);
+        if (entry.label) Object.assign(a, { label: pickerLabel(entry.label), custom: true });
+      }
+      list.push(a);
+    } catch { /* skip a damaged entry */ }
   }
   if (!list.length) { $("my-jumps-status").textContent = "That jump couldn't be opened. It may have been cleared from this browser."; renderMyJumps(); return; }
   $("my-jumps-status").textContent = "";
   realSession.length = 0;
   realSession.push(...list);
-  showResults(realSession.slice(), list[0], "real");
+  showResults(realSession.slice(), list[0], "real", { focus: list.length < 2 });
+  if (list.length > 1) { $("tab-compare").click(); $("tab-compare").focus(); }   // they asked to compare
+}
+/** A name for the jump picker and the comparison: at most 20 characters. */
+const pickerLabel = (name) => (name.length > 20 ? `${name.slice(0, 19)}…` : name);
+
+/** Rename in place: the name cell becomes a text box (Enter saves, Escape cancels). */
+function startRename(row, id) {
+  const j = saved.find((x) => x.id === id);
+  if (!j || row.querySelector(".my-jumps__edit")) return;
+  const cell = row.querySelector(".my-jumps__name");
+  const before = cell.innerHTML;
+  cell.innerHTML = `<form class="my-jumps__edit">
+      <label class="visually-hidden" for="rename-${esc(id)}">New name for ${esc(j.label || j.name)}</label>
+      <input id="rename-${esc(id)}" type="text" maxlength="${MAX_LABEL}" value="${esc(j.label || "")}" placeholder="${esc(j.name)}" autocomplete="off">
+      <button type="submit" class="btn btn--primary btn--sm">Save</button>
+      <button type="button" class="btn btn--quiet btn--sm" data-cancel>Cancel</button>
+    </form>
+    <span class="my-jumps__rough">Leave empty to use the file name.</span>`;
+  const form = cell.querySelector("form"), field = form.querySelector("input");
+  const cancel = () => { cell.innerHTML = before; cell.querySelector(".my-jumps__open")?.focus(); };
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await renameJump(id, field.value);
+    const label = field.value.replace(/\s+/g, " ").trim().slice(0, MAX_LABEL);
+    realSession.forEach((a) => {                                // already open: the new name shows next time it's drawn
+      if (a.historyId !== id) return;
+      if (label) Object.assign(a, { label: pickerLabel(label), custom: true });
+      else { a.label = pickerLabel(String(a.name).replace(/\.[a-z0-9]+$/i, "")); delete a.custom; }
+    });
+    await renderMyJumps();
+    $("my-jumps-status").textContent = label ? `Renamed to “${label}”.` : "Back to the file name.";
+    $("my-jumps-rows").querySelector(`tr[data-id="${CSS.escape(id)}"] .my-jumps__open`)?.focus();
+  });
+  form.querySelector("[data-cancel]").addEventListener("click", cancel);
+  field.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); cancel(); } });
+  field.focus();
+  field.select();
 }
 if ($("my-jumps")) {
   const rows = $("my-jumps-rows");
@@ -465,12 +515,13 @@ if ($("my-jumps")) {
     const id = e.target.closest("tr")?.dataset.id;
     if (!id) return;
     if (e.target.closest(".my-jumps__open")) openSaved([id]);
+    else if (e.target.closest(".my-jumps__rename")) startRename(e.target.closest("tr"), id);
     else if (e.target.closest(".my-jumps__delete")) {
       const j = saved.find((x) => x.id === id);
       await removeJumps([id]);
       realSession.forEach((a) => { if (a.historyId === id) delete a.historyId; });
       await renderMyJumps();
-      $("my-jumps-status").textContent = `Deleted ${j ? `“${j.name}”` : "the jump"}.`;
+      $("my-jumps-status").textContent = `Deleted ${j ? `“${j.label || j.name}”` : "the jump"}.`;
       (rows.querySelector(".my-jumps__open") || $("drop-button")).focus();
     }
   });

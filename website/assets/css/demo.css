@@ -39,7 +39,7 @@ table.data.my-jumps__table td, table.data.my-jumps__table th { vertical-align: m
 .my-jumps .table-wrap { position: relative; }   /* keeps the hidden header labels inside the scroll box */
 .my-jumps__pick { width: 1%; }
 .my-jumps__pick input { width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer; }
-table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap: anywhere; }
+table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap: break-word; }
 .my-jumps__open {
   padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--text); text-align: left;
   text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); cursor: pointer;
@@ -47,12 +47,17 @@ table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap
 .my-jumps__open:hover { color: var(--accent); text-decoration-color: currentColor; }
 .my-jumps__date, .my-jumps__rough { color: var(--muted); }
 .my-jumps__rough { display: block; font-size: 0.85rem; }
-.my-jumps__check { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.92rem; }
+.my-jumps__check { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.92rem; white-space: nowrap; }
 .my-jumps__check .icon { width: 16px; height: 16px; flex: none; }
 .my-jumps__check--serious { color: var(--accent); }
 .my-jumps__check--caution, .my-jumps__check--ok { color: var(--muted); }
-.my-jumps__delete { min-height: 36px; padding: 0 10px; font-size: 0.92rem; }
-.my-jumps__delete .icon { display: none; width: 18px; height: 18px; }
+.my-jumps__row-actions { text-align: right; }
+.my-jumps__row-actions .btn + .btn { margin-left: var(--s-1); }
+.my-jumps__delete, .my-jumps__rename { min-height: 36px; padding: 0 10px; font-size: 0.92rem; }
+.my-jumps__delete .icon, .my-jumps__rename .icon { display: none; width: 18px; height: 18px; }
+.my-jumps__edit { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.my-jumps__edit input { flex: 1 1 14ch; min-width: 0; min-height: 40px; padding: 0 var(--s-2); font: inherit; border: 1.5px solid var(--line-strong); border-radius: var(--radius); background: var(--white); }
+.my-jumps__edit input:focus { outline: 3px solid var(--focus); outline-offset: 1px; border-color: var(--text); }
 .my-jumps__empty { max-width: none; padding: var(--s-5); border: 1px dashed var(--line-strong); border-radius: var(--radius); color: var(--muted); text-align: center; }
 .my-jumps__status { margin-top: var(--s-2); color: var(--muted); font-size: 0.92rem; }
 .my-jumps__status:empty { display: none; }
@@ -60,9 +65,11 @@ table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap
 @media (max-width: 640px) {
   .my-jumps__date-col, .my-jumps__check-col { display: none; }   /* phones: date and checks move under the name */
   table.data.my-jumps__table td, table.data.my-jumps__table th { padding-inline: var(--s-2); }
-  .my-jumps__delete { min-width: 40px; padding: 0 8px; }
-  .my-jumps__delete .icon { display: block; }
-  .my-jumps__delete span { display: none; }
+  .my-jumps__delete, .my-jumps__rename { min-width: 40px; padding: 0 8px; }
+  .my-jumps__delete .icon, .my-jumps__rename .icon { display: block; }
+  .my-jumps__delete span, .my-jumps__rename span { display: none; }
+  .my-jumps__row-actions .btn { display: flex; }               /* phones: the two buttons stack */
+  .my-jumps__row-actions .btn + .btn { margin: var(--s-1) 0 0; }
 }
 @media (min-width: 641px) { .my-jumps__date-sub, .my-jumps__check-sub { display: none; } }
 
@@ -101,12 +108,13 @@ table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap
 .results__head h2 { font-size: var(--step-3); margin-right: var(--s-2); }
 .results__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-left: auto; }
 .results__source { margin: var(--s-2) 0 var(--s-4); color: var(--muted); max-width: none; }
-.attempt-pick { display: inline-flex; border: 2px solid var(--text); border-radius: var(--radius); }
+/* A segmented control that wraps onto more rows when there are many jumps: every button has its own
+   border and overlaps its neighbors by the border width, so the rules stay single at any wrap */
+.attempt-pick { display: inline-flex; flex-wrap: wrap; max-width: 100%; padding: 0 2px 2px 0; }
 .attempt-btn {
-  min-height: 44px; padding: 0 var(--s-4); border: 0; background: transparent; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
+  min-height: 44px; padding: 0 var(--s-4); border: 2px solid var(--text); margin: 0 -2px -2px 0; background: transparent; font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
   transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
-.attempt-btn + .attempt-btn { border-left: 2px solid var(--text); }
 .attempt-btn:hover { background: var(--white); }
 .attempt-btn[aria-pressed="true"] { background: var(--text); color: var(--paper); }
 /* Six cards in one row, 3 + 3 on tablets, 2 + 2 + 2 on phones; 1 px rules between cards at any count */
@@ -154,9 +162,15 @@ table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap
 .compare__pick legend { font-weight: 600; margin-bottom: var(--s-2); }
 .compare__opt { display: inline-flex; align-items: center; gap: var(--s-2); min-height: 44px; font-weight: 600; cursor: pointer; }
 .compare__opt input { width: 20px; height: 20px; accent-color: var(--accent); }
-.compare__swatch { width: 34px; height: 0; border-top: 3px solid var(--text); }
-.compare__swatch--dashed { border-top-style: dashed; }
-.compare__swatch--dotted { border-top-style: dotted; }
+.compare__swatch { width: 40px; height: 6px; flex: none; overflow: visible; }
+.compare__swatch line { stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
+.compare__sub { display: block; font-weight: 500; font-size: 0.82rem; color: var(--muted); }
+th .compare__swatch { display: block; width: 32px; margin: 0 0 4px auto; }
+th .best-label { margin-left: 6px; }
+/* Pointing at a jump in the list: its path stands out, the rest fade */
+#compare-chart .chart-line { transition: opacity var(--dur-fast) var(--ease), stroke-width var(--dur-fast) var(--ease); }
+#compare-chart.is-spotlit .chart-line:not(.is-spot) { opacity: 0.18; }
+#compare-chart.is-spotlit .chart-line.is-spot { stroke-width: 4; }
 .compare__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); align-items: start; }
 @media (min-width: 1180px) { .compare__grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
 .compare__empty { color: var(--muted); padding: var(--s-5) 0; }

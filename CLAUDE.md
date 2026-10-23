@@ -83,7 +83,9 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   tape ends → `/recompute` with the scale (re-analyzes saved landmarks, < 1 mm difference).
 - Shared server logic: `jumplab/web.py` (`make_bundle`, `analyze_upload`, `recompute`, `handle`).
 - **My jumps** (`demo/history.js`): every real jump (upload or opened `_web.json`) is saved as its bundle in
-  this browser's IndexedDB, listed under the upload card on Analyze (open, compare up to 6, delete, clear).
+  this browser's IndexedDB, listed under the upload card on Analyze (open, rename, compare up to 6, delete,
+  clear). Comparing 2+ opens straight on the Compare tab; each jump gets one of six line styles
+  (`line-chart.js` DASH), and pointing at a jump in the list picks out its path.
   No accounts, nothing on a server; videos aren't kept (playback offers "Add the video"). Same analysis
   twice isn't listed twice. Always shown: "Jumps you analyze will appear here." while empty, or a note
   pointing to Download results if the browser blocks storage.

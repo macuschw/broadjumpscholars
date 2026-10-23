@@ -1,10 +1,10 @@
 // Accessible SVG line chart.
-// Series are told apart by line STYLE (solid / dashed / dotted) and direct labels, not
+// Series are told apart by line STYLE (up to six dash patterns) and direct labels, not
 // color alone. Keyboard: focus the chart, then Left/Right (Shift = bigger steps),
 // Home/End move a cursor; values are announced in a live readout.
 import { el, fmt, svg } from "../lib/dom.js";
 
-const DASH = { solid: null, dashed: "9 6", dotted: "1.5 6" };
+export const DASH = { solid: null, dashed: "9 6", dotted: "1.5 6", dashdot: "12 5 2 5", long: "20 7", short: "4 4" };
 const unitSuffix = (u) => (!u || u === "°" ? u : ` ${u}`);   // 1.20 m, 2.4 ft, 0.45 s, but 35°
 
 function niceTicks(min, max, count = 5) {
@@ -99,7 +99,7 @@ function draw(host, opts, W, remember) {
     const d = s.points.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
     lines.append(svg("path", {
       d, class: `chart-line${s.emphasis ? " is-emphasis" : ""}`,
-      "stroke-dasharray": DASH[s.style || "solid"] || false,
+      "stroke-dasharray": DASH[s.style || "solid"] || false, "data-series": s.key ?? false,
     }));
     if (directLabels) {
       const last = s.points[s.points.length - 1];
