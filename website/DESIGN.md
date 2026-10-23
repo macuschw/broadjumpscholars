@@ -50,19 +50,13 @@ as the foundation for layout, typography, accessibility and chart rules.
   equations centered in full-width dark boxes, inline maths in the text and notes. The plain HTML
   inside each element is the fallback if KaTeX can't load.
 
-## Home: testimonials and call to action
-- **Testimonials** ("From the field", a charcoal band after the problem): one lead quote in large display
-  type with an accent opening mark, and two shorter quotes beside it, split by 1 px rules under a 3 px top
-  rule (the scoreboard pattern). Each attribution has a role icon (the same icons as About's "Who it's for"),
-  a name and a role. Tablets put the lead quote on top and the other two side by side; phones stack all three.
-  The quotes are placeholders, tagged "Placeholder quotes" like every other stand-in on the site, until real
-  quotes replace them.
+## Home: call to action
 - **Call to action** ("Try it", off-white, just above the footer): one main action, "Explore the sample
   analysis" (`demo.html`, straight into the results), with three short reassurances under it. Beside
   it, a card answering "Filming your own jumps?" with the three things needed and a link to the setup guide.
   It promises nothing the demo can't do: uploaded videos aren't analyzed yet, so the main action is the sample.
-- The home page alternates charcoal and off-white all the way down: hero, problem, testimonials, call to
-  action, footer.
+- The home page: charcoal hero, then the problem and the call to action on off-white, then the charcoal
+  footer. (A testimonials band was removed in Oct 2026: no real quotes planned.)
 
 ## Units switch
 - A small m / ft segmented control in the header, after the nav links (the same look as the 3D / Side toggle);

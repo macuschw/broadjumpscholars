@@ -32,7 +32,7 @@ rsync -a --exclude '.DS_Store' "../jumplab-site/" website/ && git add website &&
 
 | Route | Page |
 |---|---|
-| `index.html` | Home: pitch, interactive 3D jump with a timeline, the problem, testimonials (placeholder quotes), and a call to action into the sample analysis |
+| `index.html` | Home: pitch, interactive 3D jump with a timeline, the problem, and a call to action into the sample analysis |
 | `how-it-works.html` | Record → Track → Calculate → Improve |
 | `metrics.html` | The six metrics drawn on a 3D athlete at takeoff, with a 3D / Side view (`?m=trunk` deep-links a metric) |
 | `setup.html` | Top-down camera diagram + pre-recording checklist |
@@ -40,10 +40,6 @@ rsync -a --exclude '.DS_Store' "../jumplab-site/" website/ && git add website &&
 | `analyze.html` | Your own jump. A video goes to the analysis server, then the visitor clicks the tape to set the scale; a `_web.json` from the JumpLab app opens directly (with its video). Real jumps play as the video with the tracked skeleton, with the analysis's ratings and warnings |
 | `demo.html` | The simulated sample jump on its own: three attempts, straight into the results (3D playback, charts, key moments, compare), marked as demo data |
 | `about.html` | Team (Reece, Macus), audiences, FAQ |
-
-The home testimonials are **placeholder quotes**, marked with a "Placeholder quotes" tag. Before
-sharing the site, replace each quote, `[NAME]` and role in `index.html` with a real quote from someone
-who has used JumpLab (with their permission), then remove the tag.
 
 The Accuracy page (placeholder validation table and known limitations) is parked in
 `_parked/` for now, with steps to restore it in `_parked/README.md`.

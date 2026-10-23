@@ -49,7 +49,7 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
 
 ## Website state
 
-- Pages: Home (3D draggable hero, testimonials = **placeholder quotes**, call to action), How it works,
+- Pages: Home (3D draggable hero, the problem, call to action; no testimonials), How it works,
   Metrics (3D sculpted mannequin, drag 360°, in-scene metric overlays + callout labels), Setup,
   Science (KaTeX formulas, tabs), About (team: Reece, Macus), Analyze
   (upload your own video; the header's "Upload a video" button), Demo (the simulated sample jump, its own
@@ -89,11 +89,11 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   finishing, so the two of us rarely change the same file at once.
 - Edit the site in `website/` directly. (The old separate `jumplab-site` folder is retired: copying
   it over `website/` would undo the other person's changes.)
-- Keep placeholders as placeholders (names, testimonial quotes) until real ones are supplied.
+- Keep placeholders as placeholders until real ones are supplied.
 - Verify UI changes in a browser at desktop and phone widths; run `pytest` after Python changes.
 
 ## Open to-dos / ideas
 - Test an upload from a real phone (large 4K slow-motion files; iPhone HEVC playback).
-- Replace placeholder testimonials; pick a final project name if "JumpLab" changes.
+- Pick a final project name if "JumpLab" changes.
 - Accuracy page (parked in `website/_parked/`) could return with the tape-check data.
 - Collect more tape-measured jumps (esp. staggered) to validate / correct.
