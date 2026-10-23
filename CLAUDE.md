@@ -85,7 +85,8 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
 - **My jumps** (`demo/history.js`): every real jump (upload or opened `_web.json`) is saved as its bundle in
   this browser's IndexedDB, listed under the upload card on Analyze (open, compare up to 6, delete, clear).
   No accounts, nothing on a server; videos aren't kept (playback offers "Add the video"). Same analysis
-  twice isn't listed twice. If storage is blocked the page works as before, with no list.
+  twice isn't listed twice. Always shown: "Jumps you analyze will appear here." while empty, or a note
+  pointing to Download results if the browser blocks storage.
 
 ## How we work
 
