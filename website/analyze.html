@@ -66,20 +66,21 @@
         <a class="btn btn--ghost btn--sm" href="setup.html">Full setup guide</a>
       </aside>
 
-      <!-- My jumps: earlier analyses kept in this browser (demo/history.js); shown once there is one -->
-      <section class="my-jumps" id="my-jumps" hidden aria-labelledby="my-jumps-title">
+      <!-- My jumps: earlier analyses kept in this browser (demo/history.js); an empty note until there is one -->
+      <section class="my-jumps" id="my-jumps" aria-labelledby="my-jumps-title">
         <div class="my-jumps__head">
           <div>
             <h2 id="my-jumps-title">My jumps</h2>
             <p class="my-jumps__lede">Every jump you analyze is kept here, in this browser only. Nothing is uploaded,
               and other people can't see it. Videos aren't kept: add one back to see it under the skeleton.</p>
           </div>
-          <div class="my-jumps__actions">
+          <div class="my-jumps__actions" id="my-jumps-actions" hidden>
             <button type="button" class="btn btn--primary btn--sm" id="my-jumps-compare" disabled>Compare selected</button>
             <button type="button" class="btn btn--quiet btn--sm" id="my-jumps-clear">Clear my jumps</button>
           </div>
         </div>
-        <div class="table-wrap">
+        <p class="my-jumps__empty" id="my-jumps-empty">Jumps you analyze will appear here.</p>
+        <div class="table-wrap" id="my-jumps-table" hidden>
           <table class="data my-jumps__table">
             <caption class="visually-hidden">Your saved jumps, newest first. Tick up to 6 to compare them.</caption>
             <thead><tr>

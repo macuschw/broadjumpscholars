@@ -23,7 +23,7 @@ import { buildCompare } from "../demo/compare.js";
 import { STAT_NAMES, bundleToAttempt, checkBundle, downloadBundle, issues, realHeadline } from "../demo/real.js";
 import { calibrate } from "../demo/calibrate.js";
 import { analyzeVideo, recompute, serverURL, wake } from "../demo/server.js";
-import { clearJumps, listJumps, loadJump, removeJumps, saveJump } from "../demo/history.js";
+import { canSave, clearJumps, listJumps, loadJump, removeJumps, saveJump } from "../demo/history.js";
 import { formatQuantity, onUnitsChange } from "../lib/units.js";
 
 const $ = (id) => document.getElementById(id);
@@ -418,7 +418,13 @@ async function renderMyJumps() {
   const box = $("my-jumps");
   if (!box) return;
   saved = await listJumps();
-  box.hidden = !saved.length;
+  const empty = !saved.length;
+  $("my-jumps-table").hidden = empty;
+  $("my-jumps-actions").hidden = empty;
+  $("my-jumps-empty").hidden = !empty;
+  if (empty) $("my-jumps-empty").textContent = (await canSave())
+    ? "Jumps you analyze will appear here."
+    : "This browser isn't letting the site save jumps (often a private window or blocked site data), so they won't appear here. Use Download results after an analysis to keep a copy.";
   $("my-jumps-rows").innerHTML = saved.map((j) => `
     <tr data-id="${esc(j.id)}">
       <td class="my-jumps__pick"><input type="checkbox" aria-label="Select ${esc(j.name)}"></td>
@@ -489,7 +495,7 @@ onUnitsChange(() => {
   chartsFor = null;
   if (activeTab === "charts" && !views.results.hidden) { ensureCharts(); charts.setFrame(f); }
   compare?.render();
-  if ($("my-jumps") && !$("my-jumps").hidden) renderMyJumps();
+  if ($("my-jumps")) renderMyJumps();
 });
 
 if (PAGE === "demo") showSample();

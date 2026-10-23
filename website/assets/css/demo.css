@@ -53,6 +53,7 @@ table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap
 .my-jumps__check--caution, .my-jumps__check--ok { color: var(--muted); }
 .my-jumps__delete { min-height: 36px; padding: 0 10px; font-size: 0.92rem; }
 .my-jumps__delete .icon { display: none; width: 18px; height: 18px; }
+.my-jumps__empty { max-width: none; padding: var(--s-5); border: 1px dashed var(--line-strong); border-radius: var(--radius); color: var(--muted); text-align: center; }
 .my-jumps__status { margin-top: var(--s-2); color: var(--muted); font-size: 0.92rem; }
 .my-jumps__status:empty { display: none; }
 .my-jumps__check-sub { display: block; margin-top: 2px; }

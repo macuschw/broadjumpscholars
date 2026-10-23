@@ -62,6 +62,9 @@ function summary(b, id, savedAt) {
   };
 }
 
+/** Whether this browser lets the site keep jumps at all (false: private window, blocked site data). */
+export async function canSave() { return (await db()) != null; }
+
 /** Saved jumps, newest first ([] if storage isn't available). */
 export async function listJumps() {
   const all = await tx("readonly", ({ list }) => done(list.getAll()), []);
