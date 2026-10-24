@@ -52,9 +52,10 @@ export function createDetector({ onJump = () => {}, onState = () => {} } = {}) {
   function feed(t, pts) {
     const m = pts ? measure(pts) : null;
     if (!m) { if (state !== "ground" && jump && t - jump.tTakeoff > MAX_FLIGHT + 0.5) { state = "ground"; jump = null; onState(state); } return; }
-    const prev = hist[hist.length - 1];
     const tall = pct(hist.map((h) => h.tall).concat(m.tall), 0.8);
-    const switched = !!prev && t > prev.t && Math.abs(m.hipX - prev.hipX) / tall / (t - prev.t) > TELEPORT;
+    // Teleport: judged over at least 0.1 s, so uneven frame timing can't fake one
+    const before = hist.findLast((h) => t - h.t >= 0.1 && t - h.t <= 0.5);
+    const switched = !!before && Math.abs(m.hipX - before.hipX) / tall / (t - before.t) > TELEPORT;
     hist.push({ t, ...m, grounded: state === "ground", switched });
     while (hist.length && t - hist[0].t > KEEP_S) hist.shift();
     const standing = hist.filter((h) => h.grounded);

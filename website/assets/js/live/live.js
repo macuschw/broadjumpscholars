@@ -57,7 +57,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
   const video = q(".live__video"), overlay = q(".live__overlay"), octx = overlay.getContext("2d");
   const status = (text) => { q(".live__status").textContent = text; };
   let stream = null, tracker = null, scale = null, recorder = null, chunks = [], recStart = 0, mime = "", clock0 = 0;
-  let running = false, busy = false, lastSeen = 0, wake = null, frames = 0, closed = false;
+  let running = false, busy = false, lastSeen = 0, wake = null, frames = 0, closed = false, mediaBase = null, lastTs = 0;
   const jumps = [];
   const detector = createDetector({ onJump: (j) => showJump(j), onState: (s) => { q(".live__badge").textContent = s === "air" ? "In the air" : ""; q(".live__badge").hidden = s !== "air"; } });
 
@@ -104,11 +104,17 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
   function loop() {
     if (!running) return;
     const next = () => (video.requestVideoFrameCallback ? video.requestVideoFrameCallback(tick) : requestAnimationFrame(tick));
-    function tick() {
+    function tick(_, meta) {
       if (!running) return;
       if (!busy && video.readyState >= 2) {
         busy = true;
-        const now = performance.now();
+        // The frame's own time (when the camera caught it, or its media time anchored to this page's
+        // clock), so uneven processing doesn't skew speeds; always moving forward, as the tracker needs
+        let now = performance.now();
+        if (meta?.captureTime > 0) now = meta.captureTime;
+        else if (meta?.mediaTime > 0) { mediaBase ??= now - meta.mediaTime * 1000; now = meta.mediaTime * 1000 + mediaBase; }
+        now = Math.max(now, lastTs + 1);
+        lastTs = now;
         let pts = null;
         try {
           const r = tracker.detectForVideo(video, now);
