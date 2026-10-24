@@ -5,3 +5,4 @@ __pycache__/
 *.mov
 output/
 .DS_Store
+.claude/

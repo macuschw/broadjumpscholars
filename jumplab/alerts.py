@@ -20,6 +20,18 @@ WIDTH = 64
 # Plain language for every warning: a headline, what happened, and how to film it better next time.
 # The website shows these above the results; the full technical message stays available too.
 PLAIN = {
+    # Fouls: the attempt doesn't count (results["fouls"])
+    "foul_step_forward": ("Stepped forward after landing",
+                          "A foot came down ahead of where the feet landed, so the landing wasn't held "
+                          "and the jump doesn't count.",
+                          "Land with the knees bent and hold still until you've stood up."),
+    "foul_step_back": ("Stepped back after landing",
+                       "A foot moved back behind where the feet landed. The mark is the rearmost point, so "
+                       "this jump doesn't count as measured.",
+                       "Land with your weight forward, arms reaching ahead, and hold the landing."),
+    "foul_hand_down": ("Hand touched the ground",
+                       "A hand was put down on the ground after landing, so the jump doesn't count.",
+                       "Swing the arms forward on landing and stand up without touching down."),
     "staggered_feet": ("Feet staggered at landing",
                        "One foot landed behind the other. A single side-on camera can't see the far foot well, "
                        "so the distance can be off by up to about 5 inches (12 cm), too long or too short.",
@@ -148,6 +160,21 @@ def banner(warnings, color: bool = False) -> str:
     return paint("\n".join(lines), "red", color)
 
 
+def foul_box(fouls, color: bool = False) -> str:
+    """A boxed notice that the attempt doesn't count (results["fouls"]), or '' when it does."""
+    if not fouls:
+        return ""
+    rule = "X" * WIDTH
+    lines = [rule]
+    for i, f in enumerate(fouls):
+        if i:
+            lines.append("XX")
+        lines.append(f"XX  THIS JUMP DOESN'T COUNT: {headline(f).upper()}")
+        lines += textwrap.wrap(f["message"], WIDTH - 4, initial_indent="XX  ", subsequent_indent="XX  ")
+    lines.append(rule)
+    return paint("\n".join(lines), "red", color)
+
+
 def marker(warnings, category: str) -> str:
     """Text to put beside a number in `category`: loud for serious warnings, mild for caution."""
     ws = [w for w in map(as_warning, warnings or []) if category in w.get("affects", [])]
@@ -158,8 +185,10 @@ def marker(warnings, category: str) -> str:
     return ""
 
 
-def verdict(warnings, color: bool = False) -> str:
-    """One line for the very end of a run: what, if anything, needs a second look."""
+def verdict(warnings, color: bool = False, fouls=None) -> str:
+    """One line for the very end of a run: whether the jump counts, and what needs a second look."""
+    if fouls:
+        return paint(f"XX NOT A VALID JUMP: {'; '.join(headline(f) for f in fouls)}.", "red", color)
     ws = list(map(as_warning, warnings or []))
     bad = [w for w in ws if w["severity"] == SERIOUS]
     care = [w for w in ws if w["severity"] == CAUTION]

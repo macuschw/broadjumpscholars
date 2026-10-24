@@ -121,8 +121,8 @@ def test_an_uploaded_video_keeps_its_sharpness_and_is_checked_for_other_people(m
             (x0, y0), (x1, y1) = np.nanmin(xy, 0), np.nanmax(xy, 0)
             others[i] = [x1, y0, x1 + (x1 - x0), y1]
         return others
-    monkeypatch.setattr(pose_tracking, "track_jump", lambda path, fps=None: None)     # a short clip: no trimming
-    monkeypatch.setattr(pose_tracking, "track_video", lambda path: kp)
+    monkeypatch.setattr(web, "track_upload",                     # a short clip: tracked whole
+                        lambda path, fps=None, progress=None: (kp, pose_tracking.jumps_in_keypoints(kp) or [(0, kp.n_frames - 1)], False))
     monkeypatch.setattr(pose_tracking, "scan_for_others", scan)
     monkeypatch.setattr(web, "still_frame", lambda path, i: None)
     b = web.analyze_upload("/tmp/upload123.mp4", "jump.mov", scale=T.scale, event_method="toe_heel")

@@ -95,7 +95,7 @@ def main():
         print(f"Skeleton video:  {r['files']['skeleton_video']}")
     print(f"Saved {out('keypoints_and_angles.csv')}, {out('results.json')}, {out('web.json')},")
     print(f"      {out('events_plot.png')}, {out('trajectory_plot.png')}")
-    print("\n" + verdict(r["warnings"], color))             # the last line on screen: the verdict
+    print("\n" + verdict(r["warnings"], color, fouls=r.get("fouls")))             # the last line on screen: the verdict
 
 
 if __name__ == "__main__":

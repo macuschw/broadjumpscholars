@@ -41,7 +41,8 @@ def test_the_tracked_part_survives_the_website_bundle():
     kp = _long_clip(jumper_keypoints())
     b = web.make_bundle(analyze_keypoints(kp, T.scale, CONFIG), kp, "jump.mov")
     lm = b["landmarks"]
-    assert lm["segment"] == list(kp.segment) and lm["xyv"][0] is None and lm["xyv"][PAD] is not None
+    assert lm["segment"] == list(kp.segment) and lm["offset"] == PAD            # only the tracked part is kept
+    assert len(lm["xyv"]) == len(lm["frame_times"]) == len(b["series"]["time_s"]) == kp.segment[1] - PAD + 1
     again = web.recompute({"landmarks": lm, "scale": T.scale, "event_method": "toe_heel"})
     assert again["results"]["distance"]["jump_distance_m"] == pytest.approx(b["results"]["distance"]["jump_distance_m"], abs=0.001)
 
@@ -53,10 +54,10 @@ def test_a_wrong_guess_falls_back_to_tracking_the_whole_video(monkeypatch):
     with pytest.raises(NoJumpFound):
         analyze_keypoints(wrong, T.scale, CONFIG)
     tracked_all = []
-    monkeypatch.setattr(pose_tracking, "track_jump", lambda path, fps=None: wrong)
+    monkeypatch.setattr(web, "track_upload", lambda path, fps=None, progress=None: (wrong, [wrong.segment], True))
     monkeypatch.setattr(pose_tracking, "track_video", lambda path: tracked_all.append(path) or kp)
     monkeypatch.setattr(web, "still_frame", lambda path, i: None)
-    monkeypatch.setattr("jumplab.web.look_for_others", lambda *a: False)
-    b = web.analyze_upload("/tmp/upload.mov", "jump.mov", scale=T.scale, event_method="toe_heel")
-    assert tracked_all and b["landmarks"]["segment"] is None
-    assert abs(b["results"]["distance"]["jump_distance_m"] - T.jump_distance) < 0.01
+    monkeypatch.setattr("jumplab.session.look_for_others", lambda *a: False)
+    session = web.analyze_session_upload("/tmp/upload.mov", "jump.mov", scale=T.scale, event_method="toe_heel")
+    assert tracked_all and len(session["jumps"]) == 1
+    assert abs(session["jumps"][0]["results"]["distance"]["jump_distance_m"] - T.jump_distance) < 0.01

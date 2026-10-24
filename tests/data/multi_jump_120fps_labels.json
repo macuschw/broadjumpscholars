@@ -1,0 +1,25 @@
+{
+  "source_video": "IMG_6233.MOV",
+  "note": "Answer key for one long video with several jumps (the video itself is not in git: 235 MB). iPhone slow motion, 1920x1080 at 120 fps, 71.3 s, 8558 frames, side-on, jumping right to left. Two athletes take turns; the one not jumping walks back and waits in the shot. Times are seconds from the start of the file, read by eye from frames 1/6 s apart, so about +/-0.15 s. Jumps 6-8 were failed on purpose or by accident, for testing a failed-landing check.",
+  "fps": 120,
+  "duration_s": 71.35,
+  "direction": "left",
+  "athletes": {
+    "navy": "navy top, light pants (Reece)",
+    "dark": "dark top, dark pants (Macus)"
+  },
+  "jumps": [
+    {"n": 1, "athlete": "dark", "takeoff_s": 2.4, "landing_s": 2.85, "valid": true},
+    {"n": 2, "athlete": "navy", "takeoff_s": 12.5, "landing_s": 13.0, "valid": true,
+     "note": "the other athlete walks right behind the jumper during the dip and takeoff"},
+    {"n": 3, "athlete": "dark", "takeoff_s": 20.4, "landing_s": 20.85, "valid": true},
+    {"n": 4, "athlete": "navy", "takeoff_s": 30.1, "landing_s": 30.6, "valid": true},
+    {"n": 5, "athlete": "dark", "takeoff_s": 37.1, "landing_s": 37.6, "valid": true},
+    {"n": 6, "athlete": "navy", "takeoff_s": 46.2, "landing_s": 46.6, "valid": false,
+     "fail": "stumbled forward after landing (accidental)"},
+    {"n": 7, "athlete": "dark", "takeoff_s": 55.1, "landing_s": 55.4, "valid": false,
+     "fail": "lost balance after landing: leaned back and stepped (on purpose)"},
+    {"n": 8, "athlete": "navy", "takeoff_s": 66.2, "landing_s": 66.6, "valid": false,
+     "fail": "put both hands on the ground after landing, ~1 s (on purpose)"}
+  ]
+}

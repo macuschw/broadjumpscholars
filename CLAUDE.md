@@ -14,8 +14,9 @@ this repo (GitHub: macuschw/broadjumpscholars):
 
 ```bash
 python3 -m pip install -r requirements.txt          # mediapipe==0.10.14 is required (newer removed the API)
-python3 -m pytest -q                                 # 173 tests should pass
+python3 -m pytest -q                                 # 187 tests should pass
 python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration output/calibration.json
+python scripts/run_session.py "../test videos/IMG_6233.MOV"     # a video with many jumps: a verdict table
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
 cd website && python3 -m http.server 8000           # then http://localhost:8000
 ```
@@ -42,6 +43,18 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   jumper while covered), between the dip and 0.5 s after landing; otherwise CAUTION. On our 15
   videos it flags exactly the 3 with someone walking behind (Jump 7, bjbd1, bjbg2). Seeking uses
   the tracked frame timestamps, because it lands late on files with uneven frame timing.
+- Fouls (`checks.check_landing`, in every analysis: `results["valid"]`, `results["fouls"]`, kept apart
+  from the reliability warnings): a foot lands > 0.22 standing heights **ahead of the front foot's**
+  landing spot within 1 s (stumbled forward), or > 0.20 **behind the rear foot's** within 1.5 s (stepped
+  back: it moves the mark); a hand within 0.04 of floor level for >= 0.25 s while barely moving (put
+  down, not swung past). Bringing the back foot up to the front one is fine. Tuned on one example of
+  each (the session video below) against 22 valid landings, so provisional: more fault videos wanted.
+- Sessions (one video, many jumps; `jumplab/session.py`): every jump is found (the quick look, below),
+  then analyzed on its own stretch with the other jumps blanked out, so two athletes taking turns never
+  mix. A candidate with an impossible flight time and no downward-curving path is skipped as "not a
+  jump" (walking off fast from the landing squat). Benchmark: `tests/data/multi_jump_120fps_*`
+  (IMG_6233, 8 jumps by Reece and Macus, the last 3 failed; answer key by eye) -> all 8 found, every
+  verdict and foul right.
 - Every warning code has plain words in `alerts.PLAIN` (headline / what happened / how to fix);
   a test fails if a new code is added without them. On the website, serious problems show as a red
   panel right above the numbers, and the stats they affect (the warning's `affects`) get a
@@ -72,16 +85,30 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   changing `jumplab/` or `server/`. Cloud results can differ from a Mac run by a few mm / ~2% (MediaPipe on Linux).
   Local test server: `python scripts/serve_local.py`, then open the local site's
   `analyze.html?server=http://localhost:8765`.
-- Auto-trim (uploads only, clips over 6.5 s): a quick look (MediaPipe on 5 frames/s) finds the crouch
-  followed by fast sideways hip travel, then only 2.5 s before to 1.8 s after it is tracked
-  (`pose_tracking.track_jump`; `Keypoints.segment`, and the analysis stays inside it). If that stretch
-  doesn't hold a whole jump, the whole video is tracked. On Modal: 38 s clip 34 s → 11.5 s, 11 s
-  slow-mo clip 35 s → 20 s. Found the jump in all 14 test videos. Results move by MediaPipe's own
-  run-to-run noise (~1 px, a few mm), and the "standing" reference is now just before the jump
-  (fixed Jump 7's contact time and a false "not side-on"). The command line still tracks everything.
-- Flow: upload → server tracks (MediaPipe) + analyzes → returns bundle + a still → visitor clicks the
-  tape ends → `/recompute` with the scale (re-analyzes saved landmarks, < 1 mm difference).
-- Shared server logic: `jumplab/web.py` (`make_bundle`, `analyze_upload`, `recompute`, `handle`).
+- Uploads are background jobs (`jumplab/jobs.py`), because Modal caps one web request at 150 s (and
+  its redirect workaround doesn't work cross-origin): the page sends the video in 8 MB pieces
+  (`PUT /jobs/<id>/<i>`, each retried), starts the job, then polls `GET /jobs/<id>` every 2 s for
+  progress and the result. On Modal the pieces and result live in the Volume "jumplab-jobs", states in
+  the Dict "jumplab-job-states", and the analysis runs in `process_job`; locally, a temp folder and a
+  thread. The video is deleted when the analysis ends, the result once collected. Responses are
+  gzipped. The old one-request `POST /analyze` still works (first jump only).
+- Every upload is a session: the quick look (clips over 6.5 s; MediaPipe on 5 frames/s, following up
+  to two people, so someone walking behind can't hide a jump) finds every crouch followed by fast
+  sideways hip travel; only 2.5 s before to 1.8 s after each is tracked (`find_jumps`,
+  `track_segments`; `Keypoints.segment`). Shorter clips, or if nothing is found, are tracked whole.
+  Each jump's bundle keeps only its own stretch (`landmarks.offset`; the site pads it back out).
+  IMG_6233 (71 s, 8 jumps): ~2 min on a Mac. On Modal earlier: 38 s clip 34 s → 11.5 s.
+- Flow: upload → jobs → session (every jump's bundle, each with its verdict, + one still) → visitor
+  clicks the tape once → `/recompute` for every jump with that scale (keeps the jump number).
+  The site lists the jumps (✓ counts, ✗ crossed out, best that counts marked), a red "This jump
+  doesn't count" panel and a "Doesn't count" tag on the distance for fouls. Download saves the
+  whole session (`jumplab-session/1`); each jump also goes into My jumps ("<video> · jump N").
+- Shared server logic: `jumplab/web.py` (`make_bundle`, `analyze_session_upload`, `recompute`, `handle`).
+- Calibration (`demo/calibrate.js`), made for phones after a real iPhone test: drag markers A and B
+  (they move with the finger, never jump under it; tapping elsewhere brings the selected one), a 4x
+  close-up of the selected marker under the picture, arrow buttons that nudge it one pixel, the
+  markers starting where they were last time on this device. Tape length in m or ft + in (remembered;
+  "3,66" works too). The button says what's missing; Skip needs a second tap.
 - **My jumps** (`demo/history.js`): every real jump (upload or opened `_web.json`) is saved as its bundle in
   this browser's IndexedDB, listed under the upload card on Analyze (open, rename, compare up to 6, delete,
   clear). Comparing 2+ opens straight on the Compare tab; each jump gets one of six line styles

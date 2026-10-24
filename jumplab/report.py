@@ -6,7 +6,7 @@ import os
 
 import numpy as np
 
-from .alerts import banner, marker
+from .alerts import banner, foul_box, marker
 from .checks import SERIOUS, as_warning
 from .pipeline import POINT_NAMES
 
@@ -35,6 +35,9 @@ def format_report(r, color=False):
                  f"{100 * r['detected_fraction']:.0f}%, {r['side']} side, jumping {r['direction']}")
     lines.append(f"  Calibration: " + (f"{r['scale_m_per_px']:.5f} m/px" if r["scale_m_per_px"]
                                          else "none (pixel results + gravity estimates only)"))
+    fouled = foul_box(r.get("fouls"), color)
+    if fouled:
+        lines += ["", fouled]
     alert = banner(warnings, color)
     if alert:
         lines += ["", alert]

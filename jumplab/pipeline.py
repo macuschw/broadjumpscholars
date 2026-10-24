@@ -108,7 +108,7 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
             "low_fps", f"This video is {fps:.0f} fps (under 100). Angles are fine, but event "
             f"times are only good to +/-{1000 / fps:.0f} ms; contact time needs 120-240 fps to "
             "be meaningful.", checks.CAUTION, ("timing",)))
-    tracked = slice(kp.segment[0], kp.segment[1] + 1) if kp.segment else slice(None)   # see track_jump
+    tracked = slice(kp.segment[0], kp.segment[1] + 1) if kp.segment else slice(None)   # see session.py
     detected = float(kp.detected[tracked].mean())
 
     # Gap-filled ("raw") and smoothed positions, y flipped so UP is positive.
@@ -298,6 +298,7 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
     warnings += checks.check_landmarks(kp, used, on, min(hi, la + max(2, int(0.1 * fps))))
 
     warnings += checks.check_slow_motion(flight_time, fps, traj.get("g_fit_m_s2"))
+    fouls = checks.check_landing(kp.xyv, direction, on, la, hi, fps)      # does the attempt count?
 
     distance = {"jump_distance_m": pixels["jump_distance_px"] * scale if scale else None,
                 "jump_distance_both_feet_m": (both["distance_px"] * scale
@@ -339,6 +340,8 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
         "trajectory": traj,
         "distance": distance,
         "pixels": pixels,
+        "valid": not fouls,
+        "fouls": fouls,
         "warnings": warnings,
         "both_feet": _both_feet_summary(both, scale),
         "tracking_quality": {

@@ -1,5 +1,7 @@
 // Talking to the JumpLab analysis server (server/modal_app.py, or scripts/serve_local.py).
-// The video is sent as the request body; the reply is a results bundle (demo/real.js).
+// A video goes up as a background job (analyzeSession): sent in pieces, analyzed on the server
+// while this page asks how it's going, so a long video or slow wifi never hits a request limit.
+// The reply is a session: every jump in the video, each a results bundle (demo/real.js).
 import { analysisServer } from "../config.js";
 
 export const serverURL = analysisServer();
@@ -43,13 +45,78 @@ export function analyzeVideo(file, { fps = null, onProgress } = {}) {
   return { promise, abort: () => xhr.abort() };
 }
 
+const canceled = () => Object.assign(new Error("Canceled."), { canceled: true });
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+async function ask(url, options = {}) {
+  let res;
+  try { res = await fetch(url, { mode: "cors", cache: "no-store", ...options }); } catch {
+    throw Object.assign(new Error("Couldn't reach the analysis server. Check the connection and try again."), { network: true });
+  }
+  const text = await res.text();
+  if (!res.ok) throw new Error(message(res, text));
+  return JSON.parse(text);
+}
+
+/**
+ * A video with one jump or several, analyzed as a background job (jumplab/jobs.py on the server).
+ * onProgress(stage, done, total): "upload" (bytes sent of the file's size), then "looking" (frames
+ * looked at), "tracking" (stretch done of all), "analyzing" (jump done of all). Each piece is tried
+ * up to three times, and a few failed checks in a row are waited out, so a moment's wifi trouble
+ * doesn't lose the job. Returns { promise, abort }; the promise gives the session.
+ */
+export function analyzeSession(file, { fps = null, onProgress } = {}) {
+  let stopped = false, xhr = null;
+  const piece = (url, blob, sent) => new Promise((resolve, reject) => {
+    xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
+    xhr.timeout = 120 * 1000;
+    xhr.upload.onprogress = (e) => onProgress?.("upload", sent + e.loaded, file.size);
+    xhr.onload = () => (xhr.status === 200 ? resolve() : reject(new Error(message(xhr, xhr.responseText))));
+    xhr.onerror = xhr.ontimeout = () => reject(Object.assign(new Error("The upload was interrupted. Check the connection and try again."), { network: true }));
+    xhr.onabort = () => reject(canceled());
+    xhr.send(blob);
+  });
+  const promise = (async () => {
+    if (!serverURL) throw new Error("Video analysis isn't switched on for this site yet.");
+    const q = new URLSearchParams({ name: file.name });
+    if (fps) q.set("fps", String(fps));
+    const job = await ask(`${serverURL}/jobs?${q}`, { method: "POST" });
+    const size = job.chunk_bytes, n = Math.max(1, Math.ceil(file.size / size));
+    for (let i = 0; i < n; i++) {
+      for (let attempt = 1; ; attempt++) {
+        if (stopped) throw canceled();
+        try { await piece(`${serverURL}/jobs/${job.job}/${i}`, file.slice(i * size, (i + 1) * size), i * size); break; } catch (e) {
+          if (e.canceled || !e.network || attempt >= 3) throw e;
+          await pause(1500 * attempt);
+        }
+      }
+    }
+    onProgress?.("upload", file.size, file.size);
+    await ask(`${serverURL}/jobs/${job.job}/start?chunks=${n}`, { method: "POST" });
+    for (let misses = 0; ; ) {
+      await pause(2000);
+      if (stopped) throw canceled();
+      let st;
+      try { st = await ask(`${serverURL}/jobs/${job.job}`); misses = 0; } catch (e) {
+        if (!e.network || ++misses >= 10) throw e;
+        continue;
+      }
+      if (st.state === "done") return st.result;
+      if (st.state === "error") throw new Error(st.error || "The analysis failed.");
+      if (st.state === "running") onProgress?.(st.stage, st.done, st.total);
+    }
+  })();
+  return { promise, abort: () => { stopped = true; xhr?.abort(); } };
+}
+
 /** Analyze a bundle's landmarks again with a new scale (no video upload). */
 export async function recompute(bundle, { scale }) {
   const r = bundle.results;
   const res = await fetch(`${serverURL}/recompute`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      landmarks: bundle.landmarks, name: bundle.name, scale, still: bundle.still,
+      landmarks: bundle.landmarks, name: bundle.name, scale, still: bundle.still, jump: r.jump ?? null,
       event_method: r.event_method, fps: r.fps_source === "override" ? r.fps : null,
     }),
   });

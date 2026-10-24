@@ -52,7 +52,8 @@ export function buildCompare(host, attempts, { headlineOf = headline } = {}) {
       return;
     }
     const far = (a) => a.metrics.distance ?? -Infinity;
-    const best = chosen.reduce((b, a) => (far(a) > far(b) ? a : b), chosen[0]);
+    const counting = chosen.filter((a) => a.valid !== false);   // a jump that doesn't count can't be best
+    const best = (counting.length ? counting : chosen).reduce((b, a) => (far(a) > far(b) ? a : b), counting[0] || chosen[0]);
     const L = lengthAxis();
     lineChart(chartHost, {
       title: "Hip paths of the selected attempts",
@@ -68,7 +69,7 @@ export function buildCompare(host, attempts, { headlineOf = headline } = {}) {
     const rows = headlineOf(chosen[0]).map((h) => h.id);
     const cell = (a, id) => headlineOf(a).find((h) => h.id === id);
     tableHost.innerHTML = `<table class="data">
-      <caption>Headline metrics. ${esc(best.label)} is the longest jump; Δ is the difference in distance from it.${chosen.some((a) => headlineOf(a).some((h) => h.flag)) ? " ⚠ marks a number that isn't reliable (see the warning above the results)." : ""}</caption>
+      <caption>Headline metrics. ${esc(best.label)} is the longest jump${counting.length < chosen.length ? " that counts" : ""}; Δ is the difference in distance from it.${chosen.some((a) => headlineOf(a).some((h) => h.flag)) ? " ⚠ marks a number that isn't reliable (see the warning above the results)." : ""}</caption>
       <thead><tr><th scope="col">Metric</th>${chosen.map((a) => `<th scope="col" class="num-cell${a === best ? " best" : ""}">${swatch(style(a))}${esc(a.label)}${a === best ? '<span class="best-label">Best</span>' : ""}${a.sub ? `<span class="compare__sub">${esc(a.sub)}</span>` : ""}</th>`).join("")}</tr></thead>
       <tbody>
         ${rows.map((id) => `<tr><th scope="row">${cell(chosen[0], id).label}</th>${chosen.map((a) => {

@@ -39,7 +39,7 @@ class Keypoints:
     others: (n_frames, 4) box [x0, y0, x1, y1] px of ANOTHER person found in the frame
         (scan_for_others: about 10 frames a second, around the jump only), zeros where a frame
         was checked and nobody was found, NaN where it wasn't checked; None if never checked.
-    segment: (first, last) frames, if only that part of the video was tracked (track_jump); the
+    segment: (first, last) frames, if only that part of the video was tracked (track_segments); the
         other frames are then like frames with nobody in them, and the analysis stays inside."""
     xyv: np.ndarray
     fps: float
@@ -201,6 +201,12 @@ def find_other_person(frame, xy, detector):
     MediaPipe can also "see" a body in clutter (a building corner, a tree); those hits are small or
     brief, so checks.check_other_people only trusts bodies at least 30% of the athlete's height,
     found in at least 3 checks around the jump."""
+    other = _other_body(frame, xy, detector)
+    return None if other is None else other[0]
+
+
+def _other_body(frame, xy, detector):
+    """find_other_person's work: (box, landmark xy (33, 2), visibility (33,)) of the other body."""
     import cv2
 
     box = body_box(xy, 0.15, 0.10)
@@ -214,10 +220,12 @@ def find_other_person(frame, xy, detector):
     found = detector.process(cv2.cvtColor(covered, cv2.COLOR_BGR2RGB))
     if not found.pose_landmarks:
         return None
-    pts = np.array([(p.x * w, p.y * h) for p in found.pose_landmarks.landmark if p.visibility > 0.5])
+    lm = found.pose_landmarks.landmark
+    oxy, vis = np.array([(p.x * w, p.y * h) for p in lm]), np.array([p.visibility for p in lm])
+    pts = oxy[vis > 0.5]
     if len(pts) < 8:
         return None
-    return np.array([pts[:, 0].min(), pts[:, 1].min(), pts[:, 0].max(), pts[:, 1].max()])
+    return np.array([pts[:, 0].min(), pts[:, 1].min(), pts[:, 0].max(), pts[:, 1].max()]), oxy, vis
 
 
 def athlete_sharpness(frame, xy):
@@ -296,111 +304,197 @@ def track_video(video_path, skeleton_video_path=None, model_complexity=1, smooth
 
 
 
-# The quick look for the jump (find_jump): MediaPipe on ~5 frames a second of video
+# The quick look for jumps (find_jumps): MediaPipe on ~5 frames a second of video
 LOOK_PER_SECOND = 5
 LOOK_CROUCH = 0.8             # the dip: the body's height under this share of standing height...
 LOOK_SPAN_S = 1.0             # ...then within this long, the hips travel sideways...
-LOOK_MIN_TRAVEL = 0.5         # ...at least this far (x standing height; our jumps: 0.8-1.3)
+LOOK_MIN_TRAVEL = 0.5         # ...at least this far (x standing height; our jumps: 0.8-1.4)
+JUMP_GAP_S = 1.5              # crouches closer than this are one jump (the dip, then the landing squat)
 TRIM_BEFORE_S = 2.5           # track from this long before the jump (standing still, the dip)...
 TRIM_AFTER_S = 1.8            # ...to this long after it (landing, settling, other people)
 MIN_CLIP_TO_TRIM_S = 6.5      # shorter clips are mostly the ~5 s tracked anyway: no gain
 
 
-def find_jump(video_path, real_fps=None, model_complexity=1):
-    """A quick first look for the jump: MediaPipe on about 5 frames a second, then the moment the
-    athlete crouches (the dip: visible height under 80% of standing) and, within the next second,
-    their hips travel furthest sideways (at least half their standing height). Walking travels as
-    far but never crouches. Every frame is still decoded, for its timestamp, but decoding is cheap
-    next to MediaPipe.
+def _look_at(lm_xy, lm_vis):
+    """(hip x, visible body height) for one frame's 33 landmarks, or None. The hips' midpoint:
+    side-on, the far hip is marked hidden but still placed next to the near one."""
+    ys = lm_xy[lm_vis > 0.5, 1]
+    if len(ys) < 8 or not np.isfinite(lm_xy[[23, 24], 0]).all():
+        return None
+    return float(lm_xy[[23, 24], 0].mean()), float(ys.max() - ys.min())
 
-    Returns (frame_times, (first, last)): the timestamps of all frames and the frames to track, from
-    2.5 s before that moment to 1.8 s after; or (frame_times, None) if there was no clear jump.
-    real_fps: the real frame rate of a slow-motion file saved for slowed-down playback."""
+
+def jump_moments(looks, fps, slow=1.0, with_travel=False, tall=None):
+    """looks: [(frame, hip x, body height)], about 5 a second -> [(a, b)] frames for each jump: the
+    athlete crouches (the dip: visible height under 80% of standing) and, within the next second,
+    the hips travel sideways at least half a standing height. Walking travels as far but never
+    crouches. Crouches within 1.5 s of each other (the dip, then the landing squat, then perhaps
+    walking off from it) are one jump, and its furthest travel counts."""
+    if len(looks) < 2 or (tall is None and len(looks) < 4):
+        return []
+    tall = tall or float(np.percentile([h for _, _, h in looks], 80))   # standing up straight
+    span, gap = LOOK_SPAN_S * slow * fps, JUMP_GAP_S * slow * fps
+    found = []                                               # (a, b, travel), one per crouched look
+    for i, (a, xa, ha) in enumerate(looks):
+        if ha >= LOOK_CROUCH * tall:
+            continue
+        best = None
+        for b, xb, _ in looks[i + 1:]:
+            if b - a > span:
+                break
+            if best is None or abs(xb - xa) > best[2]:
+                best = (a, b, abs(xb - xa))
+        if best:
+            found.append((best[0], best[1], best[2] / tall))
+    jumps, group = [], []
+    for c in found:
+        if group and c[0] - group[-1][0] > gap:
+            jumps.append(max(group, key=lambda g: g[2]))
+            group = []
+        group.append(c)
+    if group:
+        jumps.append(max(group, key=lambda g: g[2]))
+    return [(a, b) for a, b, travel in jumps if travel >= LOOK_MIN_TRAVEL] if not with_travel else \
+        [j for j in jumps if j[2] >= LOOK_MIN_TRAVEL]
+
+
+def _around(moment, fps, slow, n_frames):
+    a, b = moment
+    return max(0, a - int(TRIM_BEFORE_S * slow * fps)), min(n_frames - 1, b + int(TRIM_AFTER_S * slow * fps))
+
+
+def find_jumps(video_path, real_fps=None, model_complexity=1, progress=None):
+    """A quick first look for every jump in a video (jump_moments, from MediaPipe on about 5 frames
+    a second, following up to two people, so an athlete walking back behind the jumper can't hide
+    a jump). Every frame is still decoded, for its timestamp, but decoding is cheap next to
+    MediaPipe. Returns (frame_times, [(first, last), ...]): the timestamps of all frames and, for
+    each jump, the frames to track (2.5 s before its dip to 1.8 s after); [] if no clear jump.
+    real_fps: the real frame rate of a slow-motion file saved for slowed-down playback.
+    progress(frames_done, frames_total) is called about once a second of video."""
     import cv2
     import mediapipe as mp
 
     cap, fps, _, _ = open_video(video_path)
     slow = max(1.0, (real_fps or fps) / fps)                 # file seconds per real second
     every = max(1, round(fps / LOOK_PER_SECOND))
-    times, looks = [], []                                    # looks: (frame, hip x, body height)
-    with mp.solutions.pose.Pose(static_image_mode=False, model_complexity=model_complexity) as pose:
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    times, people = [], []                                   # per look: [(hip x, body height), ...]
+    with mp.solutions.pose.Pose(static_image_mode=False, model_complexity=model_complexity) as pose, \
+            mp.solutions.pose.Pose(static_image_mode=True, model_complexity=model_complexity) as detector:
         while cap.grab():
             i = len(times)
             times.append(cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0)
+            if progress and i % max(1, round(fps)) == 0:
+                progress(i, total)
             if i % every:
                 continue
             ok, frame = cap.retrieve()
             found = pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)) if ok else None
             if found is None or not found.pose_landmarks:
                 continue
-            lm = found.pose_landmarks.landmark
             h, w = frame.shape[:2]
-            ys = [p.y * h for p in lm if p.visibility > 0.5]
-            # The hips' midpoint: side-on, the far hip is marked hidden but still placed by the near one
-            if len(ys) >= 8:
-                looks.append((i, (lm[23].x + lm[24].x) / 2 * w, max(ys) - min(ys)))
+            lm = found.pose_landmarks.landmark
+            xy = np.array([(p.x * w, p.y * h) for p in lm])
+            look = _look_at(xy, np.array([p.visibility for p in lm]))
+            if not look:
+                continue
+            bodies = [look]
+            other = _other_body(frame, xy, detector)              # someone else, e.g. walking back
+            if other is not None:
+                second = _look_at(other[1], other[2])
+                if second and second[1] >= 0.3 * look[1]:         # not a far-off speck
+                    bodies.append(second)
+            people.append((i, bodies))
     cap.release()
     times = np.array(times)
-    if len(looks) < 4:
-        return times, None
-    tall = float(np.percentile([b for _, _, b in looks], 80))   # standing up straight
-    span = LOOK_SPAN_S * slow * fps
-    best, where = 0.0, None
-    for a in range(len(looks)):
-        if looks[a][2] >= LOOK_CROUCH * tall:                   # not crouched
+    return times, [_around(m, fps, slow, len(times)) for m in _moments_of_people(people, fps, slow)]
+
+
+TELEPORT = 4.0               # standing heights per second: nobody moves this fast (jumps: under 2.3)
+
+
+def _moments_of_people(people, fps, slow):
+    """people: [(frame, [look, look?])], the tracked body and perhaps someone else (found with the
+    tracked one covered) -> the jumps of either, in time order. Each of the two is cut into pieces
+    wherever it moves impossibly fast between two looks (the tracker switched to another person, or
+    "someone else" is now someone, or something, else) or goes unseen for over a second; each piece
+    is searched with jump_moments, and a jump seen twice counts once. So an athlete walking back
+    behind the jumper can't hide the jump, whichever of them the tracker follows."""
+    found = []
+    for t in (0, 1):
+        track = [(frame, *bodies[t]) for frame, bodies in people if len(bodies) > t]
+        if len(track) < 4:
             continue
-        for b in range(a + 1, len(looks)):
-            if looks[b][0] - looks[a][0] > span:
-                break
-            travel = abs(looks[b][1] - looks[a][1]) / tall
-            if travel > best:
-                best, where = travel, (looks[a][0], looks[b][0])
-    if where is None or best < LOOK_MIN_TRAVEL:
-        return times, None
-    first = max(0, where[0] - int(TRIM_BEFORE_S * slow * fps))
-    last = min(len(times) - 1, where[1] + int(TRIM_AFTER_S * slow * fps))
-    return times, (first, last)
+        tall = float(np.percentile([h for _, _, h in track], 80))
+        piece = [track[0]]
+        for prev, look in zip(track, track[1:]):
+            dt = (look[0] - prev[0]) / (slow * fps)
+            if dt > 1.0 or abs(look[1] - prev[1]) / tall > TELEPORT * dt:
+                found += jump_moments(piece, fps, slow, with_travel=True, tall=tall)
+                piece = []
+            piece.append(look)
+        found += jump_moments(piece, fps, slow, with_travel=True, tall=tall)
+    merged = []
+    for m in sorted(found):
+        if merged and m[0] - merged[-1][0] <= JUMP_GAP_S * slow * fps:
+            merged[-1] = max(merged[-1], m, key=lambda j: j[2])
+        else:
+            merged.append(m)
+    return [(a, b) for a, b, _ in merged]
+
+def jumps_in_keypoints(kp, real_fps=None):
+    """The same look for jumps, over keypoints already tracked (the command line tracks every
+    frame) -> [(first, last), ...] around each jump."""
+    slow = max(1.0, (real_fps or kp.fps) / kp.fps)
+    every = max(1, round(kp.fps / LOOK_PER_SECOND))
+    looks = []
+    for i in range(0, kp.n_frames, every):
+        look = _look_at(kp.xyv[i, :, :2], kp.xyv[i, :, 2])
+        if look:
+            looks.append((i, *look))
+    return [_around(m, kp.fps, slow, kp.n_frames) for m in jump_moments(looks, kp.fps, slow)]
 
 
-def track_jump(video_path, real_fps=None, model_complexity=1):
-    """Track only the part of the video around the jump (find_jump), for speed: on the server a 38 s
-    clip took 11.5 s instead of 34 s, an 11 s slow-motion clip 20 s instead of 35. Returns Keypoints for every frame, tracked inside kp.segment and
-    empty outside it, or None if the quick look found no clear jump (then track the whole video)."""
+def track_segments(video_path, segments, frame_times, model_complexity=1, progress=None):
+    """Track only the given stretches of the video (find_jumps), each from a fresh start, for
+    speed: on the server a 38 s clip took 11.5 s instead of 34 s. Stretches that overlap are
+    tracked once. Returns Keypoints for every frame, empty outside the stretches. progress(i, n) is
+    called before stretch i of n."""
     import cv2
     import mediapipe as mp
 
+    merged = []
+    for first, last in sorted(segments):
+        if merged and first <= merged[-1][1] + 1:
+            merged[-1][1] = max(merged[-1][1], last)
+        else:
+            merged.append([first, last])
     cap, fps, _, _ = open_video(video_path)
-    seconds = cap.get(cv2.CAP_PROP_FRAME_COUNT) / (real_fps or fps)
-    cap.release()
-    if seconds < MIN_CLIP_TO_TRIM_S:
-        return None
-    times, segment = find_jump(video_path, real_fps, model_complexity)
-    if segment is None:
-        return None
-    first, last = segment
-    cap, fps, _, _ = open_video(video_path)
+    times = np.asarray(frame_times)
     xyv = np.full((len(times), N_LANDMARKS, 3), np.nan)
     xyv[:, :, 2] = 0.0
     sharp = np.full(len(times), np.nan)
     width = height = 0
-    with mp.solutions.pose.Pose(static_image_mode=False, model_complexity=model_complexity) as pose:
-        i = _grab_at_or_before(cap, first, times)
-        while 0 <= i <= last:
-            if i >= first:
-                ok, frame = cap.retrieve()
-                if not ok:
+    for k, (first, last) in enumerate(merged):
+        if progress:
+            progress(k, len(merged))
+        with mp.solutions.pose.Pose(static_image_mode=False, model_complexity=model_complexity) as pose:
+            i = _grab_at_or_before(cap, first, times)
+            while 0 <= i <= last:
+                if i >= first:
+                    ok, frame = cap.retrieve()
+                    if not ok:
+                        break
+                    height, width = frame.shape[:2]
+                    found = pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                    if found.pose_landmarks:
+                        xyv[i] = [(p.x * width, p.y * height, p.visibility) for p in found.pose_landmarks.landmark]
+                        sharp[i] = athlete_sharpness(frame, xyv[i, :, :2])
+                if not cap.grab():
                     break
-                height, width = frame.shape[:2]
-                found = pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                if found.pose_landmarks:
-                    xyv[i] = [(p.x * width, p.y * height, p.visibility) for p in found.pose_landmarks.landmark]
-                    sharp[i] = athlete_sharpness(frame, xyv[i, :, :2])
-            if not cap.grab():
-                break
-            i += 1
+                i += 1
     cap.release()
-    return Keypoints(xyv, fps, width, height, os.path.abspath(video_path),
-                     tracking_settings(model_complexity), times, sharp, None, (int(first), int(last)))
+    return Keypoints(xyv, fps, width, height, os.path.abspath(video_path), tracking_settings(model_complexity), times, sharp)
 
 def load_or_track(video_path, cache_path, skeleton_video_path=None, retrack=False):
     """Reuse saved keypoints if they are newer than the video AND were made with the same

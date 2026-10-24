@@ -19,7 +19,9 @@ from urllib.parse import parse_qsl, urlparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from jumplab import web  # noqa: E402
+from jumplab import jobs, web  # noqa: E402
+
+JOBS = jobs.LocalJobs()                                         # uploads in pieces, analyzed in the background
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -41,18 +43,36 @@ class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):                                      # CORS preflight
         self.send_response(204)
         self._cors()
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Max-Age", "600")
         self.end_headers()
 
     def do_GET(self):
-        if urlparse(self.path).path == "/health":
+        url = urlparse(self.path)
+        if url.path == "/health":
             return self._send(200, {"ok": True, "service": "jumplab-analysis", "where": "local"})
-        self._send(404, {"error": "Not found."})
+        self._send(*(jobs.route(JOBS, "GET", url.path, dict(parse_qsl(url.query))) or (404, {"error": "Not found."})))
+
+    def _jobs(self, method):
+        """/jobs requests (jumplab/jobs.py): a piece of a video, starting a job."""
+        url = urlparse(self.path)
+        size = int(self.headers.get("Content-Length") or 0)
+        if size > jobs.CHUNK_BYTES:
+            return self._send(400, {"error": "A piece of the upload was too large."})
+        body = self.rfile.read(size) if size else b""
+        reply = jobs.route(JOBS, method, url.path, dict(parse_qsl(url.query)), body)
+        if url.path.endswith("/start"):
+            print(f"{url.path} -> {reply[0] if reply else 404}")
+        self._send(*(reply or (404, {"error": "Not found."})))
+
+    def do_PUT(self):
+        self._jobs("PUT")
 
     def do_POST(self):
         url = urlparse(self.path)
+        if url.path.startswith("/jobs"):
+            return self._jobs("POST")
         size = int(self.headers.get("Content-Length") or 0)
         if size <= 0:
             return self._send(400, {"error": "Nothing was uploaded."})

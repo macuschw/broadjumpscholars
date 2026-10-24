@@ -15,12 +15,15 @@ Each warning is a dict:
 """
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 
 from .events import NoJumpFound
 
 ALL = ("distance", "trajectory", "angles", "timing")
 INFO, CAUTION, SERIOUS = "info", "caution", "serious"
+FOUL = "foul"                     # the attempt itself doesn't count (results["fouls"], not "warnings")
 
 # Plausible limits for a standing broad jump
 MIN_FLIGHT_S, MAX_FLIGHT_S = 0.15, 1.0
@@ -252,6 +255,88 @@ def check_stagger(both, m_per_px):
                     SERIOUS, ("distance",),
                     headline="Feet staggered: distance is approximate (could be off by ~5 in)")]
 
+
+
+# Fouls: a broad jump only counts if the landing is held. Thresholds from one example of each foul
+# (IMG_6233, Oct 2026; 22 valid landings for comparison), so provisional. In standing heights of the
+# jumper (the visible body, just before the dip):
+STEP_AHEAD = 0.22      # a foot lands this far ahead of the front foot's landing spot within 1 s
+                       #   (stumbled forward: 0.30; valid landings at most 0.15)
+STEP_BEHIND = 0.20     # ...or behind the rear foot's within 1.5 s, which moves the mark back
+                       #   (stepped back: 0.33; valid at most 0.07)
+HAND_FLOOR = 0.04      # a hand this close to the floor (the lowest foot point at landing)...
+HAND_DOWN_S = 0.25     # ...for this long, moving less than HAND_STILL: put down, not swung past
+HAND_STILL = 0.10      #   (hands on the ground: 0.58 s, moved 0.03; valid at most 0.15 s, swinging)
+FEET = {"left": (27, 29, 31), "right": (28, 30, 32)}        # ankle, heel, toe
+HANDS = (15, 16, 17, 18, 19, 20)                              # wrists, little fingers, index fingers
+
+
+def _standing_height(xyv, onset_i, fps):
+    vis = xyv[:, :, 2] > 0.5
+    spans = [np.ptp(xyv[i, vis[i], 1]) for i in range(max(0, onset_i - int(0.6 * fps)), onset_i) if vis[i].sum() >= 8]
+    return float(np.median(spans)) if spans else None
+
+
+def check_landing(xyv, direction, onset_i, landing_i, hi, fps):
+    """Fouls after landing: a step forward past the front foot, a step back behind the rear foot,
+    or a hand put down on the ground. Bringing the back foot up to the front one is fine. Each foul
+    is a warning dict with severity FOUL and the frame it happened at."""
+    with warnings.catch_warnings():                 # frames with nobody tracked are all-NaN: fine
+        warnings.simplefilter("ignore", RuntimeWarning)
+        return _landing_fouls(xyv, direction, onset_i, landing_i, hi, fps)
+
+
+def _landing_fouls(xyv, direction, onset_i, landing_i, hi, fps):
+    tall = _standing_height(xyv, onset_i, fps)
+    settle = landing_i + max(1, int(0.1 * fps))
+    if not tall or settle + 3 >= hi:
+        return []
+    xy = xyv[:, :, :2]
+    pos = {side: direction * np.nanmean(xy[:, idx, 0], axis=1) for side, idx in FEET.items()}   # + = jump direction
+    land = {side: np.nanmedian(p[landing_i:settle]) for side, p in pos.items()}
+    if not all(np.isfinite(v) for v in land.values()):
+        return []
+    front, rear = max(land.values()), min(land.values())
+    fouls = []
+    ahead_end, behind_end = min(hi, landing_i + int(1.0 * fps)), min(hi, landing_i + int(1.5 * fps))
+    ahead = np.nanmax([p[settle:ahead_end] for p in pos.values()], axis=0) - front
+    behind = np.nanmin([p[settle:behind_end] for p in pos.values()], axis=0) - rear
+    if np.nanmax(ahead) > STEP_AHEAD * tall:
+        i = settle + int(np.nanargmax(ahead > STEP_AHEAD * tall))
+        fouls.append(warning("foul_step_forward",
+                             f"A foot came down {100 * np.nanmax(ahead) / tall:.0f}% of the jumper's height ahead of "
+                             f"where the front foot landed, {(i - landing_i) / fps:.1f} s after landing (frame {i}): "
+                             "the landing wasn't held.", FOUL, ("distance",)))
+        fouls[-1]["frame"] = int(i)
+    if np.nanmin(behind) < -STEP_BEHIND * tall:
+        i = settle + int(np.nanargmax(behind < -STEP_BEHIND * tall))
+        fouls.append(warning("foul_step_back",
+                             f"A foot moved {100 * -np.nanmin(behind) / tall:.0f}% of the jumper's height behind where "
+                             f"the rear foot landed, {(i - landing_i) / fps:.1f} s after landing (frame {i}). The mark "
+                             "is the rearmost point, so the measured distance would be shorter.", FOUL, ("distance",)))
+        fouls[-1]["frame"] = int(i)
+    floor = np.nanmax(xy[landing_i:settle, [29, 30, 31, 32], 1])
+    hand_y, hand_x = xy[landing_i:behind_end, HANDS, 1], xy[landing_i:behind_end, HANDS, 0]
+    if np.isfinite(floor) and np.isfinite(hand_y).any():
+        low = np.nanmax(np.where(np.isnan(hand_y), -np.inf, hand_y), axis=1)
+        down = low >= floor - HAND_FLOOR * tall
+        need = max(2, int(HAND_DOWN_S * fps))
+        start = run = 0
+        for k, d in enumerate(down):
+            run = run + 1 if d else 0
+            if run >= need:
+                start = k - run + 1
+                seg = range(start, k + 1)
+                j = [int(np.nanargmax(hand_y[m])) for m in seg]
+                pts = np.array([[hand_x[m, jj], hand_y[m, jj]] for m, jj in zip(seg, j)])
+                if np.nanmax(np.hypot(*(pts - pts[0]).T)) < HAND_STILL * tall:
+                    i = landing_i + start
+                    fouls.append(warning("foul_hand_down",
+                                         f"A hand was on the ground for at least {HAND_DOWN_S:.2f} s, from "
+                                         f"{(i - landing_i) / fps:.1f} s after landing (frame {i}).", FOUL, ("distance",)))
+                    fouls[-1]["frame"] = int(i)
+                    break
+    return fouls
 
 def check_side_on(launch_angle_deg, size_before_px, size_after_px):
     """Broad jumps filmed side-on launch well below vertical, and the athlete's apparent

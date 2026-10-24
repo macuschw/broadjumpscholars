@@ -28,7 +28,9 @@ export const DASHBOARD_HTML = `
           <button type="button" class="btn btn--quiet btn--sm" id="start-over">Start over</button>
         </div>
       </div>
+      <p class="results__session" id="session-summary" hidden></p>
       <p class="results__source" id="results-source"></p>
+      <div class="jump-foul" id="jump-foul" hidden></div>
       <div class="jump-alert" id="jump-alert" hidden></div>
       <div class="scoreboard results__stats" id="results-stats"></div>
       <div class="real-checks" id="real-checks" hidden></div>

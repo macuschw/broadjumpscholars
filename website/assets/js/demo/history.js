@@ -54,7 +54,7 @@ function fingerprint(b) {
 function summary(b, id, savedAt) {
   const r = b.results || {}, d = r.distance || {}, warnings = b.warnings || r.warnings || [];
   return {
-    id, savedAt, key: fingerprint(b), name: b.name || r.video || "Your jump",
+    id, savedAt, key: fingerprint(b), name: (b.name || r.video || "Your jump") + (r.jump ? ` · jump ${r.jump}` : ""),
     distance: d.jump_distance_m ?? d.jump_distance_m_gravity_scale ?? null,
     calibrated: r.scale_m_per_px != null,
     serious: warnings.filter((w) => w.severity === "serious").length,

@@ -20,9 +20,9 @@ import { Playback, readoutsHTML } from "../demo/playback.js";
 import { VideoPlayback } from "../demo/video-playback.js";
 import { buildCharts } from "../demo/charts.js";
 import { buildCompare } from "../demo/compare.js";
-import { STAT_NAMES, bundleToAttempt, checkBundle, downloadBundle, issues, realHeadline } from "../demo/real.js";
+import { STAT_NAMES, bundleToAttempt, checkBundle, downloadBundle, issues, readResults, realHeadline } from "../demo/real.js";
 import { calibrate } from "../demo/calibrate.js";
-import { analyzeVideo, recompute, serverURL, wake } from "../demo/server.js";
+import { analyzeSession, recompute, serverURL, wake } from "../demo/server.js";
 import { MAX_LABEL, canSave, clearJumps, listJumps, loadJump, removeJumps, renameJump, saveJump } from "../demo/history.js";
 import { formatQuantity, onUnitsChange } from "../lib/units.js";
 
@@ -31,7 +31,8 @@ const PAGE = document.body.dataset.page === "demo" ? "demo" : "analyze";
 $("dashboard").outerHTML = DASHBOARD_HTML;
 const views = { start: $("demo-start"), progress: $("demo-progress"), calibrate: $("demo-calibrate"), results: $("demo-results") };
 const show = (name) => Object.entries(views).forEach(([k, v]) => { if (v) v.hidden = k !== name; });   // Demo: no start
-const MAX_REAL = 6;                                            // real jumps kept for comparing
+const MAX_REAL = 6;                                            // saved jumps to compare at once (My jumps)
+const MAX_SESSION = 24;                                        // real jumps on screen (one video can hold many)
 
 document.querySelectorAll("[data-icon]").forEach((n) => { n.innerHTML = icon(n.dataset.icon); });
 function setNotice(mode) {
@@ -71,8 +72,14 @@ let realPlayback = null;
 const playback = () => (current.real ? realPlayback : simPlayback);
 
 function renderPicker() {
+  const best = bestValid(session);
+  const mark = (a) => (!a.real ? "" : a.valid
+    ? `<span class="attempt-btn__mark" aria-hidden="true">${icon("check")}</span>`
+    : `<span class="attempt-btn__mark attempt-btn__mark--void" aria-hidden="true">${icon("close")}</span>`);
+  const said = (a) => (!a.real ? "" : a.valid ? (a === best ? ", counts, best" : ", counts") : ", doesn't count");
   $("attempt-pick").innerHTML = session.map((a) =>
-    `<button type="button" class="attempt-btn" data-attempt="${a.id}" aria-pressed="${a === current}" title="${esc(a.name || a.label)}${a.sub ? ` · ${esc(a.sub)}` : ""}">${esc(a.label)}</button>`).join("");
+    `<button type="button" class="attempt-btn${a.real && !a.valid ? " attempt-btn--void" : ""}${a === best && session.length > 1 ? " attempt-btn--best" : ""}" data-attempt="${a.id}" aria-pressed="${a === current}"
+      title="${esc(a.name || a.label)}${a.sub ? ` · ${esc(a.sub)}` : ""}" aria-label="${esc(a.label + said(a))}">${mark(a)}${esc(a.label)}</button>`).join("");
   $("attempt-pick").setAttribute("aria-label", mode === "sample" ? "Attempt" : "Jump");
   $("attempt-pick").querySelectorAll(".attempt-btn").forEach((b) => b.addEventListener("click", () => setAttempt(session.find((a) => a.id === b.dataset.attempt))));
 }
@@ -106,6 +113,7 @@ function setAttempt(a) {
     simPlayback.seek(a.events.takeoff);
   }
   renderMoments(a);
+  renderFoul(a);
   renderAlert(a);
   renderChecks(a);
   renderSource(a);
@@ -127,6 +135,39 @@ function renderSource(a) {
   const kept = a.historyId ? " · saved in My jumps" : "";
   const file = a.custom ? `${a.label} (${a.name})` : a.name;
   $("results-source").textContent = `${file} · ${fps} · ${scale} · ${r.side === "LEFT" ? "left" : "right"} side to the camera${kept}`;
+}
+
+// Does it count? The longest jump that does, and each jump's fouls
+const distanceOf = (a) => a.metrics.distance ?? -Infinity;
+const bestValid = (list) => list.filter((a) => a.real && a.valid).reduce((b, a) => (b && distanceOf(b) >= distanceOf(a) ? b : a), null);
+function renderSummary() {
+  const box = $("session-summary"), real = session.filter((a) => a.real);
+  box.hidden = real.length < 2;
+  if (box.hidden) return;
+  const counts = real.filter((a) => a.valid), best = bestValid(real);
+  box.innerHTML = `<strong>${plural(real.length, "jump")}</strong> · ${counts.length} ${counts.length === 1 ? "counts" : "count"}`
+    + (real.length - counts.length ? ` · ${real.length - counts.length} ${real.length - counts.length === 1 ? "doesn't" : "don't"}` : "")
+    + (best ? ` · best that counts: <button type="button" class="results__best" data-attempt="${best.id}">${esc(best.label)}, ${best.metrics.distance == null ? "not measured" : formatQuantity("distance", best.metrics.distance)}${best.calibrated ? "" : " (rough)"}</button>` : "");
+  box.querySelector(".results__best")?.addEventListener("click", () => setAttempt(best));
+}
+/** The attempt doesn't count (stepped forward or back after landing, hand on the ground): said
+ *  first and loudest, above the numbers, which are still shown. */
+function renderFoul(a) {
+  const host = $("jump-foul");
+  host.hidden = !a.real || a.valid;
+  if (host.hidden) { host.replaceChildren(); return; }
+  host.innerHTML = `
+    <div class="jump-foul__head">
+      <span class="jump-foul__icon">${icon("close")}</span>
+      <div><h3 class="jump-foul__title">This jump doesn't count</h3>
+        <p>${esc(a.fouls.map((f) => f.headline).join(" and "))}. The numbers below are shown for interest, not as a result.</p></div>
+    </div>
+    <ul class="issues" role="list">${a.fouls.map((f) => `<li class="issue issue--serious">
+      <span class="issue__icon">${icon("close")}</span>
+      <div class="issue__body"><h4 class="issue__title">${esc(f.headline)}</h4><p>${esc(f.explain || f.message)}</p>
+        ${f.fix ? `<p class="issue__fix"><strong>Next time:</strong> ${esc(f.fix)}</p>` : ""}
+        ${f.explain ? `<details class="issue__detail"><summary>Technical detail</summary><p>${esc(f.message)}</p></details>` : ""}</div>
+    </li>`).join("")}</ul>`;
 }
 
 // Problems with the video (staggered feet, someone else in the shot, blur...), in plain words,
@@ -249,6 +290,7 @@ function showResults(list, which, m, { focus = true } = {}) {
   compare = null;
   $("compare").replaceChildren();
   renderPicker();
+  renderSummary();
   show("results");
   $("results-stats").replaceChildren();
   setAttempt(which);
@@ -256,16 +298,21 @@ function showResults(list, which, m, { focus = true } = {}) {
 }
 
 function addReal(attempt) {
-  realSession.push(attempt);
-  if (realSession.length > MAX_REAL) realSession.shift();
-  showResults(realSession.slice(), attempt, "real");
-  remember(attempt);
+  addSession([attempt]);
+}
+
+/** Every jump of a video (or of a results file) on screen, starting with the best one that counts. */
+function addSession(attempts, show = null) {
+  realSession.push(...attempts);
+  while (realSession.length > MAX_SESSION) realSession.shift();
+  showResults(realSession.slice(), show || bestValid(attempts) || attempts[0], "real");
+  for (const a of attempts) remember(a);
 }
 
 /** Keep a real jump in My jumps; the source line says so once it's saved. */
 async function remember(attempt) {
   if (attempt.historyId) return;
-  const id = await saveJump(attempt.bundle);
+  const id = await saveJump(attempt.saved || attempt.bundle);    // the compact bundle, as downloaded
   if (!id) return;                                             // storage off: nothing changes
   attempt.historyId = id;
   if (current === attempt) renderSource(attempt);
@@ -287,18 +334,25 @@ async function startUpload(file) {
   $("analysis-cancel").hidden = false;
   show("progress");
   $("progress-title").focus();
-  const steps = createSteps($("analysis"), ["Uploading the video", "Tracking 33 body landmarks in every frame", "Finding takeoff and landing, fitting the flight"]);
+  const steps = createSteps($("analysis"), ["Uploading the video", "Finding the jumps", "Tracking 33 body landmarks around each jump", "Measuring and checking each jump"]);
+  const stage = { upload: 0, looking: 1, tracking: 2, analyzing: 3 };
+  let at = 0;
+  const reach = (i, label) => { while (at < i) steps.done(at++); if (label) steps.label(i, label); };
   steps.active(0);
-  job = analyzeVideo(file, {
+  job = analyzeSession(file, {
     fps,
-    onProgress: (stage, f) => {
-      if (stage === "upload") steps.label(0, `Uploading the video (${Math.round(f * 100)}%)`);
-      else { steps.label(0, "Uploading the video"); steps.done(0); steps.active(1, "Tracking 33 body landmarks in every frame (usually under a minute)"); }
+    onProgress: (name, done, total) => {
+      const i = stage[name] ?? at;
+      if (i > at) { reach(i); steps.active(i); }
+      if (name === "upload") reach(0, `Uploading the video (${Math.round((100 * done) / Math.max(1, total))}%)`);
+      else if (name === "looking") reach(1, `Finding the jumps (${Math.round((100 * done) / Math.max(1, total))}% of the video)`);
+      else if (name === "tracking") reach(2, total > 1 ? `Tracking 33 body landmarks around each jump (${Math.min(done + 1, total)} of ${total})` : "Tracking 33 body landmarks around the jump");
+      else if (name === "analyzing") reach(3, total > 1 ? `Measuring and checking each jump (${Math.min(done + 1, total)} of ${total})` : "Measuring and checking the jump");
     },
   });
-  let bundle;
+  let found;
   try {
-    bundle = checkBundle(await job.promise);
+    found = readResults(await job.promise);
   } catch (e) {
     steps.fail();
     if (e.canceled) { show("start"); return; }
@@ -307,10 +361,9 @@ async function startUpload(file) {
     job = null;
     $("analysis-cancel").hidden = true;
   }
-  steps.done(1);
-  steps.done(2);
-  if (bundle.still) calibrateThen(bundle, file);
-  else addReal(bundleToAttempt(bundle, { video: file }));
+  reach(4);
+  if (found.still) calibrateThen(found, file);
+  else addSession(found.jumps.map((b) => bundleToAttempt(b, { video: file })));
 }
 
 function fail(text) {
@@ -321,27 +374,34 @@ function fail(text) {
 $("analysis-retry").addEventListener("click", () => { show("start"); $("file-input").value = ""; });
 $("analysis-cancel").addEventListener("click", () => job?.abort());
 
-function calibrateThen(bundle, file) {
+/** Click the tape once (the camera didn't move): the scale is applied to every jump in the video. */
+function calibrateThen(found, file) {
   show("calibrate");
-  const cal = calibrate($("demo-calibrate"), bundle.still, {
+  const all = (jumps) => addSession(jumps.map((b) => bundleToAttempt(b, { video: file })));
+  const cal = calibrate($("demo-calibrate"), found.still, {
     onDone: async ({ scale }) => {
       cal.dispose();
       $("progress-source").textContent = `“${file.name}”`;
       $("analysis-error").hidden = true;
       show("progress");
-      const steps = createSteps($("analysis"), ["Applying the scale"]);
+      const n = found.jumps.length;
+      const steps = createSteps($("analysis"), [n > 1 ? `Applying the scale to every jump (1 of ${n})` : "Applying the scale"]);
       steps.active(0);
       try {
-        const calibrated = checkBundle(await recompute(bundle, { scale }));
+        const calibrated = [];
+        for (const b of found.jumps) {
+          if (n > 1) steps.label(0, `Applying the scale to every jump (${calibrated.length + 1} of ${n})`);
+          calibrated.push(checkBundle(await recompute(b, { scale })));
+        }
         steps.done(0);
-        addReal(bundleToAttempt(calibrated, { video: file }));
+        all(calibrated);
       } catch (e) {
         steps.fail();
         fail(`${e.message} Showing the uncalibrated results instead.`);
-        setTimeout(() => addReal(bundleToAttempt(bundle, { video: file })), 2500);
+        setTimeout(() => all(found.jumps), 2500);
       }
     },
-    onSkip: () => { cal.dispose(); addReal(bundleToAttempt(bundle, { video: file })); },
+    onSkip: () => { cal.dispose(); all(found.jumps); },
   });
 }
 
@@ -356,17 +416,14 @@ async function openFiles(fileList) {
   const results = files.filter(isJSON), videos = files.filter(isVideo);
   try {
     if (results.length) {
-      let last = null;
+      const opened = [];
       for (const f of results) {
-        const bundle = checkBundle(JSON.parse(await f.text()));
+        const found = readResults(JSON.parse(await f.text()));
         // The matching video: same name as the one analyzed, or the only one given
-        const video = videos.find((v) => stem(v.name) === stem(bundle.name)) || (videos.length === 1 && results.length === 1 ? videos[0] : null);
-        last = bundleToAttempt(bundle, { video });
-        realSession.push(last);
-        if (realSession.length > MAX_REAL) realSession.shift();
+        const video = videos.find((v) => stem(v.name) === stem(found.name)) || (videos.length === 1 && results.length === 1 ? videos[0] : null);
+        opened.push(...found.jumps.map((b) => bundleToAttempt(b, { video })));
       }
-      showResults(realSession.slice(), last, "real");
-      for (const a of realSession) remember(a);
+      addSession(opened, opened.at(-1).jump ? null : opened.at(-1));
     } else if (videos.length) {
       if (!serverURL) throw new Error("Analyzing videos on this site isn't switched on yet. Run the JumpLab app on a computer, then open the _web.json it saves.");
       startUpload(videos[0]);
@@ -405,7 +462,7 @@ $("add-jump").addEventListener("click", () => {
   show("start");
   $("drop-button").focus();
 });
-$("download-results").addEventListener("click", () => current.real && downloadBundle(current));
+$("download-results").addEventListener("click", () => current.real && downloadBundle(current, session.filter((a) => a.real && a.name === current.name)));
 
 // ---------------------------------------------------------------- My jumps (this browser only)
 const dateText = (ms) => new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });

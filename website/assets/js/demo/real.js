@@ -6,8 +6,22 @@
 import { formatNumber, formatQuantity } from "../lib/units.js";
 
 export const FORMAT_PREFIX = "jumplab-web/";
+export const SESSION_PREFIX = "jumplab-session/";
 const PHASES = ["Stance", "Countermovement", "Propulsion", "Flight", "Landing"];
 let nextId = 1;
+
+/**
+ * A results file -> { name, jumps: [bundle, ...], still, best }: a session (one video, every jump
+ * in it, from the analysis server or scripts/run_session.py) or a single jump's bundle.
+ */
+export function readResults(obj) {
+  if (String(obj?.format || "").startsWith(SESSION_PREFIX) && Array.isArray(obj.jumps)) {
+    if (!obj.jumps.length) throw new Error("No jump was found in this video.");
+    return { name: obj.name, jumps: obj.jumps.map(checkBundle), still: obj.still || null, best: obj.best ?? null, skipped: obj.skipped || [] };
+  }
+  const b = checkBundle(obj);
+  return { name: b.name, jumps: [b], still: b.still || null, best: null, skipped: [] };
+}
 
 /** Throws with a plain message if this isn't a JumpLab results file. */
 export function checkBundle(b) {
@@ -30,9 +44,28 @@ const filled = (xs) => {
   return out;
 };
 
+/**
+ * One jump of a longer video keeps only its own stretch (from landmarks.offset): padded back out to
+ * every frame here, so a frame number means the same thing everywhere. Frame times outside the
+ * stretch are filled at the video's frame rate (playback needs one for every frame). The compact
+ * bundle is what gets saved and sent back to the server.
+ */
+function expanded(b) {
+  const lm = b.landmarks, n = lm.n_frames, at = lm.offset || 0;
+  if (!at && lm.xyv.length === n) return b;
+  const pad = (xs) => (xs == null ? xs : [...Array(at).fill(null), ...xs, ...Array(Math.max(0, n - at - xs.length)).fill(null)]);
+  let times = lm.frame_times;
+  if (times?.length) {
+    const t0 = times[0], tN = times.at(-1), last = at + times.length - 1;
+    times = Array.from({ length: n }, (_, i) => (i < at ? t0 - (at - i) / lm.fps : i > last ? tN + (i - last) / lm.fps : times[i - at]));
+  }
+  return { ...b, series: Object.fromEntries(Object.entries(b.series).map(([k, v]) => [k, pad(v)])),
+    landmarks: { ...lm, xyv: pad(lm.xyv), sharpness: pad(lm.sharpness), frame_times: times, offset: 0 } };
+}
+
 /** Bundle (+ the video File, if the visitor has it) -> attempt for the dashboard. */
 export function bundleToAttempt(bundle, { video = null } = {}) {
-  const b = checkBundle(bundle), r = b.results, s = b.series, tr = r.trajectory || {}, d = r.distance || {};
+  const saved = checkBundle(bundle), b = expanded(saved), r = b.results, s = b.series, tr = r.trajectory || {}, d = r.distance || {};
   const fps = r.fps, n = s.time_s.length;
   const calibrated = r.scale_m_per_px != null;
   const scale = r.scale_m_per_px ?? tr.gravity_implied_scale_m_per_px ?? null;
@@ -72,14 +105,17 @@ export function bundleToAttempt(bundle, { video = null } = {}) {
     trunkTakeoff: ang.trunk ?? null, shinTakeoff: ang.shin ?? null, kneeTakeoff: ang.knee ?? null,
   };
   const name = b.name || r.video || "Your jump";
+  const fouls = b.fouls || r.fouls || [], jump = r.jump ?? null;
   // The part of the clip worth charting: from just before the dip to just after landing
   const window = [Math.max(0, onset - Math.round(0.5 * fps)), Math.min(n - 1, landing + Math.round(0.8 * fps))];
   return {
-    id: `real-${nextId++}`, label: shortName(name), name, real: true, window,
+    id: `real-${nextId++}`, label: jump ? `Jump ${jump}` : shortName(name), name, real: true, window,
     calibrated, rough: !calibrated && scale != null, measured: scale != null,
     fps, frames, events: { onset, bottom, takeoff, peak, landing }, metrics,
     ratings: b.ratings || {}, warnings: b.warnings || r.warnings || [],
-    bundle: b, video,
+    // Does it count? (stepped forward or back after landing, hand on the ground: server checks.py)
+    valid: b.valid !== false && !fouls.length, fouls, jump,
+    bundle: b, saved, video,
   };
 }
 
@@ -117,6 +153,7 @@ export function realHeadline(a) {
   const m = a.metrics, speed = (v) => (v == null ? "—" : formatNumber("speed", v));
   const flags = {};                                          // stat id -> the serious problems behind it
   for (const i of issues(a)) if (i.severity === "serious") i.stats.forEach((id) => (flags[id] ??= []).push(i.headline));
+  const voided = a.valid ? null : a.fouls.map((f) => f.headline || "Doesn't count").join(" · ");
   return [
     { id: "distance", label: "Jump distance", value: m.distance, unit: "m", kind: "distance", digits: 2,
       sub: a.calibrated ? "Takeoff toe to landing heel" : a.rough ? "Rough: no tape calibration" : "Needs calibration" },
@@ -128,15 +165,19 @@ export function realHeadline(a) {
     { id: "shin", label: "Shin angle", value: m.shinTakeoff, unit: "°", digits: 0, sub: "Forward lean at takeoff" },
     { id: "contact", label: "Ground contact", value: m.contactTime, unit: "s", digits: 2,
       sub: m.pushOff == null ? "" : `Push-off ${m.pushOff.toFixed(2)} s` },
-  ].map((h) => (flags[h.id] ? { ...h, flag: flags[h.id].join(" · ") } : h));
+  ].map((h) => (h.id === "distance" && voided ? { ...h, flag: voided, flagText: "Doesn't count" }
+    : flags[h.id] ? { ...h, flag: flags[h.id].join(" · ") } : h));
 }
 
-/** Save a bundle as a file the visitor can open again later ("Open results"). */
-export function downloadBundle(a) {
-  const blob = new Blob([JSON.stringify(a.bundle)], { type: "application/json" });
+/** Save the jumps shown as a file the visitor can open again later: one jump's bundle, or a
+ *  session (every jump) when there are several. */
+export function downloadBundle(a, all = [a]) {
+  const several = all.length > 1;
+  const body = several ? { format: `${SESSION_PREFIX}1`, name: a.name, jumps: all.map((x) => x.saved || x.bundle) } : (a.saved || a.bundle);
+  const blob = new Blob([JSON.stringify(body)], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `${String(a.name).replace(/\.[a-z0-9]+$/i, "")}_web.json`;
+  link.download = `${String(a.name).replace(/\.[a-z0-9]+$/i, "")}_${several ? "session_" : ""}web.json`;
   document.body.append(link);
   link.click();
   link.remove();

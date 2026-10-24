@@ -47,7 +47,7 @@ def main():
     with open(txt, "w") as f:
         f.write(text + "\n")
     print(f"\nSaved {txt}")
-    print("\n" + verdict(r.get("warnings"), color))
+    print("\n" + verdict(r.get("warnings"), color, fouls=r.get("fouls")))
 
 
 if __name__ == "__main__":

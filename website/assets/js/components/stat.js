@@ -9,11 +9,11 @@ import { quantityHTML } from "../lib/units.js";
 const numberHTML = (value, digits, kind) => (value == null || !Number.isFinite(value) ? "—"   // not measured
   : kind ? quantityHTML(kind, value, digits) : fmt(value, digits));
 
-export function statHTML({ label, value, unit, digits = 2, sub, kind, flag }, { key = false, tag = "div" } = {}) {
+export function statHTML({ label, value, unit, digits = 2, sub, kind, flag, flagText = "Not reliable" }, { key = false, tag = "div" } = {}) {
   const missing = value == null || !Number.isFinite(value);
   const unitHTML = kind || missing ? "" : unit === "°" ? `<span class="stat__unit stat__unit--deg">°</span>` : `<span class="stat__unit">${unit}</span>`;
   return `<${tag} class="stat${key ? " stat--key" : ""}${flag ? " stat--flagged" : ""}">
-    ${flag ? `<span class="stat__flag" title="${escapeHTML(flag)}">${icon("alert")}Not reliable<span class="visually-hidden">: ${escapeHTML(flag)}</span></span>` : ""}
+    ${flag ? `<span class="stat__flag" title="${escapeHTML(flag)}">${icon("alert")}${flagText}<span class="visually-hidden">: ${escapeHTML(flag)}</span></span>` : ""}
     <span class="stat__value"><span class="stat__num"${missing ? "" : ` data-value="${value}"`} data-digits="${digits}"${kind ? ` data-kind="${kind}"` : ""}>${numberHTML(value, digits, kind)}</span>${unitHTML}</span>
     <span class="stat__label">${label}</span>
     ${sub ? `<span class="stat__sub">${sub}</span>` : ""}

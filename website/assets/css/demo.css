@@ -117,6 +117,26 @@ table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap
 }
 .attempt-btn:hover { background: var(--white); }
 .attempt-btn[aria-pressed="true"] { background: var(--text); color: var(--paper); }
+/* A video with many jumps: the picker scrolls sideways on its own (not the page); each real jump is
+   marked whether it counts, a jump that doesn't is crossed out, and the best that counts is said */
+.attempt-pick { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
+.attempt-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.attempt-btn__mark .icon { width: 16px; height: 16px; stroke-width: 3; }
+.attempt-btn--void { color: var(--accent); text-decoration: line-through; text-decoration-thickness: 2px; }
+.attempt-btn--void[aria-pressed="true"] { color: var(--accent-on-dark); }
+.attempt-btn--best::after { content: "best"; margin-left: 2px; font-size: 0.72em; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.75; }
+.results__session { margin: var(--s-3) 0 0; color: var(--text); max-width: none; }
+.results__best { padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.results__best:hover { color: var(--accent-hover); }
+
+/* The attempt doesn't count: solid red, above everything else about the jump */
+.jump-foul { margin: 0 0 var(--s-5); padding: var(--s-4) var(--s-5) var(--s-5); background: var(--accent); color: var(--white); border-radius: var(--radius); }
+.jump-foul__head { display: flex; gap: var(--s-3); align-items: flex-start; }
+.jump-foul__icon { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--white); color: var(--accent); }
+.jump-foul__icon .icon { width: 24px; height: 24px; stroke-width: 3; }
+.jump-foul__title { margin: 0; font-family: var(--font-display); font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); line-height: 1.05; text-transform: uppercase; letter-spacing: 0.02em; color: var(--white); }
+.jump-foul__head p { margin: var(--s-1) 0 0; max-width: 72ch; color: var(--white); }
+.jump-foul .issues { margin-top: var(--s-4); }
 /* Six cards in one row, 3 + 3 on tablets, 2 + 2 + 2 on phones; 1 px rules between cards at any count */
 .results__stats {
   grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--line);
@@ -210,10 +230,24 @@ th .best-label { margin-left: 6px; }
 .cal__head h2 { font-size: var(--step-3); }
 .cal__head p { margin-top: var(--s-2); color: var(--muted); }
 .cal__grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: var(--s-5); margin-top: var(--s-5); align-items: start; }
+.cal__picture { min-width: 0; }
 .cal__frame { position: relative; background: var(--ink); border-radius: var(--radius); overflow: hidden; }
-.cal__canvas { display: block; width: 100%; cursor: crosshair; touch-action: none; }
+.cal__canvas { display: block; width: 100%; cursor: crosshair; touch-action: none; -webkit-user-select: none; user-select: none; }
 .cal__canvas:focus-visible { outline: 3px solid var(--paper); outline-offset: -3px; }
-.cal__loupe { position: absolute; top: 8px; width: 140px; height: 140px; border: 2px solid var(--paper); border-radius: var(--radius); pointer-events: none; background: var(--ink); }
+.cal__zoom-box { position: relative; margin-top: var(--s-2); border-radius: var(--radius); overflow: hidden; background: var(--ink); }
+.cal__zoom { display: block; width: 100%; height: 150px; }
+.cal__zoom-label { position: absolute; left: 8px; top: 8px; padding: 2px 8px; border-radius: var(--radius); background: rgba(18, 19, 21, 0.78); color: var(--paper); font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; }
+.cal__restored { margin-top: var(--s-2); color: var(--muted); font-size: 0.92rem; }
+/* Under the picture: which marker moves, and arrows that nudge it a pixel at a time */
+.cal__tools { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--s-3); margin-top: var(--s-3); }
+.cal__which, .cal__units { display: inline-flex; border: 2px solid var(--text); border-radius: var(--radius); }
+.cal__chip, .cal__unit { min-width: 48px; min-height: 44px; padding: 0 var(--s-3); border: 0; background: transparent; font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; }
+.cal__chip + .cal__chip, .cal__unit + .cal__unit { border-left: 2px solid var(--text); }
+.cal__chip[aria-pressed="true"], .cal__unit[aria-pressed="true"] { background: var(--text); color: var(--paper); }
+.cal__nudge { display: inline-flex; gap: 6px; }
+.cal__arrow { display: grid; place-items: center; width: 48px; height: 44px; border: 1.5px solid var(--line-strong); border-radius: var(--radius); background: var(--white); color: var(--text); touch-action: none; -webkit-user-select: none; user-select: none; }
+.cal__arrow:active { background: var(--text); color: var(--paper); }
+.cal__arrow .icon { width: 22px; height: 22px; stroke-width: 2.5; }
 .cal__side { display: flex; flex-direction: column; gap: var(--s-4); }
 .cal__steps { list-style: none; margin: 0; padding: 0; border-top: 3px solid var(--text); }
 .cal__steps li { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--line); font-weight: 600; color: var(--muted); transition: color var(--dur) var(--ease); }
@@ -221,15 +255,19 @@ th .best-label { margin-left: 6px; }
   font: 700 0.9rem/1 var(--font-display); transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
 .cal__steps li.is-done { color: var(--text); }
 .cal__steps li.is-done .cal__dot { background: var(--accent); border-color: var(--accent); color: var(--white); }
-.cal__length { display: flex; flex-wrap: wrap; gap: var(--s-3); border: 0; margin: 0; padding: 0; }
+.cal__length { display: flex; flex-direction: column; gap: var(--s-3); border: 0; margin: 0; padding: 0; }
 .cal__length legend { font-weight: 600; margin-bottom: var(--s-2); }
-.cal__length label { display: inline-flex; align-items: center; gap: var(--s-2); font-weight: 600; }
-.cal__length input { width: 6.5em; min-height: 44px; padding: 0 var(--s-2); border: 1.5px solid var(--line-strong); border-radius: var(--radius); background: var(--white); font-variant-numeric: tabular-nums; }
-.cal__length input:focus-visible { outline-offset: 1px; }
+.cal__fields { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+.cal__fields label { display: inline-flex; align-items: center; gap: var(--s-2); font-weight: 600; }
+.cal__fields input { width: 5.5em; min-height: 48px; padding: 0 var(--s-3); border: 1.5px solid var(--line-strong); border-radius: var(--radius); background: var(--white); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.cal__fields input:focus-visible { outline-offset: 1px; }
 .cal__readout { min-height: 1.5em; color: var(--muted); font-variant-numeric: tabular-nums; }
-.cal__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-.cal__skip-note { color: var(--muted); font-size: 0.92rem; border-top: 1px solid var(--line); padding-top: var(--s-4); }
-.cal__side > .cal__skip { align-self: flex-start; }
+.cal__use { align-self: stretch; min-height: 52px; font-size: 1.15rem; }
+.cal__hint { margin-top: calc(-1 * var(--s-2)); min-height: 1.4em; font-weight: 600; color: var(--text); }
+.cal__hint:empty { display: none; }
+.cal__skip-box { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); margin-top: var(--s-4); padding-top: var(--s-4); border-top: 1px solid var(--line); }
+.cal__skip-note { color: var(--muted); font-size: 0.92rem; }
+.cal__skip.is-armed { color: var(--accent); border-color: var(--accent); }
 
 /* ---------- Real playback: the video with the tracked skeleton ---------- */
 .vpb__stage { position: relative; width: 100%; max-height: 72vh; background: var(--ink); border-radius: var(--radius); overflow: hidden; }
@@ -314,6 +352,8 @@ th .best-label { margin-left: 6px; }
 @media (max-width: 1100px) { .ratings { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 960px) { .cal__grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) {
+  .jump-foul { padding: var(--s-3) var(--s-3) var(--s-4); }
+  .jump-foul__icon { width: 36px; height: 36px; }
   .jump-alert--serious, .jump-alert--caution { padding: var(--s-3) var(--s-3) var(--s-4); }
   .jump-alert__icon { width: 36px; height: 36px; }
   .jump-alert__icon .icon { width: 22px; height: 22px; }
@@ -322,5 +362,5 @@ th .best-label { margin-left: 6px; }
   .ratings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .real-why dl { grid-template-columns: minmax(0, 1fr); }
   .real-why dd { margin-bottom: var(--s-2); }
-  .cal__loupe { width: 110px; height: 110px; }
+  .cal__frame { margin-inline: calc(-1 * var(--gutter)); border-radius: 0; }   /* the picture edge to edge */
 }
