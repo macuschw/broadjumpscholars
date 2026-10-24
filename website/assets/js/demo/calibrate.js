@@ -287,6 +287,7 @@ export function calibrate(host, still, { onDone, onSkip }) {
     armed = setTimeout(() => { armed = 0; skip.textContent = "Skip: no tape in the shot"; skip.classList.remove("is-armed"); }, 4000);
   });
 
+  if (!onSkip) q(".cal__skip-box").hidden = true;              // live measuring: the scale is needed
   renderFields();
   img.onload = fit;
   const ro = "ResizeObserver" in window ? new ResizeObserver(() => fit()) : null;

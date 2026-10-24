@@ -29,7 +29,7 @@ import { formatQuantity, onUnitsChange } from "../lib/units.js";
 const $ = (id) => document.getElementById(id);
 const PAGE = document.body.dataset.page === "demo" ? "demo" : "analyze";
 $("dashboard").outerHTML = DASHBOARD_HTML;
-const views = { start: $("demo-start"), progress: $("demo-progress"), calibrate: $("demo-calibrate"), results: $("demo-results") };
+const views = { start: $("demo-start"), live: $("demo-live"), progress: $("demo-progress"), calibrate: $("demo-calibrate"), results: $("demo-results") };
 const show = (name) => Object.entries(views).forEach(([k, v]) => { if (v) v.hidden = k !== name; });   // Demo: no start
 const MAX_REAL = 6;                                            // saved jumps to compare at once (My jumps)
 const MAX_SESSION = 24;                                        // real jumps on screen (one video can hold many)
@@ -132,7 +132,7 @@ function renderSource(a) {
   const r = a.bundle.results;
   const fps = `${Math.round(r.fps)} fps${r.fps_source === "override" ? " (as you set)" : ""}`;
   const scale = a.calibrated ? `calibrated, 1 px = ${formatQuantity("tiny", r.scale_m_per_px)}` : "no tape calibration";
-  const kept = a.historyId ? " · saved in My jumps" : "";
+  const kept = (a.live ? ` · live result ${formatQuantity("distance", a.live.meters)}` : "") + (a.historyId ? " · saved in My jumps" : "");
   const file = a.custom ? `${a.label} (${a.name})` : a.name;
   $("results-source").textContent = `${file} · ${fps} · ${scale} · ${r.side === "LEFT" ? "left" : "right"} side to the camera${kept}`;
 }
@@ -327,8 +327,10 @@ function showSample() {
 
 // ---------------------------------------------------------------- 1. a video -> the analysis server
 let job = null;
-async function startUpload(file) {
-  const fps = Number($("fps-select").value) || null;
+/** A video to the server. From live measuring: its scale is known (no calibration step) and each
+ *  jump's live distance is shown next to the full result. */
+async function startUpload(file, { scale = null, fps: liveFps = null, jumps: live = null } = {}) {
+  const fps = liveFps || Number($("fps-select").value) || null;
   $("progress-source").textContent = `“${file.name}”`;
   $("analysis-error").hidden = true;
   $("analysis-cancel").hidden = false;
@@ -340,7 +342,7 @@ async function startUpload(file) {
   const reach = (i, label) => { while (at < i) steps.done(at++); if (label) steps.label(i, label); };
   steps.active(0);
   job = analyzeSession(file, {
-    fps,
+    fps, scale,
     onProgress: (name, done, total) => {
       const i = stage[name] ?? at;
       if (i > at) { reach(i); steps.active(i); }
@@ -362,8 +364,36 @@ async function startUpload(file) {
     $("analysis-cancel").hidden = true;
   }
   reach(4);
-  if (found.still) calibrateThen(found, file);
-  else addSession(found.jumps.map((b) => bundleToAttempt(b, { video: file })));
+  const withLive = (a) => {                                    // the live distance of the same jump, if any
+    const t = a.bundle.results.events.takeoff.time_s;
+    const m = live?.find((j) => Math.abs(j.tTakeoff - t) < 0.6);
+    return m ? Object.assign(a, { live: m }) : a;
+  };
+  if (found.still && !scale) calibrateThen(found, file);
+  else addSession(found.jumps.map((b) => withLive(bundleToAttempt(b, { video: file }))));
+}
+
+// ---------------------------------------------------------------- 1b. measuring live (phone camera)
+let live = null;
+async function openLive() {
+  live?.dispose();
+  show("live");
+  const { createLive } = await import("../live/live.js");
+  live = createLive($("demo-live"), {
+    onNeedScale: (still) => {
+      show("calibrate");
+      const cal = calibrate($("demo-calibrate"), still, {
+        onDone: ({ scale }) => { cal.dispose(); show("live"); live.setScale(scale); },
+      });
+    },
+    onAnalyze: (file, info) => { live.dispose(); live = null; startUpload(file, info); },
+    onClose: (why) => { live = null; if (why === "again") openLive(); else { show("start"); $("live-open")?.focus(); } },
+  });
+  $("live-title")?.focus();
+}
+if ($("live-card") && navigator.mediaDevices?.getUserMedia) {               // a camera, and a secure page
+  $("live-card").hidden = false;
+  $("live-open").addEventListener("click", openLive);
 }
 
 function fail(text) {

@@ -104,6 +104,21 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   doesn't count" panel and a "Doesn't count" tag on the distance for fouls. Download saves the
   whole session (`jumplab-session/1`); each jump also goes into My jumps ("<video> · jump N").
 - Shared server logic: `jumplab/web.py` (`make_bundle`, `analyze_session_upload`, `recompute`, `handle`).
+- **Measure live** (`live/live.js`, `live/detect.js`; Analyze page card "Measure live"): the phone's camera
+  in the browser. MediaPipe Tasks for Web (`@mediapipe/tasks-vision@0.10.14` from jsDelivr, the
+  pose_landmarker_full model from Google's model storage, ~10 MB on first use) tracks every frame on the
+  phone; nothing is uploaded while measuring. Set the scale on a camera frame (same calibration screen,
+  no Skip), then each jump's distance shows the moment the jumper lands (toe planted before takeoff ->
+  heel just after landing, as in the full analysis). A jump = a dip (< 85% standing height in the 1.2 s
+  before), both feet > 6% of body height off the floor, the hips rising >= 6% and moving forward >= 0.3,
+  0.15-1.0 s in the air. Marked "unsure" when the tracked body teleports (tracker switched to someone
+  else). The session is recorded (MediaRecorder, video only; a format that records nothing is swapped:
+  some browsers claim MP4 and write nothing): "Get the full data" uploads it with the scale already set
+  (no second calibration; each jump shows its live result next to the full one), "Save the video"
+  downloads it for later. Checked on our videos at 30 fps: all 21 jumps found, no false ones; live vs
+  full analysis within ~1% typically, 5% worst (browser tracker), Jump 2 of IMG_6233 (person behind)
+  -14% and marked unsure. Phone cameras give 30-60 fps in a browser (no slow motion): fine for the
+  distance, not for timing. Not yet tried on a real phone at the time of writing.
 - Calibration (`demo/calibrate.js`), made for phones after a real iPhone test: drag markers A and B
   (they move with the finger, never jump under it; tapping elsewhere brings the selected one), a 4x
   close-up of the selected marker under the picture, arrow buttons that nudge it one pixel, the

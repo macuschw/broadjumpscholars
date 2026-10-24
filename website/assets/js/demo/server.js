@@ -64,7 +64,7 @@ async function ask(url, options = {}) {
  * up to three times, and a few failed checks in a row are waited out, so a moment's wifi trouble
  * doesn't lose the job. Returns { promise, abort }; the promise gives the session.
  */
-export function analyzeSession(file, { fps = null, onProgress } = {}) {
+export function analyzeSession(file, { fps = null, scale = null, onProgress } = {}) {
   let stopped = false, xhr = null;
   const piece = (url, blob, sent) => new Promise((resolve, reject) => {
     xhr = new XMLHttpRequest();
@@ -81,6 +81,7 @@ export function analyzeSession(file, { fps = null, onProgress } = {}) {
     if (!serverURL) throw new Error("Video analysis isn't switched on for this site yet.");
     const q = new URLSearchParams({ name: file.name });
     if (fps) q.set("fps", String(fps));
+    if (scale) q.set("scale", String(scale));                   // already known (live measuring): no calibration step
     const job = await ask(`${serverURL}/jobs?${q}`, { method: "POST" });
     const size = job.chunk_bytes, n = Math.max(1, Math.ceil(file.size / size));
     for (let i = 0; i < n; i++) {

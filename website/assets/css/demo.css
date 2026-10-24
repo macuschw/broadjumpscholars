@@ -31,6 +31,39 @@
 
 /* My jumps: earlier analyses kept in this browser, under the upload card */
 .my-jumps { grid-column: 1 / -1; min-width: 0; margin-top: var(--s-6); }
+/* Measure live: the card on the start screen, and the live view (live/live.js) */
+.live-card { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s-4); padding: var(--s-4) var(--s-5); background: var(--white); border: 2px solid var(--text); border-radius: var(--radius); }
+.live-card h2 { font-size: var(--step-2); }
+.live-card p { margin-top: var(--s-1); color: var(--muted); max-width: 60ch; }
+.live-card .btn { margin-left: auto; flex: none; }
+.live-card__icon { flex: none; color: var(--accent); }
+.live-card__icon .icon { width: 36px; height: 36px; }
+.demo-live { padding-bottom: clamp(32px, 5vw, 64px); }
+.live__head h2 { font-size: var(--step-3); }
+.live__lede { margin-top: var(--s-2); color: var(--muted); }
+.live__stage { position: relative; margin-top: var(--s-4); aspect-ratio: 16 / 9; max-height: 70vh; background: var(--ink); border-radius: var(--radius); overflow: hidden; }
+.live__video, .live__overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+.live__video { object-fit: contain; }
+.live__badge { position: absolute; top: 12px; left: 12px; margin: 0; padding: 4px 10px; border-radius: var(--radius); background: var(--accent); color: var(--white); font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.live__turn { position: absolute; left: 12px; right: 12px; bottom: 12px; margin: 0; padding: var(--s-2) var(--s-3); border-radius: var(--radius); background: rgba(18, 19, 21, 0.85); color: var(--paper); font-weight: 600; max-width: none; }
+.live__result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60%; padding: var(--s-3) var(--s-5); background: rgba(18, 19, 21, 0.88); border: 3px solid var(--accent-on-dark); border-radius: var(--radius); color: var(--paper); text-align: center; }
+.live__result-label { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-on-dark); }
+.live__result-value { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.6rem, 9vw, 5rem); line-height: 1; font-variant-numeric: tabular-nums; }
+.live__result-value .stat__unit, .live__result-value .unit { font-size: 0.45em; }
+.live__result-note { max-width: 36ch; font-size: 0.9rem; color: var(--muted-dark); }
+.live__status { margin-top: var(--s-3); font-weight: 600; max-width: none; }
+.live__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
+.live__actions .live__scale, .live__actions .live__stop { min-height: 52px; min-width: 12em; font-size: 1.1rem; }
+.live__jumps { list-style: none; margin: var(--s-4) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.live__jumps:empty { display: none; }
+.live__jump { display: inline-flex; align-items: baseline; gap: var(--s-2); padding: var(--s-2) var(--s-3); border: 1.5px solid var(--text); border-radius: var(--radius); background: var(--white); }
+.live__jump-n { font-weight: 600; color: var(--muted); }
+.live__jump-d { font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; }
+.live__jump--unsure { border-style: dashed; }
+.live__jump-note { color: var(--accent); font-size: 0.85rem; font-weight: 600; }
+.live__done { margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--line); display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); }
+.live__done-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.live__save-note { color: var(--muted); font-size: 0.92rem; }
 .my-jumps__head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-5); margin-bottom: var(--s-4); }
 .my-jumps__head h2 { font-size: var(--step-3); }
 .my-jumps__lede { margin-top: var(--s-1); color: var(--muted); max-width: 62ch; }
@@ -352,6 +385,10 @@ th .best-label { margin-left: 6px; }
 @media (max-width: 1100px) { .ratings { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 960px) { .cal__grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) {
+  .live-card { flex-wrap: wrap; padding: var(--s-4); }
+  .live-card .btn { margin-left: 0; width: 100%; }
+  .live__stage { margin-inline: calc(-1 * var(--gutter)); border-radius: 0; }
+  .live__actions .btn { flex: 1 1 auto; }
   .jump-foul { padding: var(--s-3) var(--s-3) var(--s-4); }
   .jump-foul__icon { width: 36px; height: 36px; }
   .jump-alert--serious, .jump-alert--caution { padding: var(--s-3) var(--s-3) var(--s-4); }
