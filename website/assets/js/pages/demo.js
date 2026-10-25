@@ -393,6 +393,8 @@ async function openLive() {
 }
 if ($("live-card") && navigator.mediaDevices?.getUserMedia) {               // a camera, and a secure page
   $("live-card").hidden = false;
+  const laptop = $("live-card").querySelector(".live-card__laptop");
+  if (laptop) laptop.hidden = matchMedia("(pointer: coarse)").matches;    // a phone is the camera itself
   $("live-open").addEventListener("click", openLive);
 }
 

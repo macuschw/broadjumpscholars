@@ -48,7 +48,18 @@
 .live__turn { position: absolute; left: 12px; right: 12px; bottom: 12px; margin: 0; padding: var(--s-2) var(--s-3); border-radius: var(--radius); background: rgba(18, 19, 21, 0.85); color: var(--paper); font-weight: 600; max-width: none; }
 .live__result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60%; padding: var(--s-3) var(--s-5); background: rgba(18, 19, 21, 0.88); border: 3px solid var(--accent-on-dark); border-radius: var(--radius); color: var(--paper); text-align: center; }
 .live__result-label { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-on-dark); }
-.live__result-value { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.6rem, 9vw, 5rem); line-height: 1; font-variant-numeric: tabular-nums; }
+.live__result-value { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.6rem, 9vw, 7rem); line-height: 1; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: no-preference) { .live__result { transition: opacity var(--dur-slow) var(--ease); } }
+.live__result--old { opacity: 0.35; }
+.live__options { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin-top: var(--s-3); }
+.live__camera { display: inline-flex; align-items: center; gap: var(--s-2); font-weight: 600; }
+.live__camera select { min-height: 40px; max-width: 22em; padding: 0 var(--s-2); border: 1.5px solid var(--text); border-radius: var(--radius); background: var(--white); color: var(--text); font: inherit; font-weight: 400; }
+.live__camera select:disabled { opacity: 0.6; }
+.live__speak[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.live__stage:fullscreen { max-height: none; aspect-ratio: auto; border-radius: 0; }
+.live__stage:fullscreen .live__result-value { font-size: 18vmin; }
+.live__stage:fullscreen .live__result-label { font-size: 3.5vmin; }
+.live-card__laptop { font-size: 0.92rem; }
 .live__result-value .stat__unit, .live__result-value .unit { font-size: 0.45em; }
 .live__result-note { max-width: 36ch; font-size: 0.9rem; color: var(--muted-dark); }
 .live__status { margin-top: var(--s-3); font-weight: 600; max-width: none; }

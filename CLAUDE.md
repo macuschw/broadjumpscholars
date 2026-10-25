@@ -119,6 +119,14 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   full analysis within ~1% typically, 5% worst (browser tracker), Jump 2 of IMG_6233 (person behind)
   -14% and marked unsure. Phone cameras give 30-60 fps in a browser (no slow motion): fine for the
   distance, not for timing. Not yet tried on a real phone at the time of writing.
+  Hands-off use (a phone on a tripod is hard to tap): a Camera picker (shown when there are 2+
+  cameras; locked once the scale is set; remembered by label in `jl-live-camera`). On a laptop an
+  iPhone camera is picked automatically the first time (Mac Continuity Camera: the iPhone on the
+  tripod, everything clicked on the laptop; the live card says so on non-touch screens). Each distance
+  is said out loud (`speechSynthesis`, toggle remembered in `jl-live-speak`; "Ready" is spoken on the
+  "Use this scale" tap, which also unlocks speech on iPhones). The result stays up until the next jump
+  (faded while that one is in the air), Full screen button / double-click for reading it from afar.
+  Tested with fake cameras in the browser only.
 - Calibration (`demo/calibrate.js`), made for phones after a real iPhone test: drag markers A and B
   (they move with the finger, never jump under it; tapping elsewhere brings the selected one), a 4x
   close-up of the selected marker under the picture, arrow buttons that nudge it one pixel, the
