@@ -3,17 +3,17 @@
 // jump and its distance is shown the moment the jumper lands. The whole session is recorded at the
 // same time, so the full analysis (angles, timing, the checks for steps, hands, someone in the
 // shot...) can follow, now or later, from that recording, like any uploaded video.
+// With a remote screen (live/room.js, live/remote.js), a laptop or another phone shows the
+// distances and runs this one, so nobody has to touch the phone on the tripod.
 //
-//   const live = createLive(host, { onNeedScale(still), onAnalyze(file, info), onClose() });
+//   const live = createLive(host, { onNeedScale(still), onAnalyze(file, info), onClose(why, { room }), room, onScaleSet });
 //   live.setScale(metersPerPixel)   after the visitor has marked the tape on onNeedScale's still
-import { INCH, formatQuantity, isImperial } from "../lib/units.js";
 import { createDetector } from "./detect.js";
+import { cleanCode, isCode, linkPhone, read } from "./room.js";
+import { createVoice, esc, fullScreen, jumpItemHTML, jumpWords, paintSkeleton, resultHTML } from "./shared.js";
 
 const VISION = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 const MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
-const BONES = [[11, 12], [11, 23], [12, 24], [23, 24], [11, 13], [13, 15], [12, 14], [14, 16],
-  [23, 25], [25, 27], [27, 29], [29, 31], [27, 31], [24, 26], [26, 28], [28, 30], [30, 32], [28, 32]];
-const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 let trackerPromise = null;                                   // loaded once per visit (~10 MB, then cached)
 function loadTracker() {
@@ -29,7 +29,7 @@ function loadTracker() {
   return trackerPromise;
 }
 
-export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: given = null }) {
+export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet = () => {}, room = null, stream: given = null }) {
   host.innerHTML = `
     <div class="live">
       <div class="live__head">
@@ -48,7 +48,18 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
         <label class="live__camera" hidden>Camera <select class="live__camera-select"></select></label>
         <button type="button" class="btn btn--quiet btn--sm live__speak" aria-pressed="true">Say each distance out loud</button>
         <button type="button" class="btn btn--quiet btn--sm live__full-screen" hidden>Full screen</button>
+        <button type="button" class="btn btn--quiet btn--sm live__remote-open">Use a remote screen</button>
       </div>
+      <form class="live__remote-form" hidden>
+        <label>Code on the remote screen
+          <input class="live__remote-code" type="text" inputmode="text" autocapitalize="characters" autocomplete="off"
+            spellcheck="false" maxlength="9" placeholder="K7P2QX" aria-describedby="live-remote-help"></label>
+        <button type="submit" class="btn btn--primary btn--sm">Connect</button>
+        <p class="live__remote-help" id="live-remote-help">On a laptop or another phone, open the Analyze page and choose
+          <strong>Remote screen</strong>: it shows a code (or a QR code to scan with this phone's camera).</p>
+      </form>
+      <p class="live__remote" hidden><span class="live__remote-text"></span>
+        <button type="button" class="btn btn--quiet btn--sm live__remote-off">Disconnect</button></p>
       <p class="live__status" aria-live="polite">Starting the camera…</p>
       <div class="live__actions">
         <button type="button" class="btn btn--primary live__scale" hidden>Set the scale</button>
@@ -60,16 +71,22 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
     </div>`;
   const q = (s) => host.querySelector(s);
   const video = q(".live__video"), overlay = q(".live__overlay"), octx = overlay.getContext("2d");
-  const status = (text) => { q(".live__status").textContent = text; };
+  const status = (text) => { q(".live__status").textContent = text; link?.soon(); };
   let stream = null, tracker = null, scale = null, recorder = null, chunks = [], recStart = 0, mime = "", clock0 = 0;
   let running = false, busy = false, lastSeen = 0, wake = null, frames = 0, closed = false, mediaBase = null, lastTs = 0;
+  let stage = "starting", air = false, lastPts = null, link = null;
+  const session = Date.now();                                  // tells the remote screen a new session began
   const jumps = [];
   const IS_TOUCH = matchMedia("(pointer: coarse)").matches;   // a phone or tablet, not a laptop
-  let speakOn = localStorage.getItem("jl-live-speak") !== "off";
+  const voice = createVoice(q(".live__speak"));
+  const wide = fullScreen(q(".live__stage"), q(".live__full-screen"));
+  const setStage = (s) => { stage = s; link?.soon(); };
   const detector = createDetector({ onJump: (j) => showJump(j), onState: (s) => {
-    q(".live__badge").textContent = s === "air" ? "In the air" : "";
-    q(".live__badge").hidden = s !== "air";
-    q(".live__result").classList.toggle("live__result--old", s === "air");   // the last result fades while the next jump flies
+    air = s === "air";
+    q(".live__badge").textContent = air ? "In the air" : "";
+    q(".live__badge").hidden = !air;
+    q(".live__result").classList.toggle("live__result--old", air);   // the last result fades while the next jump flies
+    link?.soon();
   } });
 
   // ---- camera and tracker
@@ -78,6 +95,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
       if (!given) await findCameras();                          // (named only once the camera was allowed before)
       stream = given || await openCamera(remembered());
     } catch (e) {
+      setStage("error");
       status(e?.name === "NotAllowedError"
         ? "The camera wasn't allowed. Allow camera access for this site in the browser's settings, then try again."
         : "No camera could be opened on this device.");
@@ -89,6 +107,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
     if (!given) await listCameras();
     status("Loading the tracker (the first time takes a few seconds)…");
     try { tracker = await loadTracker(); } catch {
+      setStage("error");
       status("The tracker couldn't be loaded. Check the connection and try again.");
       return;
     }
@@ -96,7 +115,9 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
     running = true;
     loop();
     try { wake = await navigator.wakeLock?.request("screen"); } catch { /* the screen may dim; fine */ }
-    status("Step 1: set the scale. Have the tape measure on the floor in the picture.");
+    setStage("ready");
+    status(link ? "Step 1: set the scale (on the remote screen, or here). Have the tape measure on the floor in the picture."
+      : "Step 1: set the scale. Have the tape measure on the floor in the picture.");
     q(".live__scale").hidden = false;
   }
 
@@ -144,38 +165,26 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
   }
   q(".live__camera-select").addEventListener("change", (e) => switchCamera(e.target.value));
 
-  // ---- full screen: a laptop a few steps away, the distance readable from the jump
-  const stage = q(".live__stage"), wide = q(".live__full-screen");
-  wide.hidden = !document.fullscreenEnabled || !stage.requestFullscreen;
-  wide.addEventListener("click", () => stage.requestFullscreen().catch(() => {}));
-  stage.addEventListener("dblclick", () => (document.fullscreenElement ? document.exitFullscreen() : stage.requestFullscreen?.())?.catch?.(() => {}));
-
-  // ---- each distance said out loud, so nobody has to walk back to the screen
-  const voice = q(".live__speak");
-  function renderVoice() { voice.setAttribute("aria-pressed", String(speakOn)); voice.textContent = speakOn ? "Saying each distance out loud" : "Say each distance out loud"; }
-  voice.addEventListener("click", () => { speakOn = !speakOn; localStorage.setItem("jl-live-speak", speakOn ? "on" : "off"); renderVoice(); if (speakOn) say("Sound on."); });
-  renderVoice();
-  function say(text) {
-    if (!speakOn || !("speechSynthesis" in window)) return;
-    try { speechSynthesis.cancel(); speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(text), { rate: 1.05 })); } catch { /* no voice: fine */ }
-  }
-  /** 2.34 m -> "2.34 meters"; in feet: "7 feet 8 and a half inches" (to the half inch, like a tape). */
-  function spoken(m) {
-    if (!isImperial()) return `${m.toFixed(2)} meters`;
-    const halves = Math.round((m / INCH) * 2), ft = Math.floor(halves / 24), inches = (halves - ft * 24) / 2;
-    const whole = Math.floor(inches), half = inches % 1 > 0;
-    if (!whole) return `${ft} feet${half ? " and half an inch" : ""}`;
-    return `${ft} feet ${whole}${half ? " and a half inches" : whole === 1 ? " inch" : " inches"}`;
-  }
-
   /** The current camera frame as a still for calibration (the same shape the server sends). */
   function snapshot() {
+    if (!video.videoWidth) return null;
     const w = video.videoWidth, h = video.videoHeight, k = Math.min(1, 1600 / w);
     const c = document.createElement("canvas");
     c.width = Math.round(w * k); c.height = Math.round(h * k);
     c.getContext("2d").drawImage(video, 0, 0, c.width, c.height);
     return { frame: 0, width: c.width, height: c.height, full_width: w, full_height: h,
       jpeg: c.toDataURL("image/jpeg", 0.88).split(",")[1] };
+  }
+  /** A small picture for the remote screen: what the camera sees, with the tracked skeleton. */
+  const small = document.createElement("canvas");
+  function picture() {
+    if (!video.videoWidth) return null;
+    const k = 480 / video.videoWidth;
+    small.width = 480; small.height = Math.round(video.videoHeight * k);
+    const ctx = small.getContext("2d");
+    ctx.drawImage(video, 0, 0, small.width, small.height);
+    if (lastPts && performance.now() - lastSeen < 500) paintSkeleton(ctx, lastPts, k, 0, 0, 2);
+    return small.toDataURL("image/jpeg", 0.6).split(",")[1];
   }
 
   // ---- every frame: track, feed the jump detector, draw the skeleton
@@ -199,7 +208,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
           const lm = r.landmarks?.[0];
           if (lm) pts = lm.map((p) => [p.x * video.videoWidth, p.y * video.videoHeight, p.visibility ?? 1]);
         } catch { /* a dropped frame */ }
-        if (pts) lastSeen = now;
+        if (pts) { lastSeen = performance.now(); lastPts = pts; }
         frames++;
         if (scale) detector.feed((now - clock0) / 1000, pts);       // seconds since measuring began
         draw(pts);
@@ -217,21 +226,14 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
     octx.clearRect(0, 0, w, h);
     if (!pts || !video.videoWidth) return;
     const k = Math.min(w / video.videoWidth, h / video.videoHeight);                  // the video fits the stage
-    const ox = (w - video.videoWidth * k) / 2, oy = (h - video.videoHeight * k) / 2;
-    const P = (i) => [pts[i][0] * k + ox, pts[i][1] * k + oy];
-    octx.lineWidth = 3; octx.lineCap = "round"; octx.strokeStyle = "rgba(243,241,236,0.9)";
-    for (const [a, b] of BONES) {
-      if (pts[a][2] < 0.5 || pts[b][2] < 0.5) continue;
-      octx.beginPath(); octx.moveTo(...P(a)); octx.lineTo(...P(b)); octx.stroke();
-    }
-    octx.fillStyle = "#e8665a";
-    for (const i of [29, 30, 31, 32]) if (pts[i][2] >= 0.5) { octx.beginPath(); octx.arc(...P(i), 4, 0, Math.PI * 2); octx.fill(); }
+    paintSkeleton(octx, pts, k, (w - video.videoWidth * k) / 2, (h - video.videoHeight * k) / 2);
   }
 
   // ---- the scale, then measuring (and recording)
   q(".live__scale").addEventListener("click", () => {
-    if (!video.videoWidth) { status("The camera is still starting. Try again in a moment."); return; }
-    onNeedScale(snapshot());
+    const still = snapshot();
+    if (!still) { status("The camera is still starting. Try again in a moment."); return; }
+    onNeedScale(still);
   });
   function setScale(metersPerPixel) {
     scale = metersPerPixel;
@@ -240,9 +242,11 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
     detector.reset();
     clock0 = performance.now();
     record();
-    status("Ready: jump whenever you like. Keep the camera still. Stop when you're done.");
+    setStage("measuring");
+    status(link ? "Measuring: jump whenever you like. The remote screen shows each distance and has the Stop button."
+      : "Ready: jump whenever you like. Keep the camera still. Stop when you're done.");
     q(".live__camera-select").disabled = true;                 // the scale belongs to this camera
-    say("Ready. Jump when you like.");                         // (also lets phones speak later: it follows a tap)
+    voice.say("Ready. Jump when you like.");                   // (also lets phones speak later: it follows a tap)
     q("#live-title").focus();
   }
   // The recording: video only. Some browsers say they can record MP4 and then record nothing (no
@@ -275,25 +279,25 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
     const m = j.distancePx * scale;
     jumps.push({ ...j, meters: m });
     const box = q(".live__result");
-    box.innerHTML = `<span class="live__result-label">Jump ${j.n} · live</span>
-      <span class="live__result-value">${formatQuantity("distance", m)}</span>
-      ${j.unsure ? `<span class="live__result-note">Unsure: ${esc(j.unsure)}</span>` : ""}`;
+    box.innerHTML = resultHTML(j, m);
     box.hidden = false;                                        // stays up until the next jump replaces it
     box.classList.remove("live__result--old");
-    say(`Jump ${j.n}: ${j.unsure ? "about " : ""}${spoken(m)}${j.unsure ? ". Not sure: someone else may be in the picture." : "."}`);
-    q(".live__jumps").insertAdjacentHTML("beforeend", `<li class="live__jump${j.unsure ? " live__jump--unsure" : ""}">
-      <span class="live__jump-n">Jump ${j.n}</span><span class="live__jump-d">${formatQuantity("distance", m)}</span>
-      ${j.unsure ? '<span class="live__jump-note">unsure</span>' : ""}</li>`);
+    voice.say(jumpWords(j, m));
+    q(".live__jumps").insertAdjacentHTML("beforeend", jumpItemHTML(j, m));
+    link?.soon();
   }
 
   // ---- stop: the recording, for the full analysis now or saved for later
   q(".live__stop").addEventListener("click", finish);
   async function finish() {
+    if (stage !== "measuring") return;
+    setStage("stopping");
     q(".live__stop").hidden = true;
     const file = await stopRecording();
     stop();
     const n = jumps.length;
     const fps = stream?.getVideoTracks?.()[0]?.getSettings?.().frameRate;
+    setStage("done");
     status(n ? `${n} jump${n === 1 ? "" : "s"} measured live.` : "No jumps were measured.");
     const done = q(".live__done");
     done.hidden = false;
@@ -311,8 +315,9 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
     done.querySelector(".live__full")?.addEventListener("click", () => onAnalyze(file, {
       scale, fps: fps ? Math.round(fps) : null,
       jumps: jumps.map(({ n, meters, tTakeoff, unsure }) => ({ n, meters, tTakeoff: tTakeoff - inFile, unsure })) }));
-    done.querySelector(".live__again").addEventListener("click", () => { dispose(); onClose("again"); });
+    done.querySelector(".live__again").addEventListener("click", again);
   }
+  function again() { const code = link?.code || null; dispose("again"); onClose("again", { room: code }); }
   function stopRecording() {
     return new Promise((resolve) => {
       if (!recorder || recorder.state === "inactive") { resolve(chunks.length ? toFile() : null); return; }
@@ -326,6 +331,55 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
     return new File(chunks, `jumplab-live-${stamp}.${type.includes("webm") ? "webm" : "mp4"}`, { type });
   }
 
+  // ---- a remote screen: it shows the distances and sends the scale, Stop and Measure again
+  const LINK_TEXT = {
+    watching: (c) => `Connected to the remote screen (${c}). It shows each distance and runs this phone.`,
+    waiting: (c) => `Linked to remote screen ${c}: waiting for it to open…`,
+    lost: () => "Lost the connection to the remote screen. Still trying…",
+  };
+  function connect(code) {
+    link?.stop(null);
+    voice.mute();                                              // the remote screen does the talking
+    q(".live__remote-form").hidden = true;
+    q(".live__remote-open").hidden = true;
+    q(".live__remote").hidden = false;
+    q(".live__remote-text").textContent = LINK_TEXT.waiting(code);
+    link = linkPhone(code, {
+      state: () => ({ session, stage, status: q(".live__status").textContent, air,
+        jumps: jumps.map(({ n, meters, unsure }) => ({ n, meters: Math.round(meters * 1e4) / 1e4, unsure: unsure || null })) }),
+      picture, still: snapshot,
+      onCommand(c) {
+        if (c.type === "scale" && stage === "ready" && c.scale > 0) { setScale(c.scale); onScaleSet(); }
+        else if (c.type === "stop") finish();
+        else if (c.type === "again" && stage === "done") again();
+      },
+      onLink(how) {
+        if (how === "gone") { disconnect(`The remote screen ${code} has closed (or the code was wrong).`); return; }
+        q(".live__remote-text").textContent = LINK_TEXT[how](code);
+      },
+    });
+  }
+  function disconnect(note = "") {
+    link?.stop(note ? null : "disconnected");
+    link = null;
+    q(".live__remote").hidden = true;
+    q(".live__remote-open").hidden = false;
+    if (note) status(note);
+  }
+  q(".live__remote-open").addEventListener("click", () => {
+    q(".live__remote-form").hidden = false;
+    q(".live__remote-code").focus();
+  });
+  q(".live__remote-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const code = cleanCode(q(".live__remote-code").value);
+    const help = q(".live__remote-help");
+    if (!isCode(code)) { help.textContent = "That code doesn't look right: it's 6 letters and numbers, shown on the remote screen."; return; }
+    try { await read(code, "remote"); } catch (err) { help.textContent = err.message; return; }
+    connect(code);
+  });
+  q(".live__remote-off").addEventListener("click", () => disconnect());
+
   // ---- leaving: camera off, screen allowed to sleep
   function stop() {
     running = false;
@@ -333,16 +387,20 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, stream: give
     if (!given) stream?.getTracks().forEach((t) => t.stop());
     video.srcObject = null;
   }
-  function dispose() {
+  /** why: "back", "analyzing" (the remote screen is told), or "again" (a new session follows on the same link). */
+  function dispose(why = "back") {
     closed = true;
-    if (document.fullscreenElement === stage) document.exitFullscreen().catch(() => {});
-    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    link?.stop(why === "again" ? null : why);
+    link = null;
+    wide.exit();
+    voice.stop();
     if (recorder && recorder.state !== "inactive") { recorder.ondataavailable = null; recorder.stop(); }
     stop();
     host.replaceChildren();
   }
-  q(".live__close").addEventListener("click", () => { dispose(); onClose("back"); });
+  q(".live__close").addEventListener("click", () => { dispose(); onClose("back", { room: null }); });
 
+  if (room) connect(room);
   start();
-  return { setScale, dispose, get jumps() { return jumps; }, get frames() { return frames; } };
+  return { setScale, dispose, get jumps() { return jumps; }, get frames() { return frames; }, get room() { return link?.code || null; } };
 }

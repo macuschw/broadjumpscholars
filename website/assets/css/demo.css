@@ -35,7 +35,8 @@
 .live-card { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s-4); padding: var(--s-4) var(--s-5); background: var(--white); border: 2px solid var(--text); border-radius: var(--radius); }
 .live-card h2 { font-size: var(--step-2); }
 .live-card p { margin-top: var(--s-1); color: var(--muted); max-width: 60ch; }
-.live-card .btn { margin-left: auto; flex: none; }
+.live-card__buttons { margin-left: auto; flex: none; display: flex; flex-direction: column; gap: var(--s-2); }
+.live-card__buttons .btn { width: 100%; }
 .live-card__icon { flex: none; color: var(--accent); }
 .live-card__icon .icon { width: 36px; height: 36px; }
 .demo-live { padding-bottom: clamp(32px, 5vw, 64px); }
@@ -59,7 +60,22 @@
 .live__stage:fullscreen { max-height: none; aspect-ratio: auto; border-radius: 0; }
 .live__stage:fullscreen .live__result-value { font-size: 18vmin; }
 .live__stage:fullscreen .live__result-label { font-size: 3.5vmin; }
-.live-card__laptop { font-size: 0.92rem; }
+.live-card__laptop, .live-card__more { font-size: 0.92rem; }
+/* A phone's link to a remote screen, and the remote screen (live/remote.js) */
+.live__remote-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2) var(--s-3); margin-top: var(--s-3); }
+.live__remote-form label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+.live__remote-code { min-height: 44px; width: 9em; padding: 0 var(--s-2); border: 1.5px solid var(--text); border-radius: var(--radius); background: var(--white); color: var(--text); font: 700 1.25rem var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; }
+.live__remote-help { flex-basis: 100%; color: var(--muted); font-size: 0.92rem; }
+.live__remote { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin-top: var(--s-3); padding: var(--s-2) var(--s-3); border-left: 3px solid var(--accent); background: var(--white); max-width: none; }
+.remote__pair { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4) var(--s-5); margin-top: var(--s-4); padding: var(--s-4); background: var(--white); border: 2px solid var(--text); border-radius: var(--radius); }
+.remote__qr { flex: none; width: min(240px, 60vw); aspect-ratio: 1; }
+.remote__qr svg { display: block; width: 100%; height: 100%; }
+.remote__how { flex: 1 1 18rem; }
+.remote__code { margin-top: var(--s-2); font-family: var(--font-display); font-weight: 700; font-size: clamp(2.6rem, 8vw, 4.5rem); line-height: 1; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
+.remote__url { margin-top: var(--s-2); color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
+.remote__view { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.remote__view:not([src]) { visibility: hidden; }
+.remote__lost { position: absolute; left: 12px; right: 12px; top: 12px; margin: 0; padding: var(--s-2) var(--s-3); border-radius: var(--radius); background: var(--accent); color: var(--white); font-weight: 600; max-width: none; }
 .live__result-value .stat__unit, .live__result-value .unit { font-size: 0.45em; }
 .live__result-note { max-width: 36ch; font-size: 0.9rem; color: var(--muted-dark); }
 .live__status { margin-top: var(--s-3); font-weight: 600; max-width: none; }
@@ -397,7 +413,7 @@ th .best-label { margin-left: 6px; }
 @media (max-width: 960px) { .cal__grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) {
   .live-card { flex-wrap: wrap; padding: var(--s-4); }
-  .live-card .btn { margin-left: 0; width: 100%; }
+  .live-card__buttons { margin-left: 0; width: 100%; }
   .live__stage { margin-inline: calc(-1 * var(--gutter)); border-radius: 0; }
   .live__actions .btn { flex: 1 1 auto; }
   .jump-foul { padding: var(--s-3) var(--s-3) var(--s-4); }

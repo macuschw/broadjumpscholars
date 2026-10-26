@@ -14,7 +14,7 @@ this repo (GitHub: macuschw/broadjumpscholars):
 
 ```bash
 python3 -m pip install -r requirements.txt          # mediapipe==0.10.14 is required (newer removed the API)
-python3 -m pytest -q                                 # 187 tests should pass
+python3 -m pytest -q                                 # 190 tests should pass
 python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration output/calibration.json
 python scripts/run_session.py "../test videos/IMG_6233.MOV"     # a video with many jumps: a verdict table
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
@@ -127,6 +127,20 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   "Use this scale" tap, which also unlocks speech on iPhones). The result stays up until the next jump
   (faded while that one is in the air), Full screen button / double-click for reading it from afar.
   Tested with fake cameras in the browser only.
+- **Remote screen** (`live/remote.js`, `live/room.js`, server `jumplab/rooms.py`; the Measure live card's
+  "Remote screen" button): a laptop or second phone shows the distances (big, said out loud) and runs the
+  phone on the tripod: Set the scale (the phone sends a full frame, the tape is marked on the remote),
+  Stop, Measure again. It shows a 6-character code + QR code (qrcode-generator@1.4.4 from jsDelivr) for
+  `analyze.html?camera=CODE`; scanning it opens Measure live already linked (or type the code under
+  "Use a remote screen"). No accounts or Apple IDs involved. The two never talk directly: each writes its
+  own slot in a room on the server and reads the other's (~1/s): "phone" {session, stage, status, air,
+  jumps}, "preview" (480 px picture + skeleton, every 1 s, 3 s while measuring, only while the remote
+  is there), "still", "remote" {cmds}. A jump reaches the remote ~0.5-1 s after landing. The linked
+  phone goes quiet (the remote talks). Rooms are forgotten an hour after the last message. On Modal it
+  is its own small function `rooms` (0.25 CPU, one container, rooms in memory + saved to the Dict
+  "jumplab-rooms" in the background; ~1 cent/hour while in use), URL in `config.js` ROOMS_URL; locally
+  `scripts/serve_local.py` serves /rooms too. `?remote=CODE` keeps a reloaded remote on its room.
+  Tested with two browser tabs (fake camera) and simulated phone messages, not yet on real devices.
 - Calibration (`demo/calibrate.js`), made for phones after a real iPhone test: drag markers A and B
   (they move with the finger, never jump under it; tapping elsewhere brings the selected one), a 4x
   close-up of the selected marker under the picture, arrow buttons that nudge it one pixel, the

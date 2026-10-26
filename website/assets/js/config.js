@@ -24,3 +24,13 @@ export function analysisServer() {
   }
   return ANALYSIS_URL.replace(/\/+$/, "") || null;
 }
+
+// Measure live's remote screens: a small server of its own (the `rooms` function in
+// server/modal_app.py) that passes messages between the phone filming and the remote screen.
+export const ROOMS_URL = "https://macuschw--jumplab-analysis-rooms.us-east.modal.run";
+
+/** The rooms server: ROOMS_URL, or the local test server when one was given with ?server=. */
+export function roomsServer() {
+  const server = analysisServer();
+  return server && server !== ANALYSIS_URL.replace(/\/+$/, "") ? server : ROOMS_URL.replace(/\/+$/, "") || null;
+}

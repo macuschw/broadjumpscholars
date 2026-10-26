@@ -19,9 +19,10 @@ from urllib.parse import parse_qsl, urlparse
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from jumplab import jobs, web  # noqa: E402
+from jumplab import jobs, rooms, web  # noqa: E402
 
 JOBS = jobs.LocalJobs()                                         # uploads in pieces, analyzed in the background
+ROOMS = rooms.Rooms({})                                         # Measure live's remote screens
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -52,7 +53,16 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/health":
             return self._send(200, {"ok": True, "service": "jumplab-analysis", "where": "local"})
-        self._send(*(jobs.route(JOBS, "GET", url.path, dict(parse_qsl(url.query))) or (404, {"error": "Not found."})))
+        reply = rooms.route(ROOMS, "GET", url.path) or jobs.route(JOBS, "GET", url.path, dict(parse_qsl(url.query)))
+        self._send(*(reply or (404, {"error": "Not found."})))
+
+    def _rooms(self, method):
+        """/rooms requests (jumplab/rooms.py): a phone and its remote screen passing messages."""
+        size = int(self.headers.get("Content-Length") or 0)
+        if size > rooms.MAX_BYTES:
+            return self._send(413, {"error": "That message was too large."})
+        body = self.rfile.read(size) if size else b""
+        self._send(*rooms.route(ROOMS, method, urlparse(self.path).path, body))
 
     def _jobs(self, method):
         """/jobs requests (jumplab/jobs.py): a piece of a video, starting a job."""
@@ -67,10 +77,14 @@ class Handler(BaseHTTPRequestHandler):
         self._send(*(reply or (404, {"error": "Not found."})))
 
     def do_PUT(self):
+        if urlparse(self.path).path.startswith("/rooms"):
+            return self._rooms("PUT")
         self._jobs("PUT")
 
     def do_POST(self):
         url = urlparse(self.path)
+        if url.path.startswith("/rooms"):
+            return self._rooms("POST")
         if url.path.startswith("/jobs"):
             return self._jobs("POST")
         size = int(self.headers.get("Content-Length") or 0)

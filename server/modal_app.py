@@ -22,6 +22,10 @@ Endpoints
                                    (the older one-request upload; kept for pages not yet updated)
     POST /recompute                body: {"landmarks", "name", "fps", "scale", "event_method", "still"}
                                    -> bundle (e.g. once the visitor has clicked the tape)
+
+A second, small server (the `rooms` function, its own URL: ...-rooms.modal.run) passes messages
+between a phone measuring live and its remote screen (jumplab/rooms.py). Both poll it about once a
+second for a whole session, so it runs on a fraction of a CPU, apart from the analysis machine.
 """
 import os
 import sys
@@ -46,6 +50,9 @@ app = modal.App("jumplab-analysis", image=image)
 volume = modal.Volume.from_name("jumplab-jobs", create_if_missing=True)
 job_states = modal.Dict.from_name("jumplab-job-states", create_if_missing=True)
 JOBS_DIR = "/jobs"
+# The rooms server needs only FastAPI: a small image that starts in a second or two
+rooms_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi==0.115.6").add_local_python_source("jumplab")
+room_store = modal.Dict.from_name("jumplab-rooms", create_if_missing=True)
 
 
 class ModalJobs:
@@ -139,9 +146,10 @@ def web():
 
     from jumplab import jobs
     from jumplab import web as jw
+    from jumplab.origins import ALLOWED_ORIGINS
 
     api = FastAPI(title="JumpLab analysis", docs_url=None, redoc_url=None)
-    api.add_middleware(CORSMiddleware, allow_origins=list(jw.ALLOWED_ORIGINS),
+    api.add_middleware(CORSMiddleware, allow_origins=list(ALLOWED_ORIGINS),
                        allow_methods=["GET", "POST", "PUT", "OPTIONS"], allow_headers=["Content-Type"])
     api.add_middleware(GZipMiddleware, minimum_size=2000)        # results are mostly numbers: ~10x smaller
     store = ModalJobs(jobs)
@@ -185,5 +193,71 @@ def web():
     async def recompute(request: Request):
         status, body = await run_in_threadpool(jw.handle, "recompute", payload=await request.json())
         return JSONResponse(body, status)
+
+    return api
+
+
+class MemoryFirst:
+    """The rooms' store: this container's memory in front of the Dict. One container serves every
+    room (max_containers=1), so memory is always current and reads skip the Dict (~0.25 s each);
+    writes also go to the Dict in the background, in order, so a restarted container carries on."""
+
+    def __init__(self, store):
+        from concurrent.futures import ThreadPoolExecutor
+        self.store, self.memory = store, {}
+        self.writer = ThreadPoolExecutor(max_workers=1)        # one thread: the Dict sees writes in order
+
+    def get(self, key, default=None):
+        if key not in self.memory:
+            self.memory[key] = self.store.get(key)             # (None: not there; rooms never store None)
+        value = self.memory[key]
+        return default if value is None else value
+
+    def __setitem__(self, key, value):
+        self.memory[key] = value
+        self.writer.submit(self.store.__setitem__, key, value)
+
+    def __contains__(self, key):
+        return self.get(key) is not None
+
+    def pop(self, key, default=None):
+        self.memory[key] = None
+        self.writer.submit(self.store.pop, key, None)
+        return default
+
+    def keys(self):
+        return {k for k in self.store.keys() if self.memory.get(k, True) is not None} | {k for k, v in self.memory.items() if v is not None}
+
+
+@app.function(image=rooms_image, cpu=0.25, memory=256, scaledown_window=120, max_containers=1)
+@modal.concurrent(max_inputs=50)
+@modal.asgi_app()
+def rooms():
+    """Measure live's remote screens (jumplab/rooms.py): a phone and a remote passing messages."""
+    from fastapi import FastAPI, Request
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import JSONResponse
+    from starlette.concurrency import run_in_threadpool
+
+    from jumplab import rooms as rm
+    from jumplab.origins import ALLOWED_ORIGINS
+
+    api = FastAPI(title="JumpLab rooms", docs_url=None, redoc_url=None)
+    api.add_middleware(CORSMiddleware, allow_origins=list(ALLOWED_ORIGINS),
+                       allow_methods=["GET", "POST", "PUT", "OPTIONS"], allow_headers=["Content-Type"], max_age=3600)
+    store = rm.Rooms(MemoryFirst(room_store))
+
+    @api.api_route("/rooms", methods=["POST"])
+    @api.api_route("/rooms/{rest:path}", methods=["GET", "PUT"])
+    async def room(request: Request, rest: str = ""):
+        body = await request.body() if request.method == "PUT" else b""
+        if len(body) > rm.MAX_BYTES:
+            return JSONResponse({"error": "That message was too large."}, 413)
+        status, reply = await run_in_threadpool(rm.route, store, request.method, request.url.path, body) or (404, {"error": "Not found."})
+        return JSONResponse(reply, status)
+
+    @api.get("/health")
+    def health():
+        return {"ok": True, "service": "jumplab-rooms", "where": "modal"}
 
     return api

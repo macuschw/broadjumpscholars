@@ -72,12 +72,17 @@
         <span class="live-card__icon" data-icon="record"></span>
         <div>
           <h2>Measure live</h2>
-          <p>Point this phone at the jump: the distance appears the moment the jumper lands. The session is recorded,
-            so the full analysis can follow, now or later.</p>
-          <p class="live-card__laptop" hidden>On a laptop: put an iPhone on the tripod and pick it as the camera (on a Mac,
-            Continuity Camera; the iPhone just needs to be nearby). Click everything here; each distance is also said out loud.</p>
+          <p>Point a phone at the jump: the distance appears, and is said out loud, the moment the jumper lands. The
+            session is recorded, so the full analysis can follow, now or later.</p>
+          <p class="live-card__more"><strong>Remote screen:</strong> a laptop or a second phone shows the distances and runs
+            the phone on the tripod, so nobody has to touch it. Open it here, then scan its code with the filming phone.</p>
+          <p class="live-card__laptop" hidden>On a Mac, an iPhone signed in to the same Apple ID can also be this laptop's own
+            camera (Continuity Camera): pick it after Start the camera.</p>
         </div>
-        <button type="button" class="btn btn--primary" id="live-open">Start the camera</button>
+        <div class="live-card__buttons">
+          <button type="button" class="btn btn--primary" id="live-open">Start the camera</button>
+          <button type="button" class="btn btn--quiet" id="remote-open">Remote screen</button>
+        </div>
       </div>
 
       <!-- My jumps: earlier analyses kept in this browser (demo/history.js); an empty note until there is one -->
@@ -114,6 +119,7 @@
 
     <!-- 1b. Measuring live (live/live.js) -->
     <section class="container demo-live" id="demo-live" hidden aria-labelledby="live-title"></section>
+    <section class="container demo-live" id="demo-remote" hidden aria-labelledby="remote-title"></section>
 
     <div id="dashboard"></div>
   </main>

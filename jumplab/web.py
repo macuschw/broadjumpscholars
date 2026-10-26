@@ -30,6 +30,7 @@ import numpy as np
 
 from . import alerts, summary
 from .checks import as_warning
+from .origins import ALLOWED_ORIGINS  # noqa: F401  (scripts/serve_local.py reads it from here)
 from .pipeline import AnalysisConfig, analyze_keypoints, look_for_others
 from .pose_tracking import N_LANDMARKS, Keypoints
 
@@ -288,8 +289,6 @@ def find_results(target):
 # ---------------------------------------------------------------- shared by both servers
 
 MAX_UPLOAD_BYTES = 800 * 1024 * 1024
-ALLOWED_ORIGINS = ("https://macuschw.github.io", "http://localhost:4321", "http://127.0.0.1:4321",
-                   "http://localhost:8000", "http://127.0.0.1:8000")
 
 
 def options_from_query(q):

@@ -29,7 +29,7 @@ import { formatQuantity, onUnitsChange } from "../lib/units.js";
 const $ = (id) => document.getElementById(id);
 const PAGE = document.body.dataset.page === "demo" ? "demo" : "analyze";
 $("dashboard").outerHTML = DASHBOARD_HTML;
-const views = { start: $("demo-start"), live: $("demo-live"), progress: $("demo-progress"), calibrate: $("demo-calibrate"), results: $("demo-results") };
+const views = { start: $("demo-start"), live: $("demo-live"), remote: $("demo-remote"), progress: $("demo-progress"), calibrate: $("demo-calibrate"), results: $("demo-results") };
 const show = (name) => Object.entries(views).forEach(([k, v]) => { if (v) v.hidden = k !== name; });   // Demo: no start
 const MAX_REAL = 6;                                            // saved jumps to compare at once (My jumps)
 const MAX_SESSION = 24;                                        // real jumps on screen (one video can hold many)
@@ -374,28 +374,79 @@ async function startUpload(file, { scale = null, fps: liveFps = null, jumps: liv
 }
 
 // ---------------------------------------------------------------- 1b. measuring live (phone camera)
-let live = null;
-async function openLive() {
+let live = null, liveCal = null;
+/** room: the code of a remote screen this phone works for (from its QR code, or kept for "Measure again"). */
+async function openLive({ room = null } = {}) {
   live?.dispose();
   show("live");
   const { createLive } = await import("../live/live.js");
   live = createLive($("demo-live"), {
+    room,
     onNeedScale: (still) => {
       show("calibrate");
-      const cal = calibrate($("demo-calibrate"), still, {
-        onDone: ({ scale }) => { cal.dispose(); show("live"); live.setScale(scale); },
+      liveCal = calibrate($("demo-calibrate"), still, {
+        onDone: ({ scale }) => { liveCal.dispose(); liveCal = null; show("live"); live.setScale(scale); },
       });
     },
-    onAnalyze: (file, info) => { live.dispose(); live = null; startUpload(file, info); },
-    onClose: (why) => { live = null; if (why === "again") openLive(); else { show("start"); $("live-open")?.focus(); } },
+    onScaleSet: () => { if (liveCal) { liveCal.dispose(); liveCal = null; show("live"); } },   // the remote screen set it
+    onAnalyze: (file, info) => { live.dispose("analyzing"); live = null; startUpload(file, info); },
+    onClose: (why, { room: code } = {}) => {
+      live = null;
+      if (why === "again") return openLive({ room: code });
+      setParam("camera", null);
+      show("start");
+      $("live-open")?.focus();
+    },
   });
   $("live-title")?.focus();
 }
-if ($("live-card") && navigator.mediaDevices?.getUserMedia) {               // a camera, and a secure page
+
+// ---------------------------------------------------------------- 1c. a remote screen for a phone measuring live
+let remote = null;
+async function openRemote(code = null) {
+  remote?.dispose();
+  show("remote");
+  const host = $("demo-remote");
+  host.innerHTML = '<p class="live__status" role="status">Opening a remote screen…</p>';
+  const [{ createRemote }, { openRoom }] = await Promise.all([import("../live/remote.js"), import("../live/room.js")]);
+  if (!code) {
+    try { code = await openRoom(); } catch (e) {
+      host.innerHTML = `<p class="live__status" role="status">${esc(e.message)} Try again in a moment.</p>
+        <button type="button" class="btn btn--quiet btn--sm">Back</button>`;
+      host.querySelector("button").addEventListener("click", () => { show("start"); $("remote-open")?.focus(); });
+      return;
+    }
+  }
+  setParam("remote", code);                                    // a reload comes back to the same screen
+  remote = createRemote(host, {
+    code,
+    onNeedScale: (still) => {
+      show("calibrate");
+      const cal = calibrate($("demo-calibrate"), still, {
+        onDone: ({ scale }) => { cal.dispose(); show("remote"); remote.setScale(scale); },
+      });
+    },
+    onClose: () => { remote = null; setParam("remote", null); show("start"); $("remote-open")?.focus(); },
+  });
+  $("remote-title")?.focus();
+}
+function setParam(key, value) {
+  const url = new URL(location.href);
+  if (value) url.searchParams.set(key, value); else url.searchParams.delete(key);
+  history.replaceState(history.state, "", url);
+}
+if ($("live-card")) {
+  const camera = !!navigator.mediaDevices?.getUserMedia;                     // a camera, and a secure page
   $("live-card").hidden = false;
+  $("live-open").hidden = !camera;
   const laptop = $("live-card").querySelector(".live-card__laptop");
-  if (laptop) laptop.hidden = matchMedia("(pointer: coarse)").matches;    // a phone is the camera itself
-  $("live-open").addEventListener("click", openLive);
+  if (laptop) laptop.hidden = !camera || matchMedia("(pointer: coarse)").matches;   // a phone is the camera itself
+  $("live-open").addEventListener("click", () => openLive());
+  $("remote-open").addEventListener("click", () => openRemote());
+  // ?remote=CODE: this screen was a remote screen (reloaded); ?camera=CODE: this phone scanned one's QR code
+  const asked = new URLSearchParams(location.search), code = (k) => (asked.get(k) || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (code("remote")) openRemote(code("remote"));
+  else if (code("camera") && camera) openLive({ room: code("camera") });
 }
 
 function fail(text) {
