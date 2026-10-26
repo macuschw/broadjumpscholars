@@ -12,6 +12,7 @@
 // inches, with a comma or a point; Skip asks twice.
 import { store } from "../lib/dom.js";
 import { FOOT, INCH, isImperial } from "../lib/units.js";
+import { setupHTML } from "../live/shared.js";
 
 const GRAB = { mouse: 18, touch: 34, pen: 22 };   // px: a press this close to a marker drags it
 const ZOOM = 4;                                    // the close-up's magnification
@@ -21,7 +22,7 @@ const ARROWS = { left: "m15 5-7 7 7 7", up: "m5 15 7-7 7 7", down: "m5 9 7 7 7-7
 /** "3,66" or "3.66" -> 3.66; "" or nonsense -> NaN. */
 const number = (text) => (String(text).trim() === "" ? NaN : Number(String(text).trim().replace(",", ".")));
 
-export function calibrate(host, still, { onDone, onSkip }) {
+export function calibrate(host, still, { onDone, onSkip, tips = false }) {
   const lastM = store.get("jl-tape-m", null);
   let unit = store.get("jl-tape-unit", null) || (isImperial() ? "ft" : "m");
   host.innerHTML = `
@@ -30,6 +31,7 @@ export function calibrate(host, still, { onDone, onSkip }) {
         <h2 id="cal-title" tabindex="-1">Set the scale</h2>
         <p>Drag marker <strong>A</strong> onto one end of the tape measure and <strong>B</strong> onto the other, then
           type the length between them. That turns pixels into real distances.</p>
+        ${tips ? setupHTML() : ""}
       </div>
       <div class="cal__grid">
         <div class="cal__picture">

@@ -8,7 +8,9 @@
 import { ANALYSIS_URL, analysisServer } from "../config.js";
 import { onUnitsChange } from "../lib/units.js";
 import { read, repeat, send } from "./room.js";
-import { createVoice, esc, fullScreen, jumpItemHTML, jumpWords, resultHTML } from "./shared.js";
+import { createVoice, esc, fullScreen, guardLeaving, jumpItemHTML, jumpWords, renderTapeCheck, resultHTML, setupHTML,
+  tapeEntry } from "./shared.js";
+import { record } from "./tapelog.js";
 
 const QR = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/+esm";
 const LOST_S = 8;                      // the phone hasn't written for this long: lost (it writes every 2 s)
@@ -46,6 +48,7 @@ export function createRemote(host, { code, onNeedScale, onClose }) {
         <h2 id="remote-title" tabindex="-1">Remote screen</h2>
         <p class="live__lede">This screen shows each distance, says it out loud, and runs the phone on the tripod, so nobody
           has to touch it.</p>
+        ${setupHTML()}
       </div>
       <div class="remote__pair">
         <div class="remote__qr"></div>
@@ -67,6 +70,7 @@ export function createRemote(host, { code, onNeedScale, onClose }) {
         <button type="button" class="btn btn--quiet btn--sm live__full-screen" hidden>Full screen</button>
       </div>
       <p class="live__status" aria-live="polite">Waiting for the phone…</p>
+      <p class="live__rate" hidden></p>
       <div class="live__actions">
         <button type="button" class="btn btn--primary remote__scale" hidden>Set the scale</button>
         <button type="button" class="btn btn--primary remote__stop" hidden>Stop</button>
@@ -74,6 +78,7 @@ export function createRemote(host, { code, onNeedScale, onClose }) {
         <button type="button" class="btn btn--quiet btn--sm remote__close">Back</button>
       </div>
       <ol class="live__jumps" role="list" aria-label="Jumps measured live"></ol>
+      <p class="live__tapecheck" hidden></p>
     </div>`;
   const q = (s) => host.querySelector(s);
   const status = (text) => { if (q(".live__status").textContent !== text) q(".live__status").textContent = text; };
@@ -83,6 +88,8 @@ export function createRemote(host, { code, onNeedScale, onClose }) {
 
   let cmds = [], cmdId = Date.now(), wantStill = null, picId = 0, heardUpTo = 0, session = null, listed = "", misses = 0, closed = false;
   let last = null, big = null;                                 // the phone's latest message; the jump shown big
+  const typed = {};                                            // tape lengths typed here, until the phone confirms them
+  const logged = new Set();                                    // tape checks already in this device's log
   /** A command for the phone: kept in the "remote" slot (the last ten), which the phone reads about once a second. */
   function command(type, extra = {}) {
     const c = { id: ++cmdId, type, ...extra };
@@ -91,7 +98,7 @@ export function createRemote(host, { code, onNeedScale, onClose }) {
     return c.id;
   }
   const beat = repeat(4000, () => send(code, "remote", { cmds }));   // "still here", with the commands
-  const poll = repeat(600, async () => {
+  const poll = repeat(400, async () => {
     let got;
     try {
       got = await read(code, "phone");
@@ -139,18 +146,25 @@ export function createRemote(host, { code, onNeedScale, onClose }) {
     }
     if (box.hidden && jumps.length && heardUpTo >= jumps.at(-1).n) {   // (re)opened mid-session: the last one, quietly
       big = jumps.at(-1);
-      box.innerHTML = resultHTML(big, big.meters);
+      box.innerHTML = resultHTML(big);
       box.hidden = false;
     }
     for (const j of jumps.filter((j) => j.n > heardUpTo)) {
       heardUpTo = j.n;
       big = j;
-      box.innerHTML = resultHTML(j, j.meters);
+      box.innerHTML = resultHTML(j);
       box.hidden = false;
-      voice.say(jumpWords(j, j.meters));
+      voice.say(jumpWords(j));
     }
-    const list = JSON.stringify(jumps);
-    if (list !== listed) { listed = list; q(".live__jumps").innerHTML = jumps.map((j) => jumpItemHTML(j, j.meters)).join(""); }
+    for (const j of jumps) if (j.tape > 0) logTape(j, j.tape);     // typed on the phone: in this device's tape log too
+    const shownJumps = jumps.map((j) => ({ ...j, tape: j.tape || (typed[`${s.session}:${j.n}`] ?? null) }));
+    const list = JSON.stringify(shownJumps);
+    if (list !== listed && !tape.busy()) { listed = list; q(".live__jumps").innerHTML = shownJumps.map(jumpItemHTML).join(""); }
+    const rate = q(".live__rate");
+    rate.hidden = !(s.rate > 0) || !["ready", "measuring"].includes(s.stage);
+    rate.classList.toggle("live__rate--slow", s.rate < 12);
+    rate.textContent = s.rate < 12 ? `The phone is tracking only ${s.rate} frame${s.rate === 1 ? "" : "s"} a second: jumps may be missed or measured roughly. Close other apps on it, or try a newer phone.`
+      : `The phone is tracking ${s.rate} frames a second.`;
     q(".live__badge").textContent = s.air ? "In the air" : "";
     q(".live__badge").hidden = !s.air;
     q(".live__result").classList.toggle("live__result--old", !!s.air);
@@ -181,16 +195,45 @@ export function createRemote(host, { code, onNeedScale, onClose }) {
   });
   q(".remote__stop").addEventListener("click", () => { command("stop"); status("Stopping…"); });
   q(".remote__again").addEventListener("click", () => {
+    if (!confirm("Start again? The phone's recording of this session will be lost unless it was saved there.")) return;
     command("again");
     q(".remote__again").hidden = true;
     status("Starting again on the phone…");
   });
-  q(".remote__close").addEventListener("click", () => { dispose(); onClose(); });
-  const offUnits = onUnitsChange(() => {                       // m <-> ft in the header: the numbers redrawn
+  // Leaving while the phone measures: this screen is its scoreboard and its Stop button
+  const busy = () => ["measuring", "ready"].includes(last?.[0]?.stage);
+  const offGuard = guardLeaving(busy);
+  q(".remote__close").addEventListener("click", () => {
+    if (busy() && !confirm("Close the remote screen? The phone keeps measuring, but its distances won't show here and it can't be stopped from here.")) return;
+    dispose(); onClose();
+  });
+
+  // The tape check: typed here, sent to the phone (which keeps it with the jump) and kept in this device's log
+  const tape = tapeEntry(q(".live__jumps"), (n, m) => {
+    const j = last?.[0]?.jumps?.find((x) => x.n === n);
+    if (!j) return;
+    typed[`${session}:${n}`] = m;
+    logTape(j, m);
+    command("tape", { n, meters: m });
     listed = "";
-    if (big && !q(".live__result").hidden) q(".live__result").innerHTML = resultHTML(big, big.meters);
     if (last) show(...last);
   });
+  function logTape(j, m) {
+    const key = `${session}:${j.n}:${m}`;
+    if (logged.has(key)) return;
+    logged.add(key);
+    record(session, j.n, { live_m: j.meters, tape_m: m, toe_gap_cm: j.toeGapCm ?? null, heel_gap_cm: j.heelGapCm ?? null,
+      fps: j.fps ?? null, unsure: !!j.unsure, device: "remote" });
+  }
+  const redraw = () => {                                       // m <-> ft in the header, or the correction: redrawn
+    listed = "";
+    if (big && !q(".live__result").hidden) q(".live__result").innerHTML = resultHTML(big);
+    if (last) show(...last);
+    renderTapeCheck(q(".live__tapecheck"));
+  };
+  const offUnits = onUnitsChange(redraw);
+  window.addEventListener("jl-tape-change", redraw);
+  renderTapeCheck(q(".live__tapecheck"));
 
   // the screen stays on while it's the scoreboard
   let wake = null;
@@ -210,7 +253,8 @@ export function createRemote(host, { code, onNeedScale, onClose }) {
     wide.exit();
     voice.stop();
     document.removeEventListener("visibilitychange", keepAwake);
-    offUnits();
+    offUnits(); offGuard();
+    window.removeEventListener("jl-tape-change", redraw);
     wake?.release?.().catch?.(() => {});
     host.replaceChildren();
   }

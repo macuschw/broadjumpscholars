@@ -19,6 +19,7 @@ python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration outpu
 python scripts/run_session.py "../test videos/IMG_6233.MOV"     # a video with many jumps: a verdict table
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
 node scripts/replay_live.mjs jumplab-live-track-*.json          # Measure live vs tape, from saved tracking
+node scripts/check_live.mjs                          # Measure live vs the full analysis on 20 test jumps (2 = a slow phone)
 cd website && python3 -m http.server 8000           # then http://localhost:8000
 ```
 Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run writes `_results.json`,
@@ -139,6 +140,31 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   and prints live vs tape per jump plus mean error and spread (`--detector` to try a changed one).
   Tracker switches are also caught by the body growing/shrinking 30% within 0.1 s while moving fast
   (`RESIZE`): at 30 fps IMG_6233 jump 2 (person behind, -15%) wasn't marked unsure before.
+- **Live accuracy (Oct 26)**: `scripts/check_live.mjs` replays what the browser tracker saw on our 13 test
+  videos (`tests/data/live_frames.json`, 30 fps) through `detect.js` and compares each jump with the full
+  analysis (`tests/data/live_reference.json`). The toe is now its median while planted from the bottom of
+  the dip to takeoff, the heel over the first 0.25 s down: mean -0.2%, worst 1.2% at 30 fps; 1.3% at 15;
+  2.6% at 10 (was -0.7% / 3.4%: the last 0.2 s caught the toe already rolling). The live method doesn't
+  read long; a real-world "3-5 in too far" points at the setup (tape further from the camera than the
+  feet) or feet apart: one camera measures the near foot, the tape rule the front toe and back heel. On
+  the test jumps the toes were 6-18 cm apart at takeoff by the tracker (live and full agree within a few
+  px), which would read 2-7 in long, but the October tape check found the far foot unreliable, so the
+  tape check below is how to find out. (Both live checks agree: replaying our own Python tracking at
+  24-120 fps also matched the full analysis within ~1-2%; see the paragraph above.)
+- Live also: **feet apart** (toes or heels > 5 cm apart along the jump, the full analysis's rule) is shown
+  on the result, said, and marked in the list; the **tracking rate** is shown (warning under 12 frames/s);
+  a **setup guide** (diagram: tape on the camera side of the feet, camera square, 4-5 m back, toes level,
+  land together) sits in Measure live, the remote screen and their calibration screen (`tips: true`).
+- **Tape check** (`live/tapelog.js`): "Add the tape" on any live jump, on the phone or the remote (sent to
+  the other side), logs live, tape, feet gaps and tracking rate on that device (localStorage
+  `jl-tape-log`); "Get the full data" adds the full analysis's distance. The Analyze page's Tape check panel
+  lists them, downloads a CSV, clears. From 5 checks on, "Correct live distances by X" (the median of
+  tape - live, a constant offset) can be switched on per device; corrected values say "corrected".
+  The "Save tracking data" boxes after Stop start with these tapes, and readings typed there join the log.
+- **Leaving**: closing or reloading the tab asks first while measuring, while a finished session's
+  recording hasn't been saved or sent for the full analysis, while a remote screen is running a phone,
+  and during an upload. Back / Measure again ask too (the remote's Measure again: the phone's recording
+  would be lost).
 - **Remote screen** (`live/remote.js`, `live/room.js`, server `jumplab/rooms.py`; the Measure live card's
   "Remote screen" button): a laptop or second phone shows the distances (big, said out loud) and runs the
   phone on the tripod: Set the scale (the phone sends a full frame, the tape is marked on the remote),

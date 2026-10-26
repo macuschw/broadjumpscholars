@@ -85,6 +85,30 @@
         </div>
       </div>
 
+      <!-- Tape check: live distances next to the tape (live/tapelog.js); shown once there is one -->
+      <section class="tape-check" id="tape-check" aria-labelledby="tape-check-title" hidden>
+        <div class="my-jumps__head">
+          <div>
+            <h2 id="tape-check-title">Tape check</h2>
+            <p class="my-jumps__lede">Live distances next to the tape measurements typed in for them (in Measure live or
+              on the remote screen), kept on this device. The full analysis joins in when it's run here.</p>
+          </div>
+          <div class="my-jumps__actions">
+            <button type="button" class="btn btn--quiet btn--sm" id="tape-check-download">Download (CSV)</button>
+            <button type="button" class="btn btn--quiet btn--sm" id="tape-check-clear">Clear</button>
+          </div>
+        </div>
+        <p class="live__tapecheck" id="tape-check-summary"></p>
+        <div class="tape-check__scroll">
+          <table class="tape-check__table">
+            <thead><tr><th scope="col">When</th><th scope="col">Jump</th><th scope="col">Live</th><th scope="col">Tape</th>
+              <th scope="col">Live − tape</th><th scope="col">Full analysis</th><th scope="col">Full − tape</th><th scope="col">Feet</th></tr></thead>
+            <tbody id="tape-check-rows"></tbody>
+          </table>
+        </div>
+        <p class="tape-check__more" id="tape-check-more" hidden></p>
+      </section>
+
       <!-- My jumps: earlier analyses kept in this browser (demo/history.js); an empty note until there is one -->
       <section class="my-jumps" id="my-jumps" aria-labelledby="my-jumps-title">
         <div class="my-jumps__head">

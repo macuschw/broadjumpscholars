@@ -4,8 +4,9 @@
 //
 //   the phone writes  "phone"   { stage, status, air, jumps, previewId, stillId }
 //                     "preview" { id, jpeg }   a small picture of what it sees, while someone watches
+//                                              (twice a second while aiming, once a second while measuring)
 //                     "still"   { id, ...frame }   a full frame for marking the tape, when asked
-//   the remote writes "remote"  { cmds: [{ id, type: "still" | "scale" | "stop" | "again", ... }] }
+//   the remote writes "remote"  { cmds: [{ id, type: "still" | "scale" | "stop" | "again" | "tape", ... }] }
 import { roomsServer } from "../config.js";
 
 const BASE = roomsServer();
@@ -52,7 +53,7 @@ export function repeat(ms, step) {
 export function linkPhone(code, { state, picture, still, onCommand, onLink }) {
   let lastCmd = null, sent = "", sentAt = 0, picAt = 0, picId = 0, stillId = null, remoteAge = Infinity, misses = 0, how = "";
   const tell = (h) => { if (h !== how) { how = h; onLink(h); } };
-  const loop = repeat(700, async () => {
+  const loop = repeat(400, async () => {
     try {
       const { value, age } = await read(code, "remote");
       misses = 0;
@@ -73,7 +74,7 @@ export function linkPhone(code, { state, picture, still, onCommand, onLink }) {
     }
     tell(remoteAge < 15 ? "watching" : "waiting");
     const now = Date.now(), s = state();
-    if (remoteAge < 15 && now - picAt > (s.stage === "measuring" ? 3000 : 1000)) {   // a picture while someone watches
+    if (remoteAge < 15 && now - picAt > (s.stage === "measuring" ? 1000 : 450)) {   // a picture while someone watches
       const jpeg = picture();
       if (jpeg) { await send(code, "preview", { id: picId + 1, jpeg }); picId++; picAt = now; }
     }

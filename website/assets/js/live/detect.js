@@ -1,11 +1,14 @@
 // Live jump detection, frame by frame, from MediaPipe's 33 pose landmarks (in the camera's pixels).
 // A jump: a dip, then both feet leave the floor while the hips move forward, then come down. Its distance
 // is measured the way the full analysis does it (jumplab/pipeline.py): from the camera-side toe
-// while it was still planted before takeoff, to the camera-side heel just after landing. The full
-// analysis of the recorded video checks it later (steps, hands, someone in the shot...).
+// while planted (from the bottom of the dip to takeoff), to the camera-side heel once landed. The
+// full analysis of the recorded video checks it later (steps, hands, someone in the shot...).
 //
 //   const d = createDetector({ onJump });     d.feed(timeSeconds, points | null) for every frame
-//   points: 33 [x, y, visibility] in pixels (y down); onJump({ n, distancePx, tTakeoff, unsure, ... })
+//   points: 33 [x, y, visibility] in pixels (y down); onJump({ n, distancePx, tTakeoff, unsure,
+//   toeGapPx, heelGapPx, ... }). The gaps: how far apart the two feet were along the jump (the tape
+//   rule takes the front toe and the rear heel; one camera measures the near foot, so feet apart
+//   read long). Options override the constants below (for testing).
 
 const FEET = { left: [27, 29, 31], right: [28, 30, 32] };    // ankle, heel, toe
 const HIPS = [23, 24];
@@ -16,8 +19,11 @@ const CROUCH = 0.85, CROUCH_S = 1.2; // a broad jump starts with a dip: the body
                                      //   height in the 1.2 s before takeoff (walking off never crouches)...
 const MIN_RISE = 0.06;               // ...and the hips rise in the air (x body height; our jumps 0.11-0.18,
                                      //   walking off after a stumble about 0.02)
-const TOE_S = 0.2;                   // the takeoff toe: its median over the last 0.2 s on the ground
-const HEEL_S = 0.1;                  // the landing heel: its median over the first 0.1 s down
+// The takeoff toe: its median while planted, from the bottom of the dip to takeoff (at least the
+// last 0.1 s); the landing heel: its median over the first 0.25 s down. Checked against the full
+// analysis on our 20 test jumps (scratch replay of the browser tracker's frames): mean error -0.2%,
+// worst 1.2% at 30 fps, 1.3% at 15 fps (was -0.7% / 3.4% with the last 0.2 s and the first 0.1 s)
+const OPTIONS = { TOE_MIN_S: 0.1, HEEL_S: 0.25 };
 const KEEP_S = 4;                    // frames remembered (floor, body height, the toe before takeoff)
 const TELEPORT = 4;                  // body heights a second: nobody moves this fast, the tracker jumped
                                      //   to someone else (e.g. a person walking behind the jumper)
@@ -50,7 +56,8 @@ function measure(pts) {
     hipY: (pts[HIPS[0]][1] + pts[HIPS[1]][1]) / 2, left: foot("left"), right: foot("right") };
 }
 
-export function createDetector({ onJump = () => {}, onState = () => {} } = {}) {
+export function createDetector({ onJump = () => {}, onState = () => {}, ...options } = {}) {
+  const O = { ...OPTIONS, ...options };
   let hist = [], state = "ground", up = 0, jump = null, count = 0;
 
   function reset() { hist = []; state = "ground"; up = 0; jump = null; onState(state); }
@@ -79,8 +86,11 @@ export function createDetector({ onJump = () => {}, onState = () => {} } = {}) {
       const tTakeoff = hist[hist.length - 2].t;
       const recent = hist.filter((h) => h.t >= t - 1);
       const side = median(recent.map((h) => h.left.vis)) >= median(recent.map((h) => h.right.vis)) ? "left" : "right";
-      const planted = standing.filter((h) => h.t >= tTakeoff - TOE_S && h.t < tTakeoff);
+      const dip = hist.filter((h) => h.t >= tTakeoff - CROUCH_S && h.t <= tTakeoff)
+        .reduce((a, h) => (h.hipY > a.hipY ? h : a), { hipY: -Infinity, t: tTakeoff });   // image y is down
+      const planted = standing.filter((h) => h.t >= Math.min(dip.t, tTakeoff - O.TOE_MIN_S) && h.t < tTakeoff);
       jump = { tTakeoff, side, toeX: median(planted.map((h) => h[side].toeX)), hipX: median(planted.map((h) => h.hipX)), tall,
+        toeGapPx: median(planted.map((h) => Math.abs(h.left.toeX - h.right.toeX))),
         crouched: hist.some((h) => h.t >= tTakeoff - CROUCH_S && h.t <= tTakeoff && h.tall < CROUCH * tall),
         hipY: median(planted.map((h) => h.hipY)), top: m.hipY,
         switched: hist.some((h) => h.switched && h.t >= tTakeoff - 1) };
@@ -102,7 +112,7 @@ export function createDetector({ onJump = () => {}, onState = () => {} } = {}) {
     if (state === "landed") {
       jump.down.push(m);
       jump.switched ||= hist[hist.length - 1].switched;
-      if (t - jump.tLanding < HEEL_S) return;
+      if (t - jump.tLanding < O.HEEL_S) return;
       const heelX = median(jump.down.map((h) => h[jump.side].heelX)), hipX = median(jump.down.map((h) => h.hipX));
       const dir = Math.sign(hipX - jump.hipX), travel = Math.abs(hipX - jump.hipX) / jump.tall;
       const distancePx = dir * (heelX - jump.toeX);
@@ -113,6 +123,7 @@ export function createDetector({ onJump = () => {}, onState = () => {} } = {}) {
       if (jump.crouched && (rise >= MIN_RISE || jump.switched) && travel >= MIN_TRAVEL && distancePx > 0) {
         onJump({ n: ++count, distancePx, tTakeoff: jump.tTakeoff, tLanding: jump.tLanding, flight: jump.tLanding - jump.tTakeoff,
           side: jump.side, toeX: jump.toeX, heelX, direction: dir > 0 ? "right" : "left", tall: jump.tall,
+          toeGapPx: jump.toeGapPx, heelGapPx: median(jump.down.map((h) => Math.abs(h.left.heelX - h.right.heelX))),
           // unsure: the tracker jumped between people around this jump, so the number may be someone else's
           unsure: jump.switched ? "The tracker jumped to someone else around this jump, so this number may be off." : null });
       }

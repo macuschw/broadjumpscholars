@@ -25,6 +25,8 @@ import { calibrate } from "../demo/calibrate.js";
 import { analyzeSession, recompute, serverURL, wake } from "../demo/server.js";
 import { MAX_LABEL, canSave, clearJumps, listJumps, loadJump, removeJumps, renameJump, saveJump } from "../demo/history.js";
 import { formatQuantity, onUnitsChange } from "../lib/units.js";
+import { addFull, clear as clearTapeLog, csv as tapeCSV, entries as tapeEntries } from "../live/tapelog.js";
+import { renderTapeCheck } from "../live/shared.js";
 
 const $ = (id) => document.getElementById(id);
 const PAGE = document.body.dataset.page === "demo" ? "demo" : "analyze";
@@ -329,7 +331,7 @@ function showSample() {
 let job = null;
 /** A video to the server. From live measuring: its scale is known (no calibration step) and each
  *  jump's live distance is shown next to the full result. */
-async function startUpload(file, { scale = null, fps: liveFps = null, jumps: live = null } = {}) {
+async function startUpload(file, { scale = null, fps: liveFps = null, jumps: live = null, session = null } = {}) {
   const fps = liveFps || Number($("fps-select").value) || null;
   $("progress-source").textContent = `“${file.name}”`;
   $("analysis-error").hidden = true;
@@ -367,6 +369,8 @@ async function startUpload(file, { scale = null, fps: liveFps = null, jumps: liv
   const withLive = (a) => {                                    // the live distance of the same jump, if any
     const t = a.bundle.results.events.takeoff.time_s;
     const m = live?.find((j) => Math.abs(j.tTakeoff - t) < 0.6);
+    const full = a.bundle.results.distance?.jump_distance_m;
+    if (m && session && full) addFull(session, m.n, full);      // joins that jump's tape check, if there is one
     return m ? Object.assign(a, { live: m }) : a;
   };
   if (found.still && !scale) calibrateThen(found, file);
@@ -385,6 +389,7 @@ async function openLive({ room = null } = {}) {
     onNeedScale: (still) => {
       show("calibrate");
       liveCal = calibrate($("demo-calibrate"), still, {
+        tips: true,
         onDone: ({ scale }) => { liveCal.dispose(); liveCal = null; show("live"); live.setScale(scale); },
       });
     },
@@ -423,6 +428,7 @@ async function openRemote(code = null) {
     onNeedScale: (still) => {
       show("calibrate");
       const cal = calibrate($("demo-calibrate"), still, {
+        tips: true,
         onDone: ({ scale }) => { cal.dispose(); show("remote"); remote.setScale(scale); },
       });
     },
@@ -430,6 +436,43 @@ async function openRemote(code = null) {
   });
   $("remote-title")?.focus();
 }
+// Closing the tab mid-upload loses the analysis (Measure live and the remote screen guard their own sessions)
+window.addEventListener("beforeunload", (e) => { if (job) { e.preventDefault(); e.returnValue = ""; } });
+
+// ---------------------------------------------------------------- 1d. the tape check log (live/tapelog.js)
+function renderTapeLog() {
+  const box = $("tape-check");
+  if (!box) return;
+  const list = tapeEntries().slice().reverse();
+  box.hidden = !list.length;
+  if (!list.length) return;
+  renderTapeCheck($("tape-check-summary"));
+  const d = (m) => (m > 0 ? formatQuantity("distance", m) : "–");
+  const diff = (a, b) => (a > 0 && b > 0 ? `${a >= b ? "+" : "−"}${formatQuantity("short", Math.abs(a - b))}` : "–");
+  $("tape-check-rows").innerHTML = list.slice(0, 30).map((e) => `<tr>
+      <td>${esc(new Date(e.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</td>
+      <td>${e.n}</td><td>${d(e.live_m)}</td><td>${d(e.tape_m)}</td><td>${diff(e.live_m, e.tape_m)}</td>
+      <td>${d(e.full_m)}</td><td>${diff(e.full_m, e.tape_m)}</td>
+      <td>${(e.toe_gap_cm > 5 || e.heel_gap_cm > 5) ? "apart" : (e.toe_gap_cm != null ? "together" : "–")}${e.unsure ? ", unsure" : ""}</td></tr>`).join("");
+  $("tape-check-more").hidden = list.length <= 30;
+  $("tape-check-more").textContent = `Showing the latest 30 of ${list.length}; the download has them all.`;
+}
+if ($("tape-check")) {
+  renderTapeLog();
+  window.addEventListener("jl-tape-change", renderTapeLog);
+  onUnitsChange(renderTapeLog);
+  $("tape-check-download").addEventListener("click", () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([tapeCSV()], { type: "text/csv" }));
+    a.download = `jumplab-tape-check-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $("tape-check-clear").addEventListener("click", () => {
+    if (confirm("Delete every tape check on this device? Download them first to keep a copy.")) clearTapeLog();
+  });
+}
+
 function setParam(key, value) {
   const url = new URL(location.href);
   if (value) url.searchParams.set(key, value); else url.searchParams.delete(key);

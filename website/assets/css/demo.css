@@ -30,7 +30,7 @@
 .film-check .btn { margin-top: auto; }
 
 /* My jumps: earlier analyses kept in this browser, under the upload card */
-.my-jumps { grid-column: 1 / -1; min-width: 0; margin-top: var(--s-6); }
+.my-jumps, .tape-check { grid-column: 1 / -1; min-width: 0; margin-top: var(--s-6); }
 /* Measure live: the card on the start screen, and the live view (live/live.js) */
 .live-card { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s-4); padding: var(--s-4) var(--s-5); background: var(--white); border: 2px solid var(--text); border-radius: var(--radius); }
 .live-card h2 { font-size: var(--step-2); }
@@ -88,6 +88,39 @@
 .live__jump-d { font-family: var(--font-display); font-weight: 700; font-size: 1.3rem; }
 .live__jump--unsure { border-style: dashed; }
 .live__jump-note { color: var(--accent); font-size: 0.85rem; font-weight: 600; }
+/* Tape check (live/tapelog.js), feet apart, tracking speed and the setup guide (live/shared.js) */
+.live__result-note--warn { color: var(--paper); font-weight: 600; }
+.live__jump-add { padding: 2px 8px; border: 1.5px dashed var(--line-strong); border-radius: var(--radius); background: none; color: var(--text); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.live__jump-add:hover { border-color: var(--text); }
+.live__jump-tape { color: var(--muted); font-size: 0.85rem; }
+.live__tapeform { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-2); }
+.live__tapeform label { display: inline-flex; align-items: center; gap: 4px; font-size: 0.9rem; }
+.live__tapeform input { width: 4.5em; min-height: 36px; padding: 0 6px; border: 1.5px solid var(--text); border-radius: var(--radius); background: var(--white); color: var(--text); font: inherit; }
+.live__rate { margin-top: var(--s-1); color: var(--muted); font-size: 0.9rem; max-width: none; }
+.live__rate--slow { color: var(--accent); font-weight: 600; }
+.live__tapecheck { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-4); margin-top: var(--s-3); max-width: none; }
+.live__fix { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.live__fix input { width: 18px; height: 18px; accent-color: var(--accent); }
+.live__setup { margin-top: var(--s-3); max-width: 70ch; }
+.live__setup summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+.live__setup-body { display: flex; flex-wrap: wrap; gap: var(--s-3) var(--s-5); align-items: flex-start; margin-top: var(--s-2); }
+.live__setup-body ul { flex: 1 1 22rem; margin: 0; padding-left: 1.2em; display: grid; gap: var(--s-1); color: var(--text); }
+.live__setup-map { flex: 0 1 320px; width: 100%; max-width: 320px; height: auto; }
+.live__setup-map .map-lane { fill: var(--white); stroke: var(--line-strong); stroke-width: 1; }
+.live__setup-map .map-line { stroke: var(--text); stroke-width: 2; }
+.live__setup-map .map-foot { fill: var(--text); }
+.live__setup-map .map-arc { fill: none; stroke: var(--line-strong); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.live__setup-map .map-tape { stroke: var(--accent); stroke-width: 3; }
+.live__setup-map .map-cam { fill: var(--text); }
+.live__setup-map .map-sight { stroke: var(--line-strong); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.live__setup-map .map-text { font: 600 10px var(--font-body); fill: var(--muted); }
+.cal__head .live__setup { margin-top: var(--s-2); }
+.tape-check__scroll { overflow-x: auto; margin-top: var(--s-3); border: 1.5px solid var(--text); border-radius: var(--radius); background: var(--white); }
+.tape-check__table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+.tape-check__table th, .tape-check__table td { padding: var(--s-1) var(--s-3); text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.tape-check__table th { font-weight: 600; color: var(--muted); }
+.tape-check__table tbody tr:last-child td { border-bottom: 0; }
+.tape-check__more { margin-top: var(--s-2); color: var(--muted); font-size: 0.9rem; }
 .live__done { margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--line); display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); }
 .live__done-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .live__save-note { color: var(--muted); font-size: 0.92rem; }
@@ -433,3 +466,5 @@ th .best-label { margin-left: 6px; }
   .real-why dd { margin-bottom: var(--s-2); }
   .cal__frame { margin-inline: calc(-1 * var(--gutter)); border-radius: 0; }   /* the picture edge to edge */
 }
+.live__tape-error { flex-basis: 100%; color: var(--accent); font-size: 0.85rem; font-weight: 600; }
+.live__tape-error:empty { display: none; }
