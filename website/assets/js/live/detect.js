@@ -21,6 +21,12 @@ const HEEL_S = 0.1;                  // the landing heel: its median over the fi
 const KEEP_S = 4;                    // frames remembered (floor, body height, the toe before takeoff)
 const TELEPORT = 4;                  // body heights a second: nobody moves this fast, the tracker jumped
                                      //   to someone else (e.g. a person walking behind the jumper)
+const RESIZE = 1.3, RESIZE_S = 0.1, RESIZE_SPEED = 2.5;
+                                     // ...or the body grows or shrinks by 30% within 0.1 s while moving
+                                     //   2.5+ heights a second: a different person, nearer or farther. At
+                                     //   30 fps a switch can look slower than TELEPORT (IMG_6233 jump 2).
+                                     //   Replayed on IMG_6233 at 24-120 fps, with 12-25% of frames dropped:
+                                     //   no clean jump marked; landing squats shrink the body, but slower.
 
 const median = (xs) => {
   const v = xs.filter(Number.isFinite).sort((a, b) => a - b);
@@ -55,7 +61,10 @@ export function createDetector({ onJump = () => {}, onState = () => {} } = {}) {
     const tall = pct(hist.map((h) => h.tall).concat(m.tall), 0.8);
     // Teleport: judged over at least 0.1 s, so uneven frame timing can't fake one
     const before = hist.findLast((h) => t - h.t >= 0.1 && t - h.t <= 0.5);
-    const switched = !!before && Math.abs(m.hipX - before.hipX) / tall / (t - before.t) > TELEPORT;
+    const speed = before ? Math.abs(m.hipX - before.hipX) / tall / (t - before.t) : 0;
+    const last = hist.at(-1);
+    const resized = !!last && t - last.t <= RESIZE_S && Math.max(m.tall / last.tall, last.tall / m.tall) > RESIZE;
+    const switched = speed > TELEPORT || (resized && speed > RESIZE_SPEED);
     hist.push({ t, ...m, grounded: state === "ground", switched });
     while (hist.length && t - hist[0].t > KEEP_S) hist.shift();
     const standing = hist.filter((h) => h.grounded);

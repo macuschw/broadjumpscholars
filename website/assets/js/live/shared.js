@@ -7,7 +7,7 @@ const BONES = [[11, 12], [11, 23], [12, 24], [23, 24], [11, 13], [13, 15], [12, 
   [23, 25], [25, 27], [27, 29], [29, 31], [27, 31], [24, 26], [26, 28], [28, 30], [30, 32], [28, 32]];
 
 /** The big result over the picture (j: { n, unsure }, m: meters). */
-export const resultHTML = (j, m) => `<span class="live__result-label">Jump ${j.n} · live</span>
+export const resultHTML = (j, m) => `<span class="live__result-label">Jump ${j.n} · live estimate</span>
   <span class="live__result-value">${formatQuantity("distance", m)}</span>
   ${j.unsure ? `<span class="live__result-note">Unsure: ${esc(typeof j.unsure === "string" ? j.unsure : "the tracker may have followed someone else.")}</span>` : ""}`;
 

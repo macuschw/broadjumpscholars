@@ -18,6 +18,7 @@ python3 -m pytest -q                                 # 190 tests should pass
 python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration output/calibration.json
 python scripts/run_session.py "../test videos/IMG_6233.MOV"     # a video with many jumps: a verdict table
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
+node scripts/replay_live.mjs jumplab-live-track-*.json          # Measure live vs tape, from saved tracking
 cd website && python3 -m http.server 8000           # then http://localhost:8000
 ```
 Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run writes `_results.json`,
@@ -127,6 +128,17 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   "Use this scale" tap, which also unlocks speech on iPhones). The result stays up until the next jump
   (faded while that one is in the air), Full screen button / double-click for reading it from afar.
   Tested with fake cameras in the browser only.
+  Accuracy (Oct 26): first real test read ~3 in long, often over. Replaying the live detector on our
+  own Python tracking (IMG_6233 at 24-120 fps, two single jumps) gave the same distances as the full
+  analysis within ~1-2%, no long bias, so the over-reading is likely the browser tracker or the live
+  camera picture (blur at 30 fps, exposure), not the measuring method: next test with tape + "Get the
+  full data" on the same recording. The live distance is labeled a "live estimate".
+  **Save tracking data** (on the phone after Stop, under "Checking accuracy?"): type each jump's tape
+  reading, then download `jumplab-live-track-*.json` (every tracked frame, scale, calibration still,
+  live jumps, tapes; no video). `node scripts/replay_live.mjs FILE...` replays it through `detect.js`
+  and prints live vs tape per jump plus mean error and spread (`--detector` to try a changed one).
+  Tracker switches are also caught by the body growing/shrinking 30% within 0.1 s while moving fast
+  (`RESIZE`): at 30 fps IMG_6233 jump 2 (person behind, -15%) wasn't marked unsure before.
 - **Remote screen** (`live/remote.js`, `live/room.js`, server `jumplab/rooms.py`; the Measure live card's
   "Remote screen" button): a laptop or second phone shows the distances (big, said out loud) and runs the
   phone on the tripod: Set the scale (the phone sends a full frame, the tape is marked on the remote),

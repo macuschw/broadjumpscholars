@@ -5,12 +5,16 @@
 // shot...) can follow, now or later, from that recording, like any uploaded video.
 // With a remote screen (live/room.js, live/remote.js), a laptop or another phone shows the
 // distances and runs this one, so nobody has to touch the phone on the tripod.
+// "Save tracking data" downloads every tracked frame of the session (with the scale, the calibration
+// picture, the live jumps and any tape measurements typed in), so the live detector can be replayed
+// and checked against the tape away from the field.
 //
 //   const live = createLive(host, { onNeedScale(still), onAnalyze(file, info), onClose(why, { room }), room, onScaleSet });
 //   live.setScale(metersPerPixel)   after the visitor has marked the tape on onNeedScale's still
 import { createDetector } from "./detect.js";
 import { cleanCode, isCode, linkPhone, read } from "./room.js";
 import { createVoice, esc, fullScreen, jumpItemHTML, jumpWords, paintSkeleton, resultHTML } from "./shared.js";
+import { formatQuantity, isImperial } from "../lib/units.js";
 
 const VISION = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 const MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
@@ -35,7 +39,8 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
       <div class="live__head">
         <h2 id="live-title" tabindex="-1">Measure live</h2>
         <p class="live__lede">Put the phone on a tripod, <strong>turned sideways</strong>, side-on to the jump, with the whole jump and
-          the tape measure in the picture. The distance appears, and is said out loud, as soon as the jumper lands.</p>
+          the tape measure in the picture. The distance appears, and is said out loud, as soon as the jumper lands.
+          It's a quick estimate: for the measured distance, use <strong>Get the full data</strong> when you stop.</p>
       </div>
       <div class="live__stage">
         <video class="live__video" playsinline muted autoplay></video>
@@ -77,6 +82,10 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   let stage = "starting", air = false, lastPts = null, link = null;
   const session = Date.now();                                  // tells the remote screen a new session began
   const jumps = [];
+  // Every tracked frame while measuring, for "Save tracking data": [seconds, 33 x [x, y, visibility] | null]
+  const track = [], MAX_TRACK = 20 * 60 * 60;                  // up to 20 minutes at 60 fps
+  let scaleStill = null, camInfo = null;
+  const round = (v, k) => Math.round(v * k) / k;
   const IS_TOUCH = matchMedia("(pointer: coarse)").matches;   // a phone or tablet, not a laptop
   const voice = createVoice(q(".live__speak"));
   const wide = fullScreen(q(".live__stage"), q(".live__full-screen"));
@@ -210,7 +219,11 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
         } catch { /* a dropped frame */ }
         if (pts) { lastSeen = performance.now(); lastPts = pts; }
         frames++;
-        if (scale) detector.feed((now - clock0) / 1000, pts);       // seconds since measuring began
+        if (scale) {
+          const t = (now - clock0) / 1000;                     // seconds since measuring began
+          detector.feed(t, pts);
+          if (track.length < MAX_TRACK) track.push([round(t, 1000), pts && pts.map(([x, y, v]) => [round(x, 10), round(y, 10), round(v, 100)])]);
+        }
         draw(pts);
         busy = false;
       }
@@ -233,10 +246,14 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   q(".live__scale").addEventListener("click", () => {
     const still = snapshot();
     if (!still) { status("The camera is still starting. Try again in a moment."); return; }
+    scaleStill = still;
     onNeedScale(still);
   });
   function setScale(metersPerPixel) {
     scale = metersPerPixel;
+    const track0 = stream?.getVideoTracks?.()[0], set = track0?.getSettings?.() || {};
+    camInfo = { label: track0?.label || "", width: video.videoWidth || set.width || null,
+      height: video.videoHeight || set.height || null, fps: set.frameRate || null };   // (gone once the camera stops)
     q(".live__scale").hidden = true;
     q(".live__stop").hidden = false;
     detector.reset();
@@ -310,12 +327,42 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
       </div>
       <p class="live__save-note">Saved videos can be uploaded here any time later, like any other video.</p>`
         : "<p>This browser couldn't record the session, so only the live distances are available.</p>"}
+      ${track.length ? `<details class="disclose live__check">
+        <summary>Checking accuracy? Save the tracking data</summary>
+        <div class="disclose__body">
+          <p>Type what the tape measure said for each jump (any way you like: 7 ft 2 in, 7' 2", 2.18 m), then save. The file
+            holds the tracked body points from every frame, the scale and these distances, so the live measurement can be
+            checked against the tape later. It doesn't contain the video.</p>
+          ${n ? `<ol class="live__tapes" role="list">${jumps.map((j) => `<li><label>Jump ${j.n}
+            <span class="live__tape-live">(live ${esc(formatQuantity("distance", j.meters))})</span>
+            <input type="text" class="live__tape" data-n="${j.n}" autocomplete="off" placeholder="tape"></label></li>`).join("")}</ol>` : ""}
+          <button type="button" class="btn btn--quiet btn--sm live__save-track">Save tracking data</button>
+        </div>
+      </details>` : ""}
       <button type="button" class="btn btn--quiet btn--sm live__again">Measure again</button>`;
+    done.querySelector(".live__save-track")?.addEventListener("click", () => saveTrack(done, fps));
     const inFile = (recStart - clock0) / 1000;                 // the recording began this long after measuring
     done.querySelector(".live__full")?.addEventListener("click", () => onAnalyze(file, {
       scale, fps: fps ? Math.round(fps) : null,
       jumps: jumps.map(({ n, meters, tTakeoff, unsure }) => ({ n, meters, tTakeoff: tTakeoff - inFile, unsure })) }));
     done.querySelector(".live__again").addEventListener("click", again);
+  }
+  /** The session's tracking, the live jumps and the tape measurements, as a JSON file to download. */
+  function saveTrack(done, fps) {
+    const tapes = Object.fromEntries([...done.querySelectorAll(".live__tape")].map((i) => [i.dataset.n, i.value.trim()]));
+    const data = {
+      format: "jumplab-live-track/1", saved: new Date().toISOString(), userAgent: navigator.userAgent,
+      camera: { ...camInfo, fps: fps || camInfo?.fps || null },
+      measured_fps: track.length > 1 ? Math.round((track.length - 1) / (track.at(-1)[0] - track[0][0]) * 10) / 10 : null,
+      scale_m_per_px: scale, units: isImperial() ? "imperial" : "metric", still: scaleStill,
+      jumps: jumps.map((j) => ({ ...j, tape: tapes[j.n] || "" })),
+      frames: track,
+    };
+    const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob),
+      download: `jumplab-live-track-${data.saved.slice(0, 16).replace(/[:T]/g, "-")}.json` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
   function again() { const code = link?.code || null; dispose("again"); onClose("again", { room: code }); }
   function stopRecording() {
@@ -347,7 +394,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     link = linkPhone(code, {
       state: () => ({ session, stage, status: q(".live__status").textContent, air,
         jumps: jumps.map(({ n, meters, unsure }) => ({ n, meters: Math.round(meters * 1e4) / 1e4, unsure: unsure || null })) }),
-      picture, still: snapshot,
+      picture, still: () => (scaleStill = snapshot()),
       onCommand(c) {
         if (c.type === "scale" && stage === "ready" && c.scale > 0) { setScale(c.scale); onScaleSet(); }
         else if (c.type === "stop") finish();

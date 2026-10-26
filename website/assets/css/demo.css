@@ -91,6 +91,11 @@
 .live__done { margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--line); display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-3); }
 .live__done-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .live__save-note { color: var(--muted); font-size: 0.92rem; }
+.live__check { align-self: stretch; }
+.live__tapes { list-style: none; margin: var(--s-3) 0; padding: 0; display: grid; gap: var(--s-2); }
+.live__tapes label { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font-weight: 600; }
+.live__tape-live { font-weight: 400; color: var(--muted); }
+.live__tape { width: 9em; min-height: 40px; padding: 0 var(--s-2); font: inherit; border: 1.5px solid var(--line-strong); border-radius: var(--radius); background: var(--white); }
 .my-jumps__head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-5); margin-bottom: var(--s-4); }
 .my-jumps__head h2 { font-size: var(--step-3); }
 .my-jumps__lede { margin-top: var(--s-1); color: var(--muted); max-width: 62ch; }
