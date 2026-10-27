@@ -133,8 +133,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     loop();
     try { wake = await navigator.wakeLock?.request("screen"); } catch { /* the screen may dim; fine */ }
     setStage("ready");
-    status(link ? "Step 1: set the scale (on the remote screen, or here). Have the tape measure on the floor in the picture."
-      : "Step 1: set the scale. Have the tape measure on the floor in the picture.");
+    stageStatus();
     q(".live__scale").hidden = false;
   }
 
@@ -285,8 +284,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     clock0 = performance.now();
     record();
     setStage("measuring");
-    status(link ? "Measuring: jump whenever you like. The remote screen shows each distance and has the Stop button."
-      : "Ready: jump whenever you like. Keep the camera still. Stop when you're done.");
+    stageStatus();
     q(".live__camera-select").disabled = true;                 // the scale belongs to this camera
     voice.say("Ready. Jump when you like.");                   // (also lets phones speak later: it follows a tap)
     q("#live-title").focus();
@@ -330,7 +328,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   }
   // The list, with each jump's tape check: typed here or on the remote screen, kept in the tape log
   const list = q(".live__jumps");
-  const tape = tapeEntry(list, (n, m) => setTape(n, m, "phone"));
+  const tape = tapeEntry(list, (n, m) => setTape(n, m, "phone"), () => renderList());
   function renderList() {
     if (tape.busy()) return;                                   // not under someone typing a tape measurement
     list.innerHTML = jumps.map(jumpItemHTML).join("");
@@ -342,7 +340,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     logTape(session, n, { live_m: j.meters, tape_m: meters, toe_gap_cm: Math.round((j.toeGapPx ?? 0) * scale * 1000) / 10,
       heel_gap_cm: Math.round((j.heelGapPx ?? 0) * scale * 1000) / 10, fps: j.fps, unsure: !!j.unsure, device });
     list.querySelector(`.live__tapeform[data-n="${n}"]`)?.remove();
-    list.innerHTML = jumps.map(jumpItemHTML).join("");
+    renderList();                                              // (not while another jump's tape is being typed here)
     link?.soon();
   }
   const redraw = () => {                                       // units or the correction changed
@@ -442,6 +440,14 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     return new File(chunks, `jumplab-live-${stamp}.${type.includes("webm") ? "webm" : "mp4"}`, { type });
   }
 
+  /** What to do now, while setting the scale or measuring (it depends on whether a remote screen runs this phone). */
+  function stageStatus() {
+    if (stage === "ready") status(link ? "Step 1: set the scale (on the remote screen, or here). Have the tape measure on the floor in the picture."
+      : "Step 1: set the scale. Have the tape measure on the floor in the picture.");
+    else if (stage === "measuring") status(link ? "Measuring: jump whenever you like. The remote screen shows each distance and has the Stop button."
+      : "Ready: jump whenever you like. Keep the camera still. Stop when you're done.");
+  }
+
   // ---- a remote screen: it shows the distances and sends the scale, Stop and Measure again
   const LINK_TEXT = {
     watching: (c) => `Connected to the remote screen (${c}). It shows each distance and runs this phone.`,
@@ -472,13 +478,15 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
         q(".live__remote-text").textContent = LINK_TEXT[how](code);
       },
     });
+    stageStatus();
   }
   function disconnect(note = "") {
     link?.stop(note ? null : "disconnected");
     link = null;
+    voice.unmute();                                            // this phone talks again
     q(".live__remote").hidden = true;
     q(".live__remote-open").hidden = false;
-    if (note) status(note);
+    if (note) status(note); else stageStatus();
   }
   q(".live__remote-open").addEventListener("click", () => {
     q(".live__remote-form").hidden = false;

@@ -8,7 +8,10 @@ export const DASHBOARD_HTML = `
       <div class="analysis" id="analysis"></div>
       <div class="analysis__error" id="analysis-error" hidden>
         <p class="notice" role="alert"><span data-icon="info"></span><span id="analysis-error-text"></span></p>
-        <button type="button" class="btn btn--primary btn--sm" id="analysis-retry">Try another video</button>
+        <div class="analysis__error-actions">
+          <a class="btn btn--primary btn--sm" id="analysis-save" hidden>Save the video</a>
+          <button type="button" class="btn btn--quiet btn--sm" id="analysis-retry">Try another video</button>
+        </div>
       </div>
       <button type="button" class="btn btn--quiet btn--sm analysis__cancel" id="analysis-cancel" hidden>Cancel</button>
     </section>

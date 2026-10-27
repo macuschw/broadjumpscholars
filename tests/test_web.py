@@ -79,6 +79,18 @@ def test_problems_the_visitor_can_fix_are_422_with_a_message():
     assert web.handle("nope")[0] == 404
 
 
+def test_no_jump_messages_say_what_to_change_not_how_the_analysis_works():
+    from jumplab.events import NoJumpFound
+    for reason in ("Landing was detected before takeoff; check the window/tracking.",
+                   "Takeoff is at the very start of the clip/window, so the clip probably starts mid-jump.",
+                   "No landing was found before the end of the clip/window.",
+                   "not a jump (the hips barely rose)", "No jump was found in this video."):
+        text = web.visitor_message(NoJumpFound(reason))
+        assert text.startswith("No complete jump was found in this video.")
+        assert not any(w in text for w in ("window", "tracking", "clip", "detected", "hips"))
+    assert "mid-jump" in web.visitor_message(NoJumpFound("Takeoff is at the very start of the clip/window"))
+
+
 def test_unreadable_video_gives_a_plain_message_without_server_paths(tmp_path):
     bad = tmp_path / "clip.mp4"
     bad.write_bytes(b"not really a video" * 1000)

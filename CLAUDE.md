@@ -14,7 +14,7 @@ this repo (GitHub: macuschw/broadjumpscholars):
 
 ```bash
 python3 -m pip install -r requirements.txt          # mediapipe==0.10.14 is required (newer removed the API)
-python3 -m pytest -q                                 # 190 tests should pass
+python3 -m pytest -q                                 # 191 tests should pass
 python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration output/calibration.json
 python scripts/run_session.py "../test videos/IMG_6233.MOV"     # a video with many jumps: a verdict table
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
@@ -164,7 +164,8 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
 - **Leaving**: closing or reloading the tab asks first while measuring, while a finished session's
   recording hasn't been saved or sent for the full analysis, while a remote screen is running a phone,
   and during an upload. Back / Measure again ask too (the remote's Measure again: the phone's recording
-  would be lost).
+  would be lost). If "Get the full data" fails or is canceled, the error offers "Save the video" (the recording
+  exists only in that tab) and asks before "Try another video" or closing the tab.
 - **Remote screen** (`live/remote.js`, `live/room.js`, server `jumplab/rooms.py`; the Measure live card's
   "Remote screen" button): a laptop or second phone shows the distances (big, said out loud) and runs the
   phone on the tripod: Set the scale (the phone sends a full frame, the tape is marked on the remote),

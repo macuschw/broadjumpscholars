@@ -359,8 +359,10 @@ async function startUpload(file, { scale = null, fps: liveFps = null, jumps: liv
     found = readResults(await job.promise);
   } catch (e) {
     steps.fail();
-    if (e.canceled) { show("start"); return; }
-    return fail(e.message);
+    if (e.canceled && !scale) { show("start"); return; }
+    // a live session's recording exists only here: offer to save it rather than lose it
+    return fail(e.canceled ? "Canceled. This session's recording isn't saved anywhere yet: save the video to upload it later." : e.message,
+      scale ? file : null);
   } finally {
     job = null;
     $("analysis-cancel").hidden = true;
@@ -437,7 +439,7 @@ async function openRemote(code = null) {
   $("remote-title")?.focus();
 }
 // Closing the tab mid-upload loses the analysis (Measure live and the remote screen guard their own sessions)
-window.addEventListener("beforeunload", (e) => { if (job) { e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("beforeunload", (e) => { if (job || unsavedRecording) { e.preventDefault(); e.returnValue = ""; } });
 
 // ---------------------------------------------------------------- 1d. the tape check log (live/tapelog.js)
 function renderTapeLog() {
@@ -493,12 +495,27 @@ if ($("live-card")) {
   else if (code("camera") && camera) openLive({ room: code("camera") });
 }
 
-function fail(text) {
+let unsavedRecording = null;                                   // a live recording whose upload failed, until saved
+/** keep: a live session's recording (it exists only in this tab), offered for saving. */
+function fail(text, keep = null) {
   $("analysis-error-text").textContent = text;
   $("analysis-error").hidden = false;
   $("analysis-error").querySelector("[data-icon]").innerHTML = icon("info");
+  const save = $("analysis-save");
+  if (save.href) URL.revokeObjectURL(save.href);
+  save.hidden = !keep;
+  unsavedRecording = keep;
+  if (keep) Object.assign(save, { href: URL.createObjectURL(keep), download: keep.name });
+  else save.removeAttribute("href");
+  $("analysis-retry").classList.toggle("btn--primary", !keep);
+  $("analysis-retry").classList.toggle("btn--quiet", !!keep);
 }
-$("analysis-retry").addEventListener("click", () => { show("start"); $("file-input").value = ""; });
+$("analysis-save").addEventListener("click", () => { unsavedRecording = null; });
+$("analysis-retry").addEventListener("click", () => {
+  if (unsavedRecording && !confirm("Leave without saving this session's recording? It can't be measured again later.")) return;
+  unsavedRecording = null;
+  show("start"); $("file-input").value = "";
+});
 $("analysis-cancel").addEventListener("click", () => job?.abort());
 
 /** Click the tape once (the camera didn't move): the scale is applied to every jump in the video. */

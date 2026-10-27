@@ -12,13 +12,15 @@ const BONES = [[11, 12], [11, 23], [12, 24], [23, 24], [11, 13], [13, 15], [12, 
 // rear heel; one camera measures the near foot, so feet apart read long (our tape checks: 1.5-5 in).
 export const APART_M = 0.05;
 
-/** j.toeGapPx / heelGapPx (from live/detect.js) in meters -> { toe, heel } (cm) when the feet were apart. */
+/** j.toeGapPx / heelGapPx (from live/detect.js) -> { toe, heel } (cm, rounded) and which were apart, when either was. */
 export function feetApart(j, scale) {
   const toe = (j.toeGapPx ?? 0) * scale, heel = (j.heelGapPx ?? 0) * scale;
-  return toe > APART_M || heel > APART_M ? { toe: Math.round(toe * 100), heel: Math.round(heel * 100) } : null;
+  return toe > APART_M || heel > APART_M
+    ? { toe: Math.round(toe * 100), heel: Math.round(heel * 100), toeApart: toe > APART_M, heelApart: heel > APART_M } : null;
 }
-const apartWords = (a) => [a.toe * 0.01 > APART_M ? `the toes were ${formatQuantity("short", a.toe / 100)} apart at takeoff` : "",
-  a.heel * 0.01 > APART_M ? `the heels were ${formatQuantity("short", a.heel / 100)} apart at landing` : ""].filter(Boolean).join(" and ");
+// (judged before rounding: 5.3 cm is apart though it shows as "5 cm"; older messages have only toe and heel)
+const apartWords = (a) => [(a.toeApart ?? a.toe * 0.01 > APART_M) ? `the toes were ${formatQuantity("short", a.toe / 100)} apart at takeoff` : "",
+  (a.heelApart ?? a.heel * 0.01 > APART_M) ? `the heels were ${formatQuantity("short", a.heel / 100)} apart at landing` : ""].filter(Boolean).join(" and ") || "the feet were apart";
 
 /** The big result over the picture. j: { n, meters (as measured), unsure, apart, tape }. */
 export function resultHTML(j) {
@@ -79,14 +81,17 @@ export function parseTapeText(text) {
  * The jump list's tape checks: "Add the tape" opens the form in place, Save calls onTape(n, meters).
  * Returns busy(): true while a form is open (the list shouldn't be redrawn under someone typing).
  */
-export function tapeEntry(list, onTape) {
+export function tapeEntry(list, onTape, onCancel = () => {}) {
   list.addEventListener("click", (e) => {
     const add = e.target.closest(".live__jump-add");
     if (add) {
       add.outerHTML = tapeFormHTML(add.dataset.n);
       list.querySelector(`.live__tapeform[data-n="${add.dataset.n}"] input`)?.focus();
     }
-    if (e.target.closest(".live__tape-cancel")) e.target.closest(".live__tapeform").outerHTML = `<button type="button" class="live__jump-add" data-n="${e.target.closest(".live__tapeform").dataset.n}">Add the tape</button>`;
+    if (e.target.closest(".live__tape-cancel")) {
+      e.target.closest(".live__tapeform").outerHTML = `<button type="button" class="live__jump-add" data-n="${e.target.closest(".live__tapeform").dataset.n}">Add the tape</button>`;
+      onCancel();                                              // jumps that landed while it was open can show now
+    }
   });
   list.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -166,8 +171,8 @@ export const jumpWords = (j) =>
 
 /** Each distance said out loud (the button turns it on and off, remembered on this device). */
 export function createVoice(button) {
-  let on = true;
-  try { on = localStorage.getItem("jl-live-speak") !== "off"; } catch { /* storage blocked: on */ }
+  const setting = () => { try { return localStorage.getItem("jl-live-speak") !== "off"; } catch { return true; } };   // (storage blocked: on)
+  let on = setting();
   const render = () => {
     button.setAttribute("aria-pressed", String(on));
     button.textContent = on ? "Saying each distance out loud" : "Say each distance out loud";
@@ -187,6 +192,8 @@ export function createVoice(button) {
     say,
     /** Quiet on this device for now (another screen does the talking), without changing the setting. */
     mute() { on = false; render(); },
+    /** Back to this device's own setting (the other screen is gone). */
+    unmute() { on = setting(); render(); },
     stop() { if ("speechSynthesis" in window) speechSynthesis.cancel(); },
   };
 }

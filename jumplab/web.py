@@ -315,6 +315,21 @@ def handle(kind, video_path=None, payload=None, options=None):
         return 422, {"error": visitor_message(e, about_video=kind == "analyze")}
 
 
+# Why no jump was found, for the visitor: the analysis's own reasons are worded for us ("the
+# clip/window", "check the tracking"), so each becomes what to change when filming.
+NO_JUMP_HINTS = (
+    ("start of the clip", "The video seems to start mid-jump: start filming before the jumper crouches."),
+    ("end of the clip", "The video seems to end before the landing, or the phone isn't level: keep filming "
+                        "until the jumper has landed, with the phone level."),
+)
+NO_JUMP_HINT = ("Check that the whole jump is in the picture, side-on, from the standing start to the landing, "
+                "with nobody else in front of the camera.")
+
+
+def no_jump_hint(reason):
+    return next((hint for key, hint in NO_JUMP_HINTS if key in reason), NO_JUMP_HINT)
+
+
 def visitor_message(e, about_video=True):
     """A problem the visitor can fix, in plain words. Our own checks ("... must be ...") are worded
     for the visitor; anything else from reading a video (which can mention server paths) becomes
@@ -322,7 +337,7 @@ def visitor_message(e, about_video=True):
     from .events import NoJumpFound
 
     if isinstance(e, NoJumpFound):
-        return f"No complete jump was found in this video. {e}"
+        return f"No complete jump was found in this video. {no_jump_hint(str(e))}"
     if "must be" in str(e) or (not about_video and not isinstance(e, TypeError)):
         return str(e)
     return "This video couldn't be read. Try the original MP4 or MOV straight from the phone."
