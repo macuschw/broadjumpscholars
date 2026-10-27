@@ -449,11 +449,12 @@ function renderTapeLog() {
   renderTapeCheck($("tape-check-summary"));
   const d = (m) => (m > 0 ? formatQuantity("distance", m) : "–");
   const diff = (a, b) => (a > 0 && b > 0 ? `${a >= b ? "+" : "−"}${formatQuantity("short", Math.abs(a - b))}` : "–");
+  // Jump and the differences first: on a phone the table scrolls sideways, and these are what matter
   $("tape-check-rows").innerHTML = list.slice(0, 30).map((e) => `<tr>
-      <td>${esc(new Date(e.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</td>
       <td>${e.n}</td><td>${d(e.live_m)}</td><td>${d(e.tape_m)}</td><td>${diff(e.live_m, e.tape_m)}</td>
       <td>${d(e.full_m)}</td><td>${diff(e.full_m, e.tape_m)}</td>
-      <td>${(e.toe_gap_cm > 5 || e.heel_gap_cm > 5) ? "apart" : (e.toe_gap_cm != null ? "together" : "–")}${e.unsure ? ", unsure" : ""}</td></tr>`).join("");
+      <td>${(e.toe_gap_cm > 5 || e.heel_gap_cm > 5) ? "apart" : (e.toe_gap_cm != null ? "together" : "–")}${e.unsure ? ", unsure" : ""}</td>
+      <td>${esc(new Date(e.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</td></tr>`).join("");
   $("tape-check-more").hidden = list.length <= 30;
   $("tape-check-more").textContent = `Showing the latest 30 of ${list.length}; the download has them all.`;
 }

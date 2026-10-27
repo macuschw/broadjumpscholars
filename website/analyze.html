@@ -54,7 +54,7 @@
         <p class="dropzone__privacy" id="drop-privacy"></p>
         <p class="field-error" id="file-error" role="alert" hidden></p>
       </div>
-      <aside class="film-check is-dark" aria-labelledby="film-check-title">
+      <section class="film-check is-dark" aria-labelledby="film-check-title">
         <p class="eyebrow">Before you upload</p>
         <h2 id="film-check-title">A video that measures well</h2>
         <ul class="film-check__list" role="list">
@@ -65,7 +65,7 @@
           <li><span data-icon="check"></span>Nobody else in the frame</li>
         </ul>
         <a class="btn btn--ghost btn--sm" href="setup.html">Full setup guide</a>
-      </aside>
+      </section>
 
       <!-- Measure live: the phone's camera, the distance the moment the jumper lands (live/live.js) -->
       <div class="live-card" id="live-card" hidden>
@@ -99,10 +99,10 @@
           </div>
         </div>
         <p class="live__tapecheck" id="tape-check-summary"></p>
-        <div class="tape-check__scroll">
+        <div class="tape-check__scroll" tabindex="0" role="region" aria-label="Tape checks (scrolls sideways)">
           <table class="tape-check__table">
-            <thead><tr><th scope="col">When</th><th scope="col">Jump</th><th scope="col">Live</th><th scope="col">Tape</th>
-              <th scope="col">Live − tape</th><th scope="col">Full analysis</th><th scope="col">Full − tape</th><th scope="col">Feet</th></tr></thead>
+            <thead><tr><th scope="col">Jump</th><th scope="col">Live</th><th scope="col">Tape</th><th scope="col">Live − tape</th>
+              <th scope="col">Full analysis</th><th scope="col">Full − tape</th><th scope="col">Feet</th><th scope="col">When</th></tr></thead>
             <tbody id="tape-check-rows"></tbody>
           </table>
         </div>

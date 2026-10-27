@@ -44,10 +44,10 @@ export const DASHBOARD_HTML = `
       <div class="tabpanel" role="tabpanel" id="panel-playback" aria-labelledby="tab-playback" tabindex="0">
         <div class="playback-layout">
           <div><div id="playback"></div><div id="playback-real" hidden></div></div>
-          <aside class="pb-readouts" aria-label="Values at the current frame">
+          <div class="pb-readouts" role="group" aria-label="Values at the current frame">
             <h3>At this frame</h3>
             <div class="scoreboard" id="pb-readouts"></div>
-          </aside>
+          </div>
         </div>
       </div>
       <div class="tabpanel" role="tabpanel" id="panel-charts" aria-labelledby="tab-charts" tabindex="0" hidden>

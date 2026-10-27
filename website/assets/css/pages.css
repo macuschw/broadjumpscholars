@@ -529,18 +529,17 @@
   .mx-label { font-size: 25px; stroke-width: 7px; }
   .mx-label--key { font-size: 31px; }
   /* 3D figure: the view buttons get their own strip above the scene, so they never cover the athlete */
-  .mx3d { aspect-ratio: auto; height: calc((100vw - 2 * var(--gutter)) * 0.82 + 48px); }
-  .mx3d__canvas, .mx3d__layers { inset: 48px 0 0 0; height: calc(100% - 48px); }   /* a canvas won't stretch between top and bottom by itself */
+  .mx3d { aspect-ratio: auto; height: calc((100vw - 2 * var(--gutter)) * 0.82 + 60px); }
+  .mx3d__canvas, .mx3d__layers { inset: 60px 0 0 0; height: calc(100% - 60px); }   /* a canvas won't stretch between top and bottom by itself */
   .metrics__figure.is-3d .jump-stage__views { top: 4px; right: 4px; }
-  .metrics__figure.is-3d .jump-stage__view { min-height: 38px; }
   .metrics__figure.is-3d .jump-stage__rotate { left: 4px; right: auto; top: 4px; }
   .mx3d__hint { font-size: 0.85rem; padding: 8px 12px 10px; }
   .mx3d__hint-more { display: none; }
   .mx3d-tag { padding: 5px 8px 6px; gap: 3px; }
   .mx3d-tag__value { font-size: 1.12rem; }
   .mx3d-tag--key .mx3d-tag__value { font-size: 1.32rem; }
-  .mx3d-tag__name { font-size: 0.62rem; }
-  .mx3d-timeline { left: 4%; right: 4%; bottom: 10px; font-size: 0.64rem; letter-spacing: 0.05em; }
+  .mx3d-tag__name { font-size: 0.7rem; }
+  .mx3d-timeline { left: 4%; right: 4%; bottom: 10px; font-size: 0.7rem; letter-spacing: 0.05em; }
   .mx3d-timeline b { font-size: 1rem; }
   /* Same for the setup diagram (labels ~11 px instead of 7) */
   .sd-label { font-size: 23px; }

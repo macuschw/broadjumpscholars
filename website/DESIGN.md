@@ -23,6 +23,13 @@ as the foundation for layout, typography, accessibility and chart rules.
   status shown only if loading takes over half a second, playback that pauses off-screen or in a
   hidden tab, menus that close faster than they open, 50 ms list stagger, and three.js cleanup
   plus a fallback to the flat view if the graphics context is lost.
+- **Second audit (Oct 26, 2026):** axe-core (WCAG 2.2 AA + best practice) on every page and on the live, remote,
+  calibration and tape-check screens at 375 and 1280 px, with the Impeccable and Emil Kowalski checklists for
+  design. Now 0 violations. Fixes: the tape-check table scrolls by keyboard and puts Live − tape before the
+  rest on phones; the two boxes that were `<aside>` inside `<main>` are a section and a group; 44 px tap areas
+  for Add the tape, the tape box, the correction checkbox, My jumps' buttons and names, the demo's "Analyze your
+  own jump" and the Metrics 3D/Side buttons on phones (small-looking controls get an invisible larger hit area
+  rather than growing); no text under 11 px (setup-guide diagram, Metrics callouts on phones).
 - **Overridden:** the skill's suggested palette (bright red on pink) and "vibrant/playful"
   style conflicted with the brief (charcoal/off-white base, one restrained accent, no
   pastels). The brief wins; no palette in the skill database matched, so colors below

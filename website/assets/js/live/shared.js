@@ -125,7 +125,7 @@ export function setupHTML() {
   return `<details class="live__setup">
     <summary>How to set up for distances that match the tape</summary>
     <div class="live__setup-body">
-      <svg class="live__setup-map" viewBox="0 0 320 150" role="img" aria-label="Seen from above: the camera side-on to the jump, the tape along the camera side of the feet">
+      <svg class="live__setup-map" viewBox="0 0 320 176" role="img" aria-label="Seen from above: the camera side-on to the jump, the tape along the camera side of the feet">
         <rect x="20" y="20" width="280" height="56" rx="4" class="map-lane"/>
         <line x1="60" y1="20" x2="60" y2="76" class="map-line"/>
         <text x="60" y="14" text-anchor="middle" class="map-text">takeoff line</text>
@@ -133,10 +133,11 @@ export function setupHTML() {
         <rect x="214" y="40" width="14" height="7" rx="3" class="map-foot"/><rect x="214" y="52" width="14" height="7" rx="3" class="map-foot"/>
         <path d="M64 50 C120 26 170 26 208 50" class="map-arc"/>
         <line x1="40" y1="66" x2="290" y2="66" class="map-tape"/>
-        <text x="290" y="88" text-anchor="end" class="map-text">tape, on the camera side of the feet</text>
-        <rect x="146" y="118" width="28" height="18" rx="3" class="map-cam"/>
-        <line x1="160" y1="116" x2="160" y2="80" class="map-sight"/>
-        <text x="182" y="132" class="map-text">camera, square to the tape, 4–5 m back</text>
+        <text x="300" y="94" text-anchor="end" class="map-text">tape, on the camera side of the feet</text>
+        <rect x="146" y="112" width="28" height="18" rx="3" class="map-cam"/>
+        <line x1="160" y1="110" x2="160" y2="100" class="map-sight"/>
+        <text x="160" y="148" text-anchor="middle" class="map-text">camera, square to the tape,</text>
+        <text x="160" y="166" text-anchor="middle" class="map-text">4–5 m back</text>
       </svg>
       <ul>
         <li><strong>Tape on the floor along the camera side of the feet</strong>, straight down the jump. The scale comes

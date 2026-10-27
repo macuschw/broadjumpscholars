@@ -90,17 +90,19 @@
 .live__jump-note { color: var(--accent); font-size: 0.85rem; font-weight: 600; }
 /* Tape check (live/tapelog.js), feet apart, tracking speed and the setup guide (live/shared.js) */
 .live__result-note--warn { color: var(--paper); font-weight: 600; }
-.live__jump-add { padding: 2px 8px; border: 1.5px dashed var(--line-strong); border-radius: var(--radius); background: none; color: var(--text); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.live__jump-add { position: relative; padding: 2px 8px; border: 1.5px dashed var(--line-strong); border-radius: var(--radius); background: none; color: var(--text); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.live__jump-add::after { content: ""; position: absolute; inset: -9px -4px; }   /* a 44 px tall tap area */
 .live__jump-add:hover { border-color: var(--text); }
 .live__jump-tape { color: var(--muted); font-size: 0.85rem; }
-.live__tapeform { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-2); }
+.live__jump:has(.live__tapeform) { flex-wrap: wrap; }
+.live__tapeform { display: flex; flex: 1 0 100%; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-2); }
 .live__tapeform label { display: inline-flex; align-items: center; gap: 4px; font-size: 0.9rem; }
-.live__tapeform input { width: 4.5em; min-height: 36px; padding: 0 6px; border: 1.5px solid var(--text); border-radius: var(--radius); background: var(--white); color: var(--text); font: inherit; }
+.live__tapeform input { width: 4.5em; min-height: 44px; padding: 0 6px; border: 1.5px solid var(--text); border-radius: var(--radius); background: var(--white); color: var(--text); font: inherit; }
 .live__rate { margin-top: var(--s-1); color: var(--muted); font-size: 0.9rem; max-width: none; }
 .live__rate--slow { color: var(--accent); font-weight: 600; }
 .live__tapecheck { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-4); margin-top: var(--s-3); max-width: none; }
-.live__fix { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
-.live__fix input { width: 18px; height: 18px; accent-color: var(--accent); }
+.live__fix { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; cursor: pointer; }
+.live__fix input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
 .live__setup { margin-top: var(--s-3); max-width: 70ch; }
 .live__setup summary { cursor: pointer; font-weight: 600; color: var(--accent); }
 .live__setup-body { display: flex; flex-wrap: wrap; gap: var(--s-3) var(--s-5); align-items: flex-start; margin-top: var(--s-2); }
@@ -113,7 +115,7 @@
 .live__setup-map .map-tape { stroke: var(--accent); stroke-width: 3; }
 .live__setup-map .map-cam { fill: var(--text); }
 .live__setup-map .map-sight { stroke: var(--line-strong); stroke-width: 1.5; stroke-dasharray: 3 3; }
-.live__setup-map .map-text { font: 600 10px var(--font-body); fill: var(--muted); }
+.live__setup-map .map-text { font: 600 13px var(--font-body); fill: var(--muted); }
 .cal__head .live__setup { margin-top: var(--s-2); }
 .tape-check__scroll { overflow-x: auto; margin-top: var(--s-3); border: 1.5px solid var(--text); border-radius: var(--radius); background: var(--white); }
 .tape-check__table { width: 100%; border-collapse: collapse; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
@@ -136,12 +138,13 @@
 table.data.my-jumps__table td, table.data.my-jumps__table th { vertical-align: middle; }
 .my-jumps .table-wrap { position: relative; }   /* keeps the hidden header labels inside the scroll box */
 .my-jumps__pick { width: 1%; }
-.my-jumps__pick input { width: 20px; height: 20px; accent-color: var(--accent); cursor: pointer; }
+.my-jumps__pick input { width: 24px; height: 24px; accent-color: var(--accent); cursor: pointer; }
 table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap: break-word; }
 .my-jumps__open {
-  padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--text); text-align: left;
+  position: relative; padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: var(--text); text-align: left;
   text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); cursor: pointer;
 }
+.my-jumps__open::after { content: ""; position: absolute; inset: -10px -4px; }   /* a 44 px tall tap area */
 .my-jumps__open:hover { color: var(--accent); text-decoration-color: currentColor; }
 .my-jumps__date, .my-jumps__rough { color: var(--muted); }
 .my-jumps__rough { display: block; font-size: 0.85rem; }
@@ -151,7 +154,7 @@ table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap
 .my-jumps__check--caution, .my-jumps__check--ok { color: var(--muted); }
 .my-jumps__row-actions { text-align: right; }
 .my-jumps__row-actions .btn + .btn { margin-left: var(--s-1); }
-.my-jumps__delete, .my-jumps__rename { min-height: 36px; padding: 0 10px; font-size: 0.92rem; }
+.my-jumps__delete, .my-jumps__rename { min-height: 44px; padding: 0 10px; font-size: 0.92rem; }
 .my-jumps__delete .icon, .my-jumps__rename .icon { display: none; width: 18px; height: 18px; }
 .my-jumps__edit { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .my-jumps__edit input { flex: 1 1 14ch; min-width: 0; min-height: 40px; padding: 0 var(--s-2); font: inherit; border: 1.5px solid var(--line-strong); border-radius: var(--radius); background: var(--white); }
@@ -163,7 +166,7 @@ table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap
 @media (max-width: 640px) {
   .my-jumps__date-col, .my-jumps__check-col { display: none; }   /* phones: date and checks move under the name */
   table.data.my-jumps__table td, table.data.my-jumps__table th { padding-inline: var(--s-2); }
-  .my-jumps__delete, .my-jumps__rename { min-width: 40px; padding: 0 8px; }
+  .my-jumps__delete, .my-jumps__rename { min-width: 44px; padding: 0 8px; }
   .my-jumps__delete .icon, .my-jumps__rename .icon { display: block; }
   .my-jumps__delete span, .my-jumps__rename span { display: none; }
   .my-jumps__row-actions .btn { display: flex; }               /* phones: the two buttons stack */
@@ -173,7 +176,7 @@ table.data .my-jumps__name { white-space: normal; min-width: 10ch; overflow-wrap
 
 /* Demo page: what the sample is, and the way to your own jump */
 .demo-head__lede { margin-top: var(--s-2); color: var(--muted); max-width: 52ch; }
-.demo-head__cta { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+.demo-head__cta { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font-weight: 600; color: var(--accent); white-space: nowrap; }
 .demo-head__cta .icon { width: 18px; height: 18px; transition: transform var(--dur-fast) var(--ease); }
 .demo-head__cta:hover .icon { transform: translateX(3px); }
 

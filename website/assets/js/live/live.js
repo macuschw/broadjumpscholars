@@ -86,6 +86,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   let running = false, busy = false, lastSeen = 0, wake = null, frames = 0, closed = false, mediaBase = null, lastTs = 0;
   let stage = "starting", air = false, lastPts = null, link = null, file = null, kept = false, rate = 0;
   const tracked = [];                                          // when each recent frame was tracked: the tracking rate
+  let trackingSince = 0;
   const session = Date.now();                                  // tells the remote screen a new session began
   const jumps = [];
   // Every tracked frame while measuring, for "Save tracking data": [seconds, 33 x [x, y, visibility] | null]
@@ -128,6 +129,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     }
     if (closed) return;
     running = true;
+    trackingSince = performance.now();
     loop();
     try { wake = await navigator.wakeLock?.request("screen"); } catch { /* the screen may dim; fine */ }
     setStage("ready");
@@ -254,10 +256,12 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   const rateTimer = setInterval(() => {
     const now = performance.now();
     while (tracked.length && now - tracked[0] > 2000) tracked.shift();
-    if (!running) return;
-    rate = Math.round(tracked.length / 2);
-    const el = q(".live__rate"), slow = rate < 12;
-    el.hidden = false;
+    const el = q(".live__rate"), span = Math.min(2000, now - trackingSince);   // the last 2 s, or since tracking began
+    // only while measuring (or about to), and not in the first second of tracking: too soon to tell
+    el.hidden = !running || (stage !== "ready" && stage !== "measuring") || span < 900;
+    if (el.hidden) return;
+    rate = Math.round(tracked.length / (span / 1000));
+    const slow = rate < 12;
     el.classList.toggle("live__rate--slow", slow);
     el.textContent = slow ? `Tracking only ${rate} frame${rate === 1 ? "" : "s"} a second: jumps may be missed or measured roughly. Close other apps, or try a newer phone.`
       : `Tracking ${rate} frames a second.`;
