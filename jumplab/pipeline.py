@@ -92,6 +92,22 @@ def _frame_rate(kp, fps_override):
     return kp, "header", []
 
 
+def _real_times(kp, fps):
+    """The frames' own timestamps (from 0, like kp.time) when they are usable: one per frame,
+    finite and increasing. Else None."""
+    if kp.frame_times is None or len(kp.frame_times) != kp.n_frames or kp.n_frames < 3:
+        return None
+    ft = np.asarray(kp.frame_times, dtype=float)
+    tracked = slice(kp.segment[0], kp.segment[1] + 1) if kp.segment else slice(None)
+    part = ft[tracked]
+    if not np.isfinite(part).all() or (np.diff(part) <= 0).any():
+        return None
+    t = np.arange(kp.n_frames) / fps                           # untracked frames keep frame / fps...
+    first = tracked.start or 0
+    t[tracked] = part - part[0] + first / fps                  # ...the tracked stretch its real spacing
+    return t
+
+
 def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
     """Full analysis of already-tracked keypoints. scale_m_per_px=None -> uncalibrated
     (pixel results, plus gravity/flight-time estimates that need no calibration).
@@ -102,13 +118,22 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
     kp, fps_source, warnings = _frame_rate(kp, fps_override)
     fps, t = kp.fps, kp.time
     side = config.side or choose_side(kp)
-    warnings += checks.check_frame_timing(kp.frame_times, fps)
+    tracked = slice(kp.segment[0], kp.segment[1] + 1) if kp.segment else slice(None)   # see session.py
+    timing = checks.check_frame_timing(None if kp.frame_times is None else np.asarray(kp.frame_times)[tracked], fps)
+    real = _real_times(kp, fps) if timing else None
+    if real is not None:
+        # Uneven frame spacing (phone browsers record live video at a variable rate): every time,
+        # duration and the flight fit use the frames' own timestamps instead of frame / fps
+        t = real
+        timing = [checks.warning(
+            "variable_frame_rate", f"{timing[0]['message'].split(', so')[0]}, so the frames' own "
+            "timestamps were used for every time, speed and the flight fit.", checks.INFO, ("timing",))]
+    warnings += timing
     if fps < 100:
         warnings.append(checks.warning(
             "low_fps", f"This video is {fps:.0f} fps (under 100). Angles are fine, but event "
             f"times are only good to +/-{1000 / fps:.0f} ms; contact time needs 120-240 fps to "
             "be meaningful.", checks.CAUTION, ("timing",)))
-    tracked = slice(kp.segment[0], kp.segment[1] + 1) if kp.segment else slice(None)   # see session.py
     detected = float(kp.detected[tracked].mean())
 
     # Gap-filled ("raw") and smoothed positions, y flipped so UP is positive.
@@ -127,7 +152,7 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
     w = slice(lo, hi)
     ev = _detect(config.event_method, hip_y, fps, sm, w, config).shifted(lo)
     to, la, bo, on = ev.takeoff_i, ev.landing_i, ev.bottom_i, ev.onset_i
-    flight_time = (la - to) / fps
+    flight_time = float(t[la] - t[to])
     warnings += checks.check_jump_inside_window(to, la, lo, hi, fps)
     warnings += checks.check_flight_time(flight_time)
     warnings += checks.check_missing_frames(kp.detected, on, to, la, hi, fps)
@@ -152,7 +177,7 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
     other = [m for m in EVENT_METHODS if m != config.event_method][0]
     try:
         ev_other = _detect(other, hip_y, fps, sm, w, config).shifted(lo)
-        flight_time_other = (ev_other.landing_i - ev_other.takeoff_i) / fps
+        flight_time_other = float(t[ev_other.landing_i] - t[ev_other.takeoff_i])
     except events.NoJumpFound:
         flight_time_other = None
 
@@ -234,7 +259,7 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
         # Time origin = estimated takeoff instant. takeoff_i is the FIRST AIRBORNE frame, so
         # the real takeoff happened somewhere in the frame interval before it; halfway is
         # the unbiased estimate. vx, vy and the launch angle are the fitted values there.
-        t0 = t[to] - 0.5 / fps
+        t0 = t[to] - 0.5 * (t[to] - t[to - 1] if to > 0 else 1 / fps)
         tf = t[to:la] - t0
 
         def flight_path(name):
@@ -331,8 +356,8 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
         "timing": {
             "flight_time_s": flight_time,
             f"flight_time_{other}_method_s": flight_time_other,
-            "contact_time_s": (to - on) / fps,     # movement onset -> takeoff
-            "push_off_time_s": (to - bo) / fps,    # countermovement bottom -> takeoff
+            "contact_time_s": float(t[to] - t[on]),     # movement onset -> takeoff
+            "push_off_time_s": float(t[to] - t[bo]),    # countermovement bottom -> takeoff
             "frame_uncertainty_s": 1 / fps,
         },
         "angles_deg": {"countermovement_bottom": angles_at(bo), "takeoff": angles_at(to),
