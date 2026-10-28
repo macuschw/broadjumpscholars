@@ -21,6 +21,7 @@ const rows = [];
 for (const [name, v] of Object.entries(live)) {
   const found = [];
   const d = createDetector({ onJump: (j) => found.push(j), ...JSON.parse(opts) });
+  d.setGeometry({ width: v.width ?? 1920, height: v.height ?? 1080, metersPerPixel: M_PER_PX });   // (our test videos: 1080p)
   v.frames.forEach(([t, flat], i) => {
     if (i % Number(step)) return;
     const pts = flat ? Array.from({ length: 33 }, (_, k) => flat.slice(3 * k, 3 * k + 3)) : null;

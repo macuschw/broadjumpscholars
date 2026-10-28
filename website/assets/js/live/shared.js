@@ -11,12 +11,15 @@ const BONES = [[11, 12], [11, 23], [12, 24], [23, 24], [11, 13], [13, 15], [12, 
 // the full analysis's rule (jumplab/checks.py check_stagger). The tape runs from the front toe to the
 // rear heel; one camera measures the near foot, so feet apart read long (our tape checks: 1.5-5 in).
 export const APART_M = 0.05;
+export const PERSPECTIVE_SLACK = 0.3;     // (as jumplab/feet.py) share of the perspective shift that may be lens or stance
 
 /** j.toeGapPx / heelGapPx (from live/detect.js) -> { toe, heel } (cm, rounded) and which were apart, when either was. */
 export function feetApart(j, scale) {
   const toe = (j.toeGapPx ?? 0) * scale, heel = (j.heelGapPx ?? 0) * scale;
-  return toe > APART_M || heel > APART_M
-    ? { toe: Math.round(toe * 100), heel: Math.round(heel * 100), toeApart: toe > APART_M, heelApart: heel > APART_M } : null;
+  // Apart only beyond 5 cm plus the slack for perspective (live/detect.js has already removed the shift itself)
+  const toeApart = toe - PERSPECTIVE_SLACK * (j.toePerspPx ?? 0) * scale > APART_M;
+  const heelApart = heel - PERSPECTIVE_SLACK * (j.heelPerspPx ?? 0) * scale > APART_M;
+  return toeApart || heelApart ? { toe: Math.round(toe * 100), heel: Math.round(heel * 100), toeApart, heelApart } : null;
 }
 // (judged before rounding: 5.3 cm is apart though it shows as "5 cm"; older messages have only toe and heel)
 const apartWords = (a) => [(a.toeApart ?? a.toe * 0.01 > APART_M) ? `the toes were ${formatQuantity("short", a.toe / 100)} apart at takeoff` : "",

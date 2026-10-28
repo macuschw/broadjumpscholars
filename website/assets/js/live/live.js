@@ -288,6 +288,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     q(".live__scale").hidden = true;
     q(".live__stop").hidden = false;
     detector.reset();
+    detector.setGeometry({ width: camInfo.width, height: camInfo.height, metersPerPixel });   // feet-apart allows for perspective
     clock0 = performance.now();
     record();
     setStage("measuring");

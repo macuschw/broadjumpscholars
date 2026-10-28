@@ -42,6 +42,7 @@ for (const file of args) {
   if (!String(data.format || "").startsWith("jumplab-live-track/")) { console.error(`${file}: not a live tracking file`); continue; }
   const replayed = [];
   const det = createDetector({ onJump: (j) => replayed.push(j) });
+  det.setGeometry?.({ width: data.camera?.width, height: data.camera?.height, metersPerPixel: data.scale_m_per_px });
   for (const [t, pts] of data.frames) det.feed(t, pts);
   det.flush();
   const cam = data.camera || {};

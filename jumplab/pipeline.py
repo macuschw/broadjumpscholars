@@ -373,6 +373,7 @@ def _both_feet_summary(both, scale):
         if "hidden_foot_visibility" in d:
             out.update({"far_foot_visibility": round(d["hidden_foot_visibility"], 2),
                         f"{label}_gap_px": round(d["gap_px"], 1), f"{label}_gap_cm": to_cm(d["gap_px"]),
+                        "perspective_px": round(d.get("perspective_px", 0.0), 1),
                         "far_foot_wobble_px": round(d["wobble_px"], 1)})
         if not d["trusted"]:
             out["why_not_used"] = d.get("reason")
@@ -382,7 +383,7 @@ def _both_feet_summary(both, scale):
             "takeoff_toes": end(both["takeoff_toes"], "toe"),
             "difference_px": both["difference_px"],
             "difference_cm": to_cm(both["difference_px"]) if both["difference_px"] is not None else None,
-            "feet_gap_cm": to_cm(both["stagger_px"]) if both["stagger_px"] is not None else None}
+            "feet_gap_cm": to_cm(both["feet_gap_px"]) if both.get("feet_gap_px") is not None else None}
 
 
 def look_for_others(video_path, kp, results):

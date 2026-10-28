@@ -155,3 +155,36 @@ def test_real_benchmark_jump_has_no_stagger_warning():
     assert stagger_warnings(r) == []
     if r["distance"]["jump_distance_both_feet_m"] is not None:
         assert r["distance"]["jump_distance_both_feet_m"] == pytest.approx(r["distance"]["jump_distance_m"], abs=0.05)
+
+
+class OffCenter(Truth):
+    x_start = -2.0              # the takeoff ~750 px left of the middle of the picture, as on our live videos
+
+
+def test_feet_side_by_side_far_from_the_middle_are_not_called_staggered():
+    # Through a lens the far foot shows up shifted toward the middle of the picture (feet.perspective_shift):
+    # ~11 cm here, which used to read as staggered feet on every jump of a real live session
+    kp = jumper_keypoints(truth=OffCenter(), far_visibility=0.7)
+    r = analyze_keypoints(kp, T.scale, CFG)
+    toes = r["both_feet"]["takeoff_toes"]
+    assert toes["perspective_px"] * T.scale > 0.08            # a big shift was there, and removed
+    assert toes["toe_gap_cm"] < 1
+    assert stagger_warnings(r) == []
+
+
+def test_real_stagger_far_from_the_middle_is_still_flagged():
+    kp = jumper_keypoints(truth=OffCenter(), far_visibility=0.7, far_toe_offset_m=0.12)
+    r = analyze_keypoints(kp, T.scale, CFG)
+    assert r["both_feet"]["takeoff_toes"]["toe_gap_cm"] == pytest.approx(12, abs=1)
+    (w,) = stagger_warnings(r)
+    assert "toe" in w["message"]
+
+
+def test_without_the_correction_the_lens_shift_looked_like_stagger():
+    # The same side-by-side feet, if perspective were ignored: what the old check saw
+    from jumplab import feet
+    kp = jumper_keypoints(truth=OffCenter(), far_visibility=0.7)
+    planted = slice(int(0.9 * T.fps), int(T.t_takeoff * T.fps))
+    raw = feet.compare(kp, "FOOT_INDEX", planted, 1, rear=False, wobble_px=10)              # no px_per_m: no correction
+    fixed = feet.compare(kp, "FOOT_INDEX", planted, 1, rear=False, wobble_px=10, px_per_m=1 / T.scale)
+    assert raw["gap_px"] * T.scale > 0.08 and fixed["gap_px"] * T.scale < 0.01

@@ -2,6 +2,7 @@
 import numpy as np
 
 from jumplab.center_of_mass import whole_body_com
+from jumplab.feet import perspective_shift
 from jumplab.physics import G
 from jumplab.pose_tracking import LANDMARKS, N_LANDMARKS, Keypoints
 
@@ -37,7 +38,7 @@ class Truth:
 
 def jumper_keypoints(direction=1, noise_px=0.0, seed=0, duration=2.2, truth=None,
                      arm_swing_deg=0.0, heel_lift_deg=0.0, heel_lift_s=0.12,
-                     far_visibility=0.5, far_heel_offset_m=0.0, far_toe_offset_m=0.0):
+                     far_visibility=0.5, far_heel_offset_m=0.0, far_toe_offset_m=0.0, perspective=True):
     """A stick-figure broad jump: stand, countermovement, takeoff, symmetric flight, land.
     direction=+1 jumps toward the right of the image, -1 toward the left.
     arm_swing_deg > 0: the arms swing forward/up and back during flight. The body is then
@@ -49,7 +50,8 @@ def jumper_keypoints(direction=1, noise_px=0.0, seed=0, duration=2.2, truth=None
     The LEFT side faces the camera (visibility 0.9); the RIGHT side is the far side
     (visibility far_visibility). far_heel_offset_m moves the far foot forward (+) or back (-)
     after landing; far_toe_offset_m does the same while it is planted before takeoff -
-    i.e. staggered feet."""
+    i.e. staggered feet. perspective: the far foot shows up shifted toward the middle of the
+    picture, as through a real lens (feet.perspective_shift); False puts it right behind the near one."""
     T = truth or Truth()
     t = np.arange(int(duration * T.fps)) / T.fps
     n = len(t)
@@ -118,6 +120,9 @@ def jumper_keypoints(direction=1, noise_px=0.0, seed=0, duration=2.2, truth=None
             if side == "RIGHT" and name in ("HEEL", "ANKLE", "FOOT_INDEX"):
                 x_m = x_m + np.where(landed, far_heel_offset_m, 0.0) + np.where(planted, far_toe_offset_m, 0.0)
             x_px = T.width / 2 + direction * (x_m - 1.0) / T.scale
+            if perspective and side == "RIGHT" and name in ("HEEL", "ANKLE", "FOOT_INDEX"):
+                near_px = T.width / 2 + direction * (parts[name][0] - 1.0) / T.scale
+                x_px = x_px + perspective_shift(near_px, T.width, T.height, 1 / T.scale)
             y_img = T.height - 100 - y_m / T.scale
             i = LANDMARKS[side][name]
             xyv[:, i, 0] = x_px + rng.normal(0, noise_px, n) if noise_px else x_px

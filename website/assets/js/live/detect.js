@@ -49,6 +49,11 @@ const HAND_FLOOR = 0.04, HAND_DOWN_S = 0.25, HAND_STILL = 0.10;   // a hand at t
 const KNEE_FLOOR = 0.07, SEAT_FLOOR = 0.09, DOWN_S = 0.15;   // a knee or the seat at the floor: fell (the deepest
                                      //   valid landing squats: knees 0.17, hips 0.14 above it)
 const SEEN = 0.5;                    // tracked in under half the frames after landing: unsure
+// Perspective (as jumplab/feet.py): the far foot is about a stance width further from the camera, so it
+// shows up shifted toward the middle of the picture; away from the middle that looks like feet apart
+// (our live session of Oct 27: toes "12-17 cm apart" while standing side by side, 650 px off center).
+// With setGeometry() the far foot is moved back by that shift before the gaps are measured.
+export const DEPTH_M = 0.25, FOCAL_FRAC = 0.73;   // stance width (m); focal length / the picture's long side
 // Replayed on our 20 test jumps (tests/data/live_frames.json; 3 failed on purpose: stumbled forward,
 // stepped back, hands on the ground) at 30, 15 and 10 frames a second: each foul caught, no valid jump
 // called one. Our valid landings: steps up to 0.16 ahead and 0.08 back, a hand down 0.03 s at most.
@@ -99,9 +104,23 @@ function landingFoul(g, t, m) {
   return null;
 }
 
+/** Where the far foot shows up relative to the near one, feet side by side (px, signed, image x). */
+export function perspectiveShift(xNear, geo) {
+  if (!geo?.width || !(geo.metersPerPixel > 0)) return 0;
+  return -(xNear - geo.width / 2) * DEPTH_M / geo.metersPerPixel / (FOCAL_FRAC * Math.max(geo.width, geo.height || 0));
+}
+
 export function createDetector({ onJump = () => {}, onLanded = () => {}, onState = () => {}, ...options } = {}) {
   const O = { ...OPTIONS, ...options };
-  let hist = [], state = "ground", up = 0, jump = null, count = 0, judging = null;
+  let hist = [], state = "ground", up = 0, jump = null, count = 0, judging = null, geo = null;
+  /** The far foot's gap to the near one along the jump, perspective removed (px), and that shift's size. */
+  const gapOf = (frames, side, key) => {
+    const other = side === "left" ? "right" : "left";
+    return {
+      gap: median(frames.map((h) => Math.abs(h[other][key] - perspectiveShift(h[side][key], geo) - h[side][key]))),
+      persp: median(frames.map((h) => Math.abs(perspectiveShift(h[side][key], geo)))) || 0,
+    };
+  };
 
   function reset() { hist = []; state = "ground"; up = 0; jump = null; judging = null; onState(state); }
 
@@ -168,7 +187,7 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
         .reduce((a, h) => (h.hipY > a.hipY ? h : a), { hipY: -Infinity, t: tTakeoff });   // image y is down
       const planted = standing.filter((h) => h.t >= Math.min(dip.t, tTakeoff - O.TOE_MIN_S) && h.t < tTakeoff);
       jump = { tTakeoff, side, toeX: median(planted.map((h) => h[side].toeX)), hipX: median(planted.map((h) => h.hipX)), tall,
-        toeGapPx: median(planted.map((h) => Math.abs(h.left.toeX - h.right.toeX))),
+        toe: gapOf(planted, side, "toeX"),
         crouched: hist.some((h) => h.t >= tTakeoff - CROUCH_S && h.t <= tTakeoff && h.tall < CROUCH * tall),
         hipY: median(planted.map((h) => h.hipY)), top: m.hipY,
         switched: hist.some((h) => h.switched && h.t >= tTakeoff - 1) };
@@ -201,7 +220,8 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
       if (jump.crouched && (rise >= MIN_RISE || jump.switched) && travel >= MIN_TRAVEL && distancePx > 0) {
         const j = { n: ++count, distancePx, tTakeoff: jump.tTakeoff, tLanding: jump.tLanding, flight: jump.tLanding - jump.tTakeoff,
           side: jump.side, toeX: jump.toeX, heelX, direction: dir > 0 ? "right" : "left", tall: jump.tall,
-          toeGapPx: jump.toeGapPx, heelGapPx: median(jump.down.map((h) => Math.abs(h.left.heelX - h.right.heelX))),
+          ...(() => { const heel = gapOf(jump.down, jump.side, "heelX");
+            return { toeGapPx: jump.toe.gap, toePerspPx: jump.toe.persp, heelGapPx: heel.gap, heelPerspPx: heel.persp }; })(),
           // unsure: the tracker jumped between people around this jump, so the number may be someone else's
           unsure: jump.switched ? "switched" : null };
         judging = { j, dir, tall: jump.tall, settle: [], hand: [], downSince: null, land: null, seen: 0, total: jump.missed };
@@ -211,5 +231,7 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
       jump = null;
     }
   }
-  return { feed, reset, flush };
+  /** The picture's size and the scale, once known: lets the gaps allow for perspective. */
+  function setGeometry(g) { geo = g && g.width && g.metersPerPixel > 0 ? { ...g } : null; }
+  return { feed, reset, flush, setGeometry };
 }

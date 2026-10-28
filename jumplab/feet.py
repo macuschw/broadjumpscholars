@@ -24,6 +24,16 @@ Stagger itself is detected from the GAP between the two feet (how far apart they
 the jump), which needs no trust in the far foot's exact position: in the tape check of
 October 2026 every staggered jump showed a gap of 7 cm or more, and the feet-together jump
 at most 3.3 cm.
+
+Perspective: the far foot is ~a stance width (DEPTH_M) further from the camera, so it shows up
+shifted toward the middle of the picture by (x - cx) * DEPTH_M / Z, Z = the camera's distance =
+focal length (px) * scale (m/px). Away from the middle of the frame that looks exactly like
+staggered feet: our live session of Oct 27 (takeoff 650 px right of center, feet side by side)
+read 12-17 cm "apart" at the toes while standing, and every left-right pair of the body (heels,
+ankles, knees, hips, shoulders) was shifted the same way, toward the center. So the far foot's
+position is corrected for that shift before comparing, and since the stance width and the lens
+are only typical values, gaps within PERSPECTIVE_SLACK of the shift are not called staggered.
+The focal length: a phone's main camera sees ~69 degrees across the long side of the picture.
 """
 from __future__ import annotations
 
@@ -34,23 +44,41 @@ MIN_VISIBILITY_GAP = 0.1          # needed to tell the near foot from the far on
 MAX_WOBBLE_M = 0.02
 STAGGER_WARN_M = 0.05
 TRUNK_M = 0.5                     # typical trunk length, for uncalibrated thresholds
+DEPTH_M = 0.25                    # how much further the far foot is from the camera (feet side by side)
+FOCAL_FRAC = 0.73                 # focal length / the picture's long side (~69 degrees, a phone's main camera)
+PERSPECTIVE_SLACK = 0.3           # share of the perspective shift that may be stance width or lens, not stagger
 
 
-def compare(kp, part, frames, direction, rear, wobble_px):
+def perspective_shift(x_near, width, height, px_per_m):
+    """Where the far foot shows up relative to the near one when the feet are side by side (px,
+    signed, along the image x axis): toward the middle of the picture, more so further from it."""
+    if not width or not px_per_m:
+        return np.zeros_like(np.asarray(x_near, dtype=float))
+    focal = FOCAL_FRAC * max(width, height or 0)
+    return -(np.asarray(x_near, dtype=float) - width / 2) * DEPTH_M * px_per_m / focal
+
+
+def compare(kp, part, frames, direction, rear, wobble_px, px_per_m=None):
     """Compare both feet's `part` ("HEEL" or "FOOT_INDEX") over `frames` (a slice).
     rear=True: find the rearmost one (landing heels); False: front-most (takeoff toes).
-    Positions are 'forward' pixels: direction * x, so bigger = further along the jump."""
+    Positions are 'forward' pixels: direction * x, so bigger = further along the jump. The far
+    (less visible) foot is first moved back by the perspective shift (perspective_shift)."""
     xl, _, vl = kp.part("LEFT", part)
     xr, _, vr = kp.part("RIGHT", part)
-    f = direction * np.stack([xl[frames], xr[frames]], axis=1)
+    x = np.stack([xl[frames], xr[frames]], axis=1)
     v = np.stack([vl[frames], vr[frames]], axis=1)
-    ok = ~np.isnan(f).any(axis=1)
-    f, v = f[ok], v[ok]
-    if len(f) < 3:
-        return {"trusted": False, "reason": "too few tracked frames", "frames": int(len(f))}
-    rows = np.arange(len(f))
-    hidden = f[rows, np.argmin(v, axis=1)]                  # the less visible foot, per frame
-    seen = f[rows, np.argmax(v, axis=1)]                    # the camera-side foot, per frame
+    ok = ~np.isnan(x).any(axis=1)
+    x, v = x[ok], v[ok]
+    if len(x) < 3:
+        return {"trusted": False, "reason": "too few tracked frames", "frames": int(len(x))}
+    rows = np.arange(len(x))
+    near_i, far_i = np.argmax(v, axis=1), np.argmin(v, axis=1)
+    shift = perspective_shift(x[rows, near_i], kp.width, kp.height, px_per_m)
+    x = x.copy()
+    x[rows, far_i] -= shift                                 # where the far foot is, not where it shows up
+    f = direction * x
+    hidden = f[rows, far_i]                                 # the less visible foot, per frame
+    seen = f[rows, near_i]                                  # the camera-side foot, per frame
     hidden_vis = float(np.median(np.min(v, axis=1)))
     wobble = float(1.4826 * np.median(np.abs(hidden - np.median(hidden))))
     extreme = np.min(f, axis=1) if rear else np.max(f, axis=1)
@@ -61,6 +89,7 @@ def compare(kp, part, frames, direction, rear, wobble_px):
         "hidden_foot_visibility": hidden_vis,
         "wobble_px": wobble,
         "gap_px": float(np.median(np.abs(f[:, 0] - f[:, 1]))),      # how far apart the feet are
+        "perspective_px": float(np.median(np.abs(shift))),            # (after removing this much)
         "extreme_px": float(np.median(extreme)),                      # rearmost heel / front toe
         "near_px": float(np.median(seen)),                            # camera-side foot
         "frames": int(len(f)),
@@ -81,8 +110,8 @@ def both_feet(kp, direction, takeoff_frames, landing_frames, primary_px, m_per_p
     far foot couldn't be trusted at either end."""
     px_per_m = (1 / m_per_px) if m_per_px else trunk_px / TRUNK_M
     wobble_px = MAX_WOBBLE_M * px_per_m
-    heel = compare(kp, "HEEL", landing_frames, direction, rear=True, wobble_px=wobble_px)
-    toe = compare(kp, "FOOT_INDEX", takeoff_frames, direction, rear=False, wobble_px=wobble_px)
+    heel = compare(kp, "HEEL", landing_frames, direction, rear=True, wobble_px=wobble_px, px_per_m=px_per_m)
+    toe = compare(kp, "FOOT_INDEX", takeoff_frames, direction, rear=False, wobble_px=wobble_px, px_per_m=px_per_m)
 
     # How much shorter the official-rule distance is than the near-foot one, at each end.
     # Measured against the near (more visible) foot over the SAME frames, so window choices
@@ -93,9 +122,14 @@ def both_feet(kp, direction, takeoff_frames, landing_frames, primary_px, m_per_p
     if toe["trusted"]:
         toe_shift = max(0.0, toe["extreme_px"] - toe["near_px"])
     used = heel["trusted"] or toe["trusted"]
-    gaps = [end["gap_px"] for end in (heel, toe) if "gap_px" in end]
+    # A gap counts as stagger only beyond the warning distance plus the slack for perspective
+    over = {name: end["gap_px"] - PERSPECTIVE_SLACK * end["perspective_px"]
+            for name, end in (("heel", heel), ("toe", toe)) if "gap_px" in end}
+    gaps = list(over.values())
     return {
-        "stagger_px": max(gaps) if gaps else None,          # widest gap between the feet, either end
+        "stagger_px": max(gaps) if gaps else None,          # widest gap between the feet, either end (less slack)
+        "stagger_heel_over_px": over.get("heel"), "stagger_toe_over_px": over.get("toe"),
+        "feet_gap_px": max(end["gap_px"] for end in (heel, toe) if "gap_px" in end) if gaps else None,
         "stagger_heel_px": heel.get("gap_px"), "stagger_toe_px": toe.get("gap_px"),
         "distance_px": primary_px - heel_shift - toe_shift if used else None,
         "difference_px": heel_shift + toe_shift if used else None,

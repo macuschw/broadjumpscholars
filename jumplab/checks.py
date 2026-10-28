@@ -231,7 +231,9 @@ def check_distance(distance_px, shin_px):
 def check_stagger(both, m_per_px):
     """Flag staggered feet: the two heels at landing or the two toes at takeoff more than 5 cm
     apart (10% of trunk length uncalibrated). Uses the gap between the feet, so it fires even
-    when the far foot is too hidden to measure exactly.
+    when the far foot is too hidden to measure exactly. The gap is measured after removing the
+    perspective shift of the far foot, plus some slack for it (feet.perspective_shift): away from
+    the middle of the picture, feet side by side otherwise look 10-17 cm apart.
 
     Why SERIOUS: in the tape check of October 2026 (6 jumps), the staggered jumps' distances were
     off by 1.5-4.8 in, too long or too short, while the feet-together jump was within 0.3 in.
@@ -244,7 +246,8 @@ def check_stagger(both, m_per_px):
     parts = []
     for key, where in (("stagger_heel_px", "the heels were {} apart at landing"),
                        ("stagger_toe_px", "the toes were {} apart at takeoff")):
-        if both.get(key) is not None and both[key] > both["warn_above_px"]:
+        over = both.get(key.replace("_px", "_over_px"), both.get(key))     # (gap less the perspective slack)
+        if both.get(key) is not None and over is not None and over > both["warn_above_px"]:
             parts.append(where.format(fmt(both[key])))
     return [warning("staggered_feet",
                     f"The feet look staggered: {' and '.join(parts)}. One camera can't see the far "
