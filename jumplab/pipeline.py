@@ -78,10 +78,11 @@ def _frame_rate(kp, fps_override):
     the file header disagrees with them by more than 1%. Returns (kp, source, warnings)."""
     if fps_override:
         times = None if kp.frame_times is None else np.asarray(kp.frame_times) * kp.fps / fps_override
-        note = checks.warning(
+        # (no note when it's what the file says anyway, as for Measure live's recordings)
+        notes = [] if abs(fps_override / kp.fps - 1) < 0.01 else [checks.warning(
             "fps_override", f"Frame rate set by hand to {fps_override:g} fps (the file says "
-            f"{kp.fps:.2f}).", checks.INFO, ("timing", "trajectory"))
-        return replace(kp, fps=float(fps_override), frame_times=times), "override", [note]
+            f"{kp.fps:.2f}).", checks.INFO, ("timing", "trajectory"))]
+        return replace(kp, fps=float(fps_override), frame_times=times), "override", notes
     real = checks.measured_fps(kp.frame_times)
     if real and abs(real / kp.fps - 1) > 0.01:
         note = checks.warning(
@@ -130,10 +131,12 @@ def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
             "timestamps were used for every time, speed and the flight fit.", checks.INFO, ("timing",))]
     warnings += timing
     if fps < 100:
+        # Information, not a caution: the ground-contact rating already says "rough" for this reason
+        # (summary._timing_check), so a caution only repeated it on every 30 fps and live recording
         warnings.append(checks.warning(
             "low_fps", f"This video is {fps:.0f} fps (under 100). Angles are fine, but event "
             f"times are only good to +/-{1000 / fps:.0f} ms; contact time needs 120-240 fps to "
-            "be meaningful.", checks.CAUTION, ("timing",)))
+            "be meaningful.", checks.INFO, ("timing",)))
     detected = float(kp.detected[tracked].mean())
 
     # Gap-filled ("raw") and smoothed positions, y flipped so UP is positive.
