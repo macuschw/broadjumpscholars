@@ -458,6 +458,27 @@
 .fit-steps li:last-child output { font-size: inherit; font-family: inherit; color: var(--text); }
 
 /* Calibration + common questions */
+/* The math: one row per step, the words on the left, the formulas and a worked example on the right */
+.science-math__head { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: var(--s-4) var(--s-6); align-items: end; margin-bottom: var(--s-6); }
+.science-math__head h2 { font-size: var(--step-3); }
+.science-math__head p { color: var(--muted); }
+.math-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-6); }
+.math-item { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: var(--s-3) var(--s-6); padding-top: var(--s-4); border-top: 3px solid var(--text); }
+.math-item__text { display: flex; flex-direction: column; gap: var(--s-2); }
+.math-item__text .num { font-size: 2rem; }
+.math-item__text h3 { font-size: var(--step-2); }
+.math-item__text p { color: var(--muted); }
+.math-item__code { font-size: 0.9rem; }
+.math-item__code code { font-size: 0.92em; background: var(--white); padding: 0 4px; border-radius: var(--radius); }
+.math-item__math { display: flex; flex-direction: column; gap: var(--s-3); min-width: 0; }
+.math-item__math .formula { align-self: stretch; }
+.math-item__example { color: var(--muted); font-size: 0.98rem; max-width: none; }
+.math-item__example strong { color: var(--text); }
+table.data.math-fouls td, table.data.math-fouls th { white-space: normal; }
+table.data.math-fouls td { min-width: 16ch; }
+.math-fouls caption { white-space: normal; }
+@media (max-width: 900px) { .science-math__head, .math-item { grid-template-columns: minmax(0, 1fr); } }
+
 .science-more { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-7); align-items: start; }
 .science-more h2 { font-size: var(--step-3); margin-bottom: var(--s-4); }
 .science-cal { display: flex; flex-direction: column; gap: var(--s-3); }

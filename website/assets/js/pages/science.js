@@ -7,14 +7,16 @@ import { initTabs } from "../components/tabs.js";
 import { SAMPLE, trackedFlight } from "../data/mock-data.js";
 import { formatNumber, lengthAxis, onUnitsChange } from "../lib/units.js";
 
-// Three tabs keep the page to about two screens; #example and #calibration link straight to a tab
+// Four tabs keep the page to about two screens; #example, #math and #calibration link straight to a tab
 const tablist = document.getElementById("science-tabs"), linked = location.hash.slice(1);
-if (["example", "calibration"].includes(linked)) {
+if (["example", "math", "calibration"].includes(linked)) {
   tablist.querySelectorAll('[role="tab"]').forEach((t) => t.setAttribute("aria-selected", String(t.dataset.tab === linked)));
 }
 initTabs(tablist, {
   onChange: (id) => history.replaceState(null, "", id === "steps" ? location.pathname + location.search : `#${id}`),
 });
+// A link to #math (or another tab) on this page opens that tab
+addEventListener("hashchange", () => document.getElementById(`tab-${location.hash.slice(1)}`)?.click());
 
 const points = trackedFlight(SAMPLE);
 const fit = fitFlight(points);

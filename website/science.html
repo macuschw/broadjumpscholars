@@ -31,13 +31,14 @@
         <p class="eyebrow">Science</p>
         <h1>Physics you can check by hand.</h1>
       </div>
-      <p class="lede">No black box. Every number comes from five plain steps, each built on physics taught in high school and college.</p>
+      <p class="lede">No black box. Every number comes from five plain steps, each built on physics taught in high school and college. <a href="#math">The math</a> tab shows every formula.</p>
     </header>
 
     <section class="container science" aria-label="The science">
       <div class="tablist" role="tablist" aria-label="Science topics" id="science-tabs">
         <button class="tab" role="tab" id="tab-steps" data-tab="steps" aria-controls="panel-steps" aria-selected="true">Pipeline</button>
         <button class="tab" role="tab" id="tab-example" data-tab="example" aria-controls="panel-example" aria-selected="false">Worked example</button>
+        <button class="tab" role="tab" id="tab-math" data-tab="math" aria-controls="panel-math" aria-selected="false">The math</button>
         <button class="tab" role="tab" id="tab-calibration" data-tab="calibration" aria-controls="panel-calibration" aria-selected="false">Calibration<span class="tab__more"> &amp; FAQ</span></button>
       </div>
 
@@ -83,7 +84,7 @@
         <li class="pipeline__step">
           <span class="num">5</span>
           <h2>Frame counting</h2>
-          <p>Takeoff and landing are found from the toe and heel landmarks. Times come from counting frames between them.</p>
+          <p>Takeoff and landing are found from the ankle's height (or, as an option, the toe and heel). Times come from counting frames between them.</p>
           <div class="formula" role="math" aria-label="flight time T equals landing frame minus takeoff frame, over frames per second" data-tex="T = \dfrac{f_{\text{land}} - f_{\text{takeoff}}}{\text{fps}}" data-display><span class="formula__body">
             <var>T</var> = (<var>f</var><sub>land</sub> − <var>f</var><sub>takeoff</sub>) / fps
           </span></div>
@@ -145,13 +146,216 @@
         headline numbers by a hundredth or two: the honest uncertainty of one phone camera.</p>
       </div>
 
+      <div class="tabpanel science-math" role="tabpanel" id="panel-math" aria-labelledby="tab-math" tabindex="0" hidden>
+      <div class="science-math__head">
+        <h2>Every formula, step by step.</h2>
+        <p>The math JumpLab runs on a real jump, in order, each with a worked example from a session we filmed on October 27
+          (jump 10, 30 fps, phone on a tripod) and the file in the code that does it.</p>
+      </div>
+      <ol class="math-list" role="list">
+        <li class="math-item">
+          <div class="math-item__text">
+            <span class="num">1</span>
+            <h3>The scale: pixels to <span data-imperial="feet">meters</span></h3>
+            <p>Mark the two ends A and B of a tape measure of known length <span class="tex" data-tex="L"><var>L</var></span> in the picture.
+              The scale is that length divided by the distance between the marks in pixels, by Pythagoras.</p>
+            <p class="math-item__code">In the code: <code>jumplab/calibration.py</code>, <code>demo/calibrate.js</code></p>
+          </div>
+          <div class="math-item__math">
+            <div class="formula formula--small" role="math" aria-label="s equals L over the square root of x B minus x A squared plus y B minus y A squared"
+              data-tex="s = \dfrac{L}{\sqrt{(x_B - x_A)^2 + (y_B - y_A)^2}}" data-display>s = L ÷ √((x<sub>B</sub> − x<sub>A</sub>)² + (y<sub>B</sub> − y<sub>A</sub>)²)</div>
+            <p class="math-item__example"><strong>Example.</strong> On October 27 the tape gave
+              <span class="tex" data-tex="s = 2.779\ \text{mm/px}" data-tex-imperial="s = 0.1094\ \text{in/px}">s = <span data-imperial="0.1094 in/px">2.779 mm/px</span></span>:
+              each pixel along the jump line is <span data-imperial="about a tenth of an inch">under 3 mm</span>.</p>
+          </div>
+        </li>
+
+        <li class="math-item">
+          <div class="math-item__text">
+            <span class="num">2</span>
+            <h3>The jump distance</h3>
+            <p>As the rule measures it: from the toe at takeoff to the heel at landing, along the jump. Each end is the
+              <em>median</em> of its marker over several frames (the toe from the bottom of the dip to takeoff, the heel over the first
+              0.1 s down), so one jittery frame can't move it. <span class="tex" data-tex="d = \pm 1"><var>d</var> = ±1</span> is the jump's direction in the picture.</p>
+            <p class="math-item__code">In the code: <code>jumplab/pipeline.py</code> (jump distance)</p>
+          </div>
+          <div class="math-item__math">
+            <div class="formula formula--small" role="math" aria-label="D equals s times d times the median heel x minus the median toe x"
+              data-tex="D = s \cdot d \,\bigl(\operatorname{median} x_{\text{heel}} - \operatorname{median} x_{\text{toe}}\bigr)" data-display>D = s · d · (median x<sub>heel</sub> − median x<sub>toe</sub>)</div>
+            <p class="math-item__example"><strong>Example.</strong> Toe at <span class="tex" data-tex="x = 1601.3">x = 1601.3</span> px, heel at
+              <span class="tex" data-tex="x = 797.6">x = 797.6</span> px, jumping left (<span class="tex" data-tex="d = -1"><var>d</var> = −1</span>):
+              <span class="tex" data-tex="D = 2.779\ \text{mm} \times 803.7 = 2.23\ \text{m}" data-tex-imperial="D = 0.1094\ \text{in} \times 803.7 = 7\ \text{ft}\ 4\ \text{in}">D = 803.7 px × s = <span data-imperial="7 ft 4 in">2.23 m</span></span>.</p>
+          </div>
+        </li>
+
+        <li class="math-item">
+          <div class="math-item__text">
+            <span class="num">3</span>
+            <h3>Finding takeoff and landing</h3>
+            <p>The ankle's height <span class="tex" data-tex="h"><var>h</var></span> over the clip: its ground level <span class="tex" data-tex="b"><var>b</var></span> is the
+              20th percentile (the foot is down most of the time), its rise <span class="tex" data-tex="R"><var>R</var></span> the highest point above that. Takeoff is
+              the first frame above <span class="tex" data-tex="b + 0.15R"><var>b</var> + 0.15<var>R</var></span> before the peak, landing the first one back below it after.
+              The bottom of the dip is the hips' lowest point in the second before takeoff.</p>
+            <p class="math-item__code">In the code: <code>jumplab/events.py</code></p>
+          </div>
+          <div class="math-item__math">
+            <div class="formula formula--small" role="math" aria-label="b equals the 20th percentile of h, R equals the maximum of h minus b, threshold equals b plus 0.15 R"
+              data-tex="\begin{gathered} b = P_{20}(h) \\[2pt] R = \max h - b \\[2pt] h_{\text{thr}} = b + 0.15\,R \end{gathered}" data-display>b = P<sub>20</sub>(h), R = max h − b, h<sub>thr</sub> = b + 0.15 R</div>
+            <p class="math-item__example"><strong>Why 15%?</strong> High enough that walking and tracking jitter never cross it, low enough that it's crossed within a
+              frame of the foot leaving the ground. (On some 30 fps clips the ankle rises with the heel during the push-off, so takeoff reads a few frames
+              early; the toe-and-heel method, an option, avoids that.)</p>
+          </div>
+        </li>
+
+        <li class="math-item math-item--key">
+          <div class="math-item__text">
+            <span class="num">4</span>
+            <h3>The flight: a least-squares parabola</h3>
+            <p>In the air only gravity acts, so the center of mass moves at a constant speed forward and with constant acceleration
+              <span class="tex" data-tex="-g"><var>−g</var></span> up and down. With one equation per frame and only three unknowns, the frames can't all be met exactly
+              (tracking is a few <span data-imperial="hundredths of an inch">millimeters</span> off each time), so the fit takes the
+              <span class="tex" data-tex="y_0, v_y, g">y<sub>0</sub>, v<sub>y</sub>, g</span> that make the squared misses smallest: the least-squares solution. Time starts at the
+              takeoff instant, halfway between the last frame on the ground and the first in the air.</p>
+            <p class="math-item__code">In the code: <code>jumplab/physics.py</code> <code>fit_projectile</code></p>
+          </div>
+          <div class="math-item__math">
+            <div class="formula formula--small" role="math" aria-label="minimize the sum over frames of y i minus y0 minus v y t i plus one half g t i squared, all squared"
+              data-tex="\min_{y_0,\,v_y,\,g}\ \sum_{i=1}^{n} \Bigl(y_i - y_0 - v_y t_i + \tfrac{1}{2} g t_i^2\Bigr)^2" data-display>minimize Σ (y<sub>i</sub> − y<sub>0</sub> − v<sub>y</sub>t<sub>i</sub> + ½g t<sub>i</sub>²)²</div>
+            <div class="formula formula--small" role="math" aria-label="in matrix form, A beta approximately equals y, solved by beta hat equals A transpose A inverse times A transpose y"
+              data-tex="\begin{gathered} \underbrace{\begin{pmatrix} 1 & t_1 & -\tfrac12 t_1^2 \\ \vdots & \vdots & \vdots \\ 1 & t_n & -\tfrac12 t_n^2 \end{pmatrix}}_{A} \begin{pmatrix} y_0 \\ v_y \\ g \end{pmatrix} \approx \begin{pmatrix} y_1 \\ \vdots \\ y_n \end{pmatrix} \\[14pt] \hat\beta = (A^{\mathsf T}A)^{-1}A^{\mathsf T}\mathbf y \end{gathered}" data-display>A·(y<sub>0</sub>, v<sub>y</sub>, g) ≈ y, so β̂ = (AᵀA)⁻¹Aᵀy</div>
+            <p class="math-item__example"><strong>Example.</strong> 14 frames in the air, fitted in pixels:
+              <span class="tex" data-tex="v_x = 974.7\ \text{px/s},\ v_y = 662.8\ \text{px/s},\ g = 3522\ \text{px/s}^2">v<sub>x</sub> = 974.7 px/s, v<sub>y</sub> = 662.8 px/s, g = 3522 px/s²</span>.
+              The forward fit <span class="tex" data-tex="x(t) = x_0 + v_x t">x(t) = x<sub>0</sub> + v<sub>x</sub>t</span> is the same idea with a straight line.</p>
+          </div>
+        </li>
+
+        <li class="math-item">
+          <div class="math-item__text">
+            <span class="num">5</span>
+            <h3>Speed, angle and height</h3>
+            <p>Takeoff speed is the length of the velocity vector, the launch angle its direction above horizontal, and the rise of the center of mass
+              comes from <span class="tex" data-tex="v_{y,\text{top}}^2 = v_y^2 - 2gh">v<sub>y,top</sub>² = v<sub>y</sub>² − 2gh</span>: at the top the vertical speed is zero.
+              The angle is a ratio of two speeds, so it needs no scale at all.</p>
+            <p class="math-item__code">In the code: <code>jumplab/physics.py</code>, <code>jumplab/pipeline.py</code></p>
+          </div>
+          <div class="math-item__math">
+            <div class="formula formula--small" role="math" aria-label="v equals the square root of v x squared plus v y squared; theta equals atan2 of v y and v x; h equals v y squared over 2 g"
+              data-tex="\begin{gathered} v = \sqrt{v_x^2 + v_y^2} \\[4pt] \theta = \operatorname{atan2}(v_y, v_x) \\[4pt] h = \dfrac{v_y^2}{2g} \end{gathered}" data-display>v = √(v<sub>x</sub>² + v<sub>y</sub>²), θ = atan2(v<sub>y</sub>, v<sub>x</sub>), h = v<sub>y</sub>² / 2g</div>
+            <p class="math-item__example"><strong>Example.</strong> Times the scale: v<sub>x</sub> = <span data-imperial="8.89 ft/s">2.71 m/s</span>,
+              v<sub>y</sub> = <span data-imperial="6.04 ft/s">1.84 m/s</span>, so v = <span data-imperial="10.7 ft/s">3.28 m/s</span>; θ = atan2(662.8, 974.7) = 34.2°
+              (the same in any units); the center of mass rose <span data-imperial="6.8 in">17 cm</span>.</p>
+          </div>
+        </li>
+
+        <li class="math-item">
+          <div class="math-item__text">
+            <span class="num">6</span>
+            <h3>Gravity checks the scale</h3>
+            <p>The fit measured gravity in pixels per second squared. Gravity is really <span data-imperial="32.2 ft/s²">9.81 m/s²</span>, so that gives a
+              second scale, from physics alone. If it disagrees with the tape's by over 15%, the tape marks, the frame rate or the takeoff and landing
+              frames are wrong, and the results say so. Slow motion saved for slowed-down playback shows up here too: time stretched
+              <span class="tex" data-tex="k"><var>k</var></span> times makes gravity <span class="tex" data-tex="k^2"><var>k</var>²</span> times too small.</p>
+            <p class="math-item__code">In the code: <code>jumplab/physics.py</code> <code>gravity_implied_scale</code>, <code>jumplab/checks.py</code></p>
+          </div>
+          <div class="math-item__math">
+            <div class="formula formula--small" role="math" aria-label="s g equals 9.81 meters per second squared over g in pixels per second squared"
+              data-tex="\begin{gathered} s_g = \dfrac{9.81\ \text{m/s}^2}{g_{\text{px}}} \\[4pt] \text{check: } \left|\dfrac{s_g}{s} - 1\right| \le 0.15 \end{gathered}" data-tex-imperial="\begin{gathered} s_g = \dfrac{32.2\ \text{ft/s}^2}{g_{\text{px}}} \\[4pt] \text{check: } \left|\dfrac{s_g}{s} - 1\right| \le 0.15 \end{gathered}" data-display>s<sub>g</sub> = 9.81 m/s² ÷ g<sub>px</sub>, check |s<sub>g</sub>/s − 1| ≤ 0.15</div>
+            <p class="math-item__example"><strong>Example.</strong> <span class="tex" data-tex="s_g = 9.81 / 3522 = 2.785\ \text{mm/px}">s<sub>g</sub> = 9.81 ÷ 3522 = 2.785 mm/px</span>
+              against the tape's 2.779: 0.2% apart. Put the other way, the fit found <span data-imperial="g = 32.1 ft/s²">g = 9.79 m/s²</span>. Fitting the hip instead of the
+              center of mass gave <span data-imperial="24.1 ft/s²">7.34 m/s²</span>: arms and legs swing, only the center of mass is a true parabola.</p>
+          </div>
+        </li>
+
+        <li class="math-item">
+          <div class="math-item__text">
+            <span class="num">7</span>
+            <h3>Timing, and how exact it is</h3>
+            <p>Times are differences between frames' timestamps. Each event is only known to the nearest frame, so every time carries
+              <span class="tex" data-tex="\pm 1/\text{fps}">±1/fps</span>. Phones recording in a browser space their frames unevenly; when they drift by
+              over half a frame, the frames' own timestamps are used instead of frame number ÷ fps.</p>
+            <p class="math-item__code">In the code: <code>jumplab/pipeline.py</code>, <code>jumplab/checks.py</code> <code>check_frame_timing</code></p>
+          </div>
+          <div class="math-item__math">
+            <div class="formula formula--small" role="math" aria-label="T equals t land minus t takeoff, give or take one over the frame rate"
+              data-tex="\begin{gathered} T = t_{\text{land}} - t_{\text{takeoff}} \\[4pt] \delta T = \pm\dfrac{1}{\text{fps}} \end{gathered}" data-display>T = t<sub>land</sub> − t<sub>takeoff</sub>, δT = ±1/fps</div>
+            <p class="math-item__example"><strong>Example.</strong> T = 0.468 s at 30 fps, so ±0.033 s. At 240 fps it would be ±0.004 s. That's why slow motion
+              matters for timing and hardly at all for distance.</p>
+          </div>
+        </li>
+
+        <li class="math-item">
+          <div class="math-item__text">
+            <span class="num">8</span>
+            <h3>The center of mass</h3>
+            <p>The body as 14 segments (trunk, head, and each side's upper arm, forearm, hand, thigh, shank and foot). Each has a known share of body mass
+              <span class="tex" data-tex="m_i"><var>m<sub>i</sub></var></span> and its own center a known fraction <span class="tex" data-tex="c_i"><var>c<sub>i</sub></var></span> of the way
+              from one joint <span class="tex" data-tex="\mathbf p_i"><b>p</b><sub><var>i</var></sub></span> to the next <span class="tex" data-tex="\mathbf q_i"><b>q</b><sub><var>i</var></sub></span>
+              (standard tables from biomechanics). The whole body's center is their weighted average.</p>
+            <p class="math-item__code">In the code: <code>jumplab/center_of_mass.py</code></p>
+          </div>
+          <div class="math-item__math">
+            <div class="formula formula--small" role="math" aria-label="r CoM equals the sum of m i r i over the sum of m i, with r i equal to p i plus c i times q i minus p i"
+              data-tex="\begin{gathered} \mathbf r_{\text{CoM}} = \dfrac{\sum_i m_i\, \mathbf r_i}{\sum_i m_i} \\[4pt] \mathbf r_i = \mathbf p_i + c_i\,(\mathbf q_i - \mathbf p_i) \end{gathered}" data-display>r<sub>CoM</sub> = Σ m<sub>i</sub>r<sub>i</sub> ÷ Σ m<sub>i</sub>, r<sub>i</sub> = p<sub>i</sub> + c<sub>i</sub>(q<sub>i</sub> − p<sub>i</sub>)</div>
+            <p class="math-item__example"><strong>Example.</strong> The trunk is 49.7% of body mass, centered halfway from hip to shoulder; a thigh 10.0%, 43.3% of the
+              way from hip to knee.</p>
+          </div>
+        </li>
+
+        <li class="math-item">
+          <div class="math-item__text">
+            <span class="num">9</span>
+            <h3>Perspective: why feet side by side can look apart</h3>
+            <p>The far foot is about a stance width <span class="tex" data-tex="\Delta z"><var>Δz</var></span> further from the camera than the near one. By similar
+              triangles, something further away shows up nearer the middle of the picture <span class="tex" data-tex="c_x"><var>c<sub>x</sub></var></span>. The
+              camera's distance <span class="tex" data-tex="Z"><var>Z</var></span> follows from the scale and the lens: a phone's main camera sees about 69° across the long side
+              <span class="tex" data-tex="W"><var>W</var></span> of the picture. JumpLab moves the far foot back by that shift before deciding whether the feet were staggered,
+              and allows 30% of it for stance and lens differences.</p>
+            <p class="math-item__code">In the code: <code>jumplab/feet.py</code> <code>perspective_shift</code>, <code>live/detect.js</code></p>
+          </div>
+          <div class="math-item__math">
+            <div class="formula formula--small" role="math" aria-label="the far foot shows up shifted by minus x minus c x times delta z over Z, where Z equals f times s and f equals W over 2 tan 34.5 degrees, about 0.73 W"
+              data-tex="\begin{gathered} x_{\text{far}} - x_{\text{near}} \approx -\,(x - c_x)\,\dfrac{\Delta z}{Z} \\[4pt] Z = f\,s \\[4pt] f = \dfrac{W/2}{\tan 34.5^\circ} \approx 0.73\,W \end{gathered}" data-display>x<sub>far</sub> − x<sub>near</sub> ≈ −(x − c<sub>x</sub>)·Δz/Z, Z = f·s, f ≈ 0.73 W</div>
+            <p class="math-item__example"><strong>Example.</strong> At takeoff the feet were 650 px right of the middle of a 1920 px picture:
+              f ≈ 1402 px, so Z = 1402 × 2.779 mm = <span data-imperial="12.8 ft">3.9 m</span>, and the far toe should show up
+              650 × 0.25 / 3.9 = 42 px = <span data-imperial="4.6 in">11.6 cm</span> nearer the middle. We measured
+              <span data-imperial="5–6.7 in">12.5–17 cm</span> on all ten jumps, with the feet side by side; before this correction, every one was called staggered.</p>
+          </div>
+        </li>
+
+        <li class="math-item">
+          <div class="math-item__text">
+            <span class="num">10</span>
+            <h3>When a jump doesn't count</h3>
+            <p>A broad jump only counts if the landing is held. Each rule is measured in the jumper's own standing height
+              <span class="tex" data-tex="H"><var>H</var></span>, so it works for anyone and even without a tape. The limits came from one example of each
+              foul against 22 good landings, so they're provisional.</p>
+            <p class="math-item__code">In the code: <code>jumplab/checks.py</code> <code>check_landing</code>, <code>live/detect.js</code></p>
+          </div>
+          <div class="math-item__math">
+            <div class="table-wrap">
+              <table class="data math-fouls">
+                <caption>Fouls, in standing heights H (for H = <span data-imperial="5 ft 7 in">1.70 m</span>)</caption>
+                <thead><tr><th scope="col">Foul</th><th scope="col">Rule</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">Stepped forward</th><td>a foot lands more than 0.22<var>H</var> (<span data-imperial="15 in">37 cm</span>) ahead of the front foot within 1 s</td></tr>
+                  <tr><th scope="row">Stepped back</th><td>a foot more than 0.20<var>H</var> (<span data-imperial="13 in">34 cm</span>) behind the rear foot within 1.5 s</td></tr>
+                  <tr><th scope="row">Hand down</th><td>a hand within 0.04<var>H</var> (<span data-imperial="2.7 in">7 cm</span>) of the floor for 0.25 s, barely moving</td></tr>
+                  <tr><th scope="row">Fell</th><td>a knee within 0.07<var>H</var> or the hips within 0.09<var>H</var> of the floor for 0.15 s</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </li>
+      </ol>
+      </div>
+
       <div class="tabpanel science-more" role="tabpanel" id="panel-calibration" aria-labelledby="tab-calibration" tabindex="0" hidden>
       <div class="science-cal">
         <h2 data-imperial="Pixels to feet">Pixels to meters</h2>
         <p>A tape measure filmed along the jump line sets the scale:</p>
         <div class="formula formula--small" role="math" aria-label="scale equals known distance divided by pixel distance" data-tex="\text{scale} = \dfrac{\text{known distance}}{\text{pixel distance}}" data-display>scale = known distance ÷ pixel distance</div>
-        <p>If the tape is nearer to or farther from the camera than the jump, the scale is corrected by the ratio of those distances, because
-          something twice as far away looks half as big:</p>
+        <p>Lay the tape along the jump line, on the camera side of the feet. If it has to be nearer to or farther from the camera than the jump, the
+          scale can be corrected by the ratio of those distances (the command-line app does this), because something twice as far away looks half as big:</p>
         <div class="formula formula--small" role="math" aria-label="scale for the jump equals scale for the reference times distance to the jump divided by distance to the reference" data-tex="\text{scale}_{\text{jump}} = \text{scale}_{\text{ref}} \times \dfrac{d_{\text{jump}}}{d_{\text{ref}}}" data-display>
           scale<sub>jump</sub> = scale<sub>ref</sub> × <var>d</var><sub>jump</sub> ÷ <var>d</var><sub>ref</sub>
         </div>
