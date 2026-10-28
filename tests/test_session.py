@@ -115,6 +115,17 @@ def test_a_hand_put_down_is_a_foul_but_a_swing_past_the_floor_is_not():
     assert _codes(kp) == ["foul_hand_down"]
 
 
+@pytest.mark.parametrize("joints, above", [((25,), 0.03), ((23, 24), 0.06)])     # a knee down; the seat down
+def test_falling_after_landing_is_a_foul_but_a_deep_landing_squat_is_not(joints, above):
+    kp, la, tall = _landed()
+    floor = np.nanmax(kp.xyv[la:la + 12, [29, 30, 31, 32], 1])
+    fell = slice(la + int(0.5 * kp.fps), la + int(0.9 * kp.fps))
+    kp.xyv[fell, list(joints), 1] = floor - 0.16 * tall      # as low as our deepest valid landings: fine
+    assert _codes(kp) == []
+    kp.xyv[fell, list(joints), 1] = floor - above * tall     # on the ground for 0.4 s: fell
+    assert _codes(kp) == ["foul_fell"]
+
+
 # ---------------------------------------------------------------- finding the jumps (quick look)
 
 def _looks(spec, fps=10):

@@ -1,7 +1,7 @@
-// What the phone measuring live and its remote screen show the same way: the big result, the list
-// of jumps (with the tape check), each distance said out loud, the setup guide, full screen, and the
-// tracked skeleton.
-import { FOOT, INCH, formatQuantity, isImperial } from "../lib/units.js";
+// What the phone measuring live and its remote screen show the same way: the big result (a foul
+// said first and loudest), the list of jumps (with the tape check), each distance said out loud, the
+// m / ft switch, the results file, the setup guide, full screen, and the tracked skeleton.
+import { FOOT, INCH, formatQuantity, getUnits, isImperial, onUnitsChange, setUnits } from "../lib/units.js";
 import { correction, setCorrection, shown } from "./tapelog.js";
 
 export const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -22,25 +22,60 @@ export function feetApart(j, scale) {
 const apartWords = (a) => [(a.toeApart ?? a.toe * 0.01 > APART_M) ? `the toes were ${formatQuantity("short", a.toe / 100)} apart at takeoff` : "",
   (a.heelApart ?? a.heel * 0.01 > APART_M) ? `the heels were ${formatQuantity("short", a.heel / 100)} apart at landing` : ""].filter(Boolean).join(" and ") || "the feet were apart";
 
-/** The big result over the picture. j: { n, meters (as measured), unsure, apart, tape }. */
+// A jump that doesn't count (live/detect.js; the full analysis's words, jumplab/alerts.py PLAIN)
+export const FOULS = {
+  foul_step_forward: { headline: "Stepped forward after landing", fix: "Land with the knees bent and hold still until you've stood up." },
+  foul_step_back: { headline: "Stepped back after landing", fix: "Land with your weight forward, arms reaching ahead, and hold the landing." },
+  foul_hand_down: { headline: "Hand touched the ground", fix: "Swing the arms forward on landing and stand up without touching down." },
+  foul_fell: { headline: "Fell after landing", fix: "Land with the knees bent but stay on your feet: hold the landing until you've stood up." },
+};
+const foulOf = (j) => (j.foul ? FOULS[j.foul.code] || { headline: "The landing wasn't held", fix: "" } : null);
+// Why a number may be off (live/detect.js), shown and said
+const UNSURE = {
+  switched: { text: "The tracker jumped to someone else around this jump, so this number may be off.", say: "Not sure: someone else may be in the picture." },
+  unseen: { text: "The jumper wasn't tracked for most of the landing, so a step or a fall may have been missed.", say: "Couldn't see the whole landing." },
+  stopped: { text: "Measuring stopped before the landing was checked, so a step or a fall may have been missed.", say: "Stopped before the landing was checked." },
+};
+const unsureOf = (j) => (j.unsure ? UNSURE[j.unsure] || { text: typeof j.unsure === "string" ? j.unsure : "the tracker may have followed someone else.", say: "Not sure about this one." } : null);
+
+/** The big result over the picture. j: { n, meters (as measured), checking, foul, unsure, apart, tape }. */
 export function resultHTML(j) {
-  const c = correction();
+  if (j.checking) {                                            // just landed: no number until the landing is held
+    return `<span class="live__result-label">Jump ${j.n} · landed</span>
+    <span class="live__result-wait">Checking the landing…</span>`;
+  }
+  const foul = foulOf(j);
+  if (foul) {
+    return `<span class="live__result-label">Jump ${j.n} · doesn't count</span>
+    <span class="live__result-foul">${esc(foul.headline)}</span>
+    <span class="live__result-note">Live estimate <s>${formatQuantity("distance", shown(j.meters))}</s>, not counted.${foul.fix ? `<span class="live__result-more"> ${esc(foul.fix)}</span>` : ""}</span>`;
+  }
+  const c = correction(), unsure = unsureOf(j);
   return `<span class="live__result-label">Jump ${j.n} · live estimate${c.on ? " · corrected" : ""}</span>
   <span class="live__result-value">${formatQuantity("distance", shown(j.meters))}</span>
-  ${j.apart ? `<span class="live__result-note live__result-note--warn">Feet apart: ${esc(apartWords(j.apart))}. The tape
-    measures from the front toe to the back heel, so this may read long.</span>` : ""}
-  ${j.unsure ? `<span class="live__result-note">Unsure: ${esc(typeof j.unsure === "string" ? j.unsure : "the tracker may have followed someone else.")}</span>` : ""}`;
+  ${j.apart ? `<span class="live__result-note live__result-note--warn">Feet apart: ${esc(apartWords(j.apart))}.<span class="live__result-more"> The tape
+    measures from the front toe to the back heel, so this may read long.</span></span>` : ""}
+  ${unsure ? `<span class="live__result-note">Unsure: ${esc(unsure.text)}</span>` : ""}`;
+}
+/** The result box's look for j: a foul fills it with the accent color (live__result--foul). */
+export function showResult(box, j) {
+  box.innerHTML = resultHTML(j);
+  box.classList.toggle("live__result--foul", !!j.foul);
+  box.classList.toggle("live__result--wait", !!j.checking);
+  box.hidden = false;
 }
 
 /** One jump in the list under the picture, with its tape check (a button to add it, or the tape and the difference). */
 export function jumpItemHTML(j) {
-  const m = shown(j.meters);
+  if (j.checking) return `<li class="live__jump" data-n="${j.n}"><span class="live__jump-n">Jump ${j.n}</span><span class="live__jump-note">checking the landing…</span></li>`;
+  const m = shown(j.meters), foul = foulOf(j);
   const off = Math.abs(m - j.tape) < 0.005 ? "matches" : `${m > j.tape ? "+" : "−"}${formatQuantity("short", Math.abs(m - j.tape))}`;
   const tape = j.tape > 0 ? `<span class="live__jump-tape">tape ${formatQuantity("distance", j.tape)} · live ${off}</span>`
     : `<button type="button" class="live__jump-add" data-n="${j.n}">Add the tape</button>`;
-  return `<li class="live__jump${j.unsure ? " live__jump--unsure" : ""}" data-n="${j.n}">
-  <span class="live__jump-n">Jump ${j.n}</span><span class="live__jump-d">${formatQuantity("distance", m)}</span>
-  ${j.unsure ? '<span class="live__jump-note">unsure</span>' : ""}${j.apart ? '<span class="live__jump-note">feet apart</span>' : ""}
+  const d = `<span class="live__jump-d">${formatQuantity("distance", m)}</span>`;
+  return `<li class="live__jump${j.unsure ? " live__jump--unsure" : ""}${foul ? " live__jump--foul" : ""}" data-n="${j.n}">
+  <span class="live__jump-n">Jump ${j.n}</span>${foul ? `<s>${d}</s><span class="live__jump-note">doesn't count: ${esc(foul.headline.toLowerCase())}</span>` : d}
+  ${j.unsure && !foul ? '<span class="live__jump-note">unsure</span>' : ""}${j.apart && !foul ? '<span class="live__jump-note">feet apart</span>' : ""}
   ${tape}</li>`;
 }
 
@@ -166,8 +201,57 @@ export function spoken(m) {
   if (!whole) return `${ft} feet${half ? " and half an inch" : ""}`;
   return `${ft} feet ${whole}${half ? " and a half inches" : whole === 1 ? " inch" : " inches"}`;
 }
-export const jumpWords = (j) =>
-  `Jump ${j.n}: ${j.unsure ? "about " : ""}${spoken(shown(j.meters))}.${j.apart ? " Feet apart: may read long." : ""}${j.unsure ? " Not sure: someone else may be in the picture." : ""}`;
+/** What's said out loud for a judged jump: a foul instead of the distance. */
+export function jumpWords(j) {
+  const foul = foulOf(j);
+  if (foul) return `Jump ${j.n} doesn't count: ${foul.headline.toLowerCase()}.`;
+  const unsure = unsureOf(j);
+  return `Jump ${j.n}: ${unsure ? "about " : ""}${spoken(shown(j.meters))}.${j.apart ? " Feet apart: may read long." : ""}${unsure ? ` ${unsure.say}` : ""}`;
+}
+
+/** The m / ft switch, for Measure live and the remote screen (the same setting as the header's). */
+export function unitsHTML() {
+  return `<div class="live__units" role="group" aria-label="Units">
+    <button type="button" class="live__units-btn" data-units="metric" aria-label="Meters">m</button>
+    <button type="button" class="live__units-btn" data-units="imperial" aria-label="Feet and inches">ft</button>
+  </div>`;
+}
+/** Makes the switch in root work; returns a function that stops listening. */
+export function bindUnits(root) {
+  const buttons = [...root.querySelectorAll(".live__units-btn")];
+  const render = (units) => buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.units === units)));
+  buttons.forEach((b) => b.addEventListener("click", () => setUnits(b.dataset.units)));
+  render(getUnits());
+  return onUnitsChange(render);
+}
+
+/** "2026-10-27-17-16": when, in this device's local time, for file names (jumplab-live-<stamp>.mp4). */
+export function fileStamp(when = Date.now()) {
+  const d = new Date(when), two = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}-${two(d.getHours())}-${two(d.getMinutes())}`;
+}
+/** A file for the visitor to save (a download, from this page). */
+export function saveFile(blob, name) {
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+}
+/**
+ * The session's live results as a spreadsheet (CSV): one row per jump, in meters and in feet and
+ * inches, whether it counts and why not, feet apart, the tape check, and when it was in the recording.
+ * jumps: as sent to the remote screen ({ n, meters, foul, unsure, apart, toeGapCm, heelGapCm, tape, t, flight, fps }).
+ */
+export function resultsCSV(jumps) {
+  const ftIn = (m) => { const h = Math.round((m / INCH) * 2) / 2; return `${Math.floor(h / 12)} ft ${h - 12 * Math.floor(h / 12)} in`; };
+  const c = correction(), r2 = (x, k = 1000) => (x == null || !Number.isFinite(x) ? "" : Math.round(x * k) / k);
+  const cols = ["jump", "counts", "why_not", "live_m", "live_ft_in", "corrected_m", "feet_apart", "toe_gap_cm", "heel_gap_cm",
+    "unsure", "tape_m", "live_minus_tape_cm", "takeoff_s_in_video", "flight_s", "tracking_fps"];
+  const cell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+  const rows = jumps.filter((j) => !j.checking).map((j) => [j.n, j.foul ? "no" : "yes", foulOf(j)?.headline || "", r2(j.meters), ftIn(j.meters),
+    c.on ? r2(shown(j.meters)) : "", j.apart ? "yes" : "no", r2(j.toeGapCm, 10), r2(j.heelGapCm, 10), unsureOf(j)?.text || "",
+    j.tape > 0 ? r2(j.tape) : "", j.tape > 0 ? r2((j.meters - j.tape) * 100, 10) : "", r2(j.t, 100), r2(j.flight, 100), j.fps || ""]);
+  return [cols, ...rows].map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
+}
 
 /** Each distance said out loud (the button turns it on and off, remembered on this device). */
 export function createVoice(button) {

@@ -6,7 +6,8 @@
 //   node scripts/replay_live.mjs --detector path/to/detect.js FILE   (try a changed detector)
 //
 // For each jump: the distance shown live, the replayed distance (should match unless the detector
-// changed), the tape, and the error in inches and percent; then the mean error (bias) and spread.
+// changed), the tape, the error in inches and percent, and a foul if the replay calls one (stepped
+// forward or back, hand down, fell); then the mean error (bias) and spread.
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -42,6 +43,7 @@ for (const file of args) {
   const replayed = [];
   const det = createDetector({ onJump: (j) => replayed.push(j) });
   for (const [t, pts] of data.frames) det.feed(t, pts);
+  det.flush();
   const cam = data.camera || {};
   console.log(`\n${file}\n  camera: ${cam.label || "?"} ${cam.width}x${cam.height}, ${data.measured_fps ?? cam.fps ?? "?"} fps tracked, ` +
     `${data.frames.length} frames, 1 px = ${(data.scale_m_per_px * 1000).toFixed(2)} mm`);
@@ -54,7 +56,8 @@ for (const file of args) {
     if (err != null && !j.unsure) all.push({ err, tape });
     console.log(`  ${String(j.n).padEnd(5)}  ${ftIn(j.meters).padEnd(8)}  ${again == null ? "missed  " : ftIn(again).padEnd(8)}  ` +
       `${tape ? ftIn(tape).padEnd(8) : (j.tape ? `?${j.tape}`.padEnd(8) : "-".padEnd(8))}  ` +
-      `${err == null ? "" : `${err >= 0 ? "+" : ""}${inches(err).toFixed(1)} in (${err >= 0 ? "+" : ""}${(err / tape * 100).toFixed(1)}%)`}${j.unsure ? "  unsure" : ""}`);
+      `${err == null ? "" : `${err >= 0 ? "+" : ""}${inches(err).toFixed(1)} in (${err >= 0 ? "+" : ""}${(err / tape * 100).toFixed(1)}%)`}${j.unsure ? "  unsure" : ""}` +
+      `${(r?.foul ?? j.foul) ? `  FOUL ${(r?.foul ?? j.foul).code.replace("foul_", "")}` : ""}`);
   }
   const extra = replayed.filter((r) => !data.jumps.some((j) => Math.abs(r.tTakeoff - j.tTakeoff) < 0.3));
   if (extra.length) console.log(`  replay found ${extra.length} jump(s) that weren't shown live (detector changed?)`);

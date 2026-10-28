@@ -14,12 +14,12 @@ this repo (GitHub: macuschw/broadjumpscholars):
 
 ```bash
 python3 -m pip install -r requirements.txt          # mediapipe==0.10.14 is required (newer removed the API)
-python3 -m pytest -q                                 # 191 tests should pass
+python3 -m pytest -q                                 # 194 tests should pass
 python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration output/calibration.json
 python scripts/run_session.py "../test videos/IMG_6233.MOV"     # a video with many jumps: a verdict table
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
 node scripts/replay_live.mjs jumplab-live-track-*.json          # Measure live vs tape, from saved tracking
-node scripts/check_live.mjs                          # Measure live vs the full analysis on 20 test jumps (2 = a slow phone)
+node scripts/check_live.mjs                          # Measure live vs the full analysis on 20 test jumps, + fouls (2 = a slow phone)
 cd website && python3 -m http.server 8000           # then http://localhost:8000
 ```
 Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run writes `_results.json`,
@@ -49,8 +49,10 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   from the reliability warnings): a foot lands > 0.22 standing heights **ahead of the front foot's**
   landing spot within 1 s (stumbled forward), or > 0.20 **behind the rear foot's** within 1.5 s (stepped
   back: it moves the mark); a hand within 0.04 of floor level for >= 0.25 s while barely moving (put
-  down, not swung past). Bringing the back foot up to the front one is fine. Tuned on one example of
-  each (the session video below) against 22 valid landings, so provisional: more fault videos wanted.
+  down, not swung past); a knee within 0.07 or the hips within 0.09 of the floor for >= 0.15 s (fell:
+  `foul_fell`; our deepest valid landing squats reach 0.17 / 0.14, but no real fall has been filmed yet).
+  Bringing the back foot up to the front one is fine. Tuned on one example of each (the session video
+  below) against 22 valid landings, so provisional: more fault videos wanted.
 - Sessions (one video, many jumps; `jumplab/session.py`): every jump is found (the quick look, below),
   then analyzed on its own stretch with the other jumps blanked out, so two athletes taking turns never
   mix. A candidate with an impossible flight time and no downward-curving path is skipped as "not a
@@ -93,7 +95,10 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   progress and the result. On Modal the pieces and result live in the Volume "jumplab-jobs", states in
   the Dict "jumplab-job-states", and the analysis runs in `process_job`; locally, a temp folder and a
   thread. The video is deleted when the analysis ends, the result once collected. Responses are
-  gzipped. The old one-request `POST /analyze` still works (first jump only).
+  gzipped. The old one-request `POST /analyze` still works (first jump only). A job's pieces can also be
+  read back before it starts (`GET /jobs/<id>/<i>`) and deleted (`DELETE /jobs/<id>`): how Measure live's
+  phone hands its recording to a remote screen. Leftovers go after an hour (`tidy_jobs`, hourly on Modal:
+  the app's only scheduled function; the free plan allows 5).
 - Every upload is a session: the quick look (clips over 6.5 s; MediaPipe on 5 frames/s, following up
   to two people, so someone walking behind can't hide a jump) finds every crouch followed by fast
   sideways hip travel; only 2.5 s before to 1.8 s after each is tracked (`find_jumps`,
@@ -110,8 +115,15 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   in the browser. MediaPipe Tasks for Web (`@mediapipe/tasks-vision@0.10.14` from jsDelivr, the
   pose_landmarker_full model from Google's model storage, ~10 MB on first use) tracks every frame on the
   phone; nothing is uploaded while measuring. Set the scale on a camera frame (same calibration screen,
-  no Skip), then each jump's distance shows the moment the jumper lands (toe planted before takeoff ->
-  heel just after landing, as in the full analysis). A jump = a dip (< 85% standing height in the 1.2 s
+  no Skip), then each jump's distance (toe planted before takeoff -> heel just after landing, as in the
+  full analysis) shows once the landing is held: "Checking the landing…" for up to 1.5 s, then the
+  distance, or, said instead of it, why it doesn't count (the full analysis's foul rules, in `detect.js`:
+  stepped forward / back, hand down, fell; red box, distance struck through, in the list too). On our
+  20 test jumps (3 fouls) every verdict is right at 30, 15 and 10 frames/s. Stop during the check: the jump
+  counts but is marked unsure ("stopped"), as when the jumper wasn't tracked for most of the landing
+  ("unseen"). A m / ft switch sits on the live screen and the remote (the header's setting). "Save the
+  results" (after Stop, phone or remote) downloads a CSV: each jump, counts / why not, m and ft-in, feet
+  apart, unsure, tape, its time in the recording. File names use local time. A jump = a dip (< 85% standing height in the 1.2 s
   before), both feet > 6% of body height off the floor, the hips rising >= 6% and moving forward >= 0.3,
   0.15-1.0 s in the air. Marked "unsure" when the tracked body teleports (tracker switched to someone
   else). The session is recorded (MediaRecorder, video only; a format that records nothing is swapped:
@@ -174,8 +186,14 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   "Use a remote screen"). No accounts or Apple IDs involved. The two never talk directly: each writes its
   own slot in a room on the server and reads the other's (~1/s): "phone" {session, stage, status, air,
   jumps}, "preview" (480 px picture + skeleton, every 1 s, 3 s while measuring, only while the remote
-  is there), "still", "remote" {cmds}. A jump reaches the remote ~0.5-1 s after landing. The linked
-  phone goes quiet (the remote talks). Rooms are forgotten an hour after the last message. On Modal it
+  is there), "still", "remote" {cmds}. A jump reaches the remote ~0.5-1 s after it's judged. The linked
+  phone goes quiet while the remote is watching (it talks again when the remote has been gone 15 s).
+  After Stop the remote can **Get the full data here** / **Save the video here** / **Save the results**:
+  it sends "video", the phone uploads its recording as an unstarted job (`demo/server.js` `uploadVideo`;
+  progress in its "phone" slot), the remote downloads the pieces (`downloadVideo`), tells the phone "kept",
+  then either starts that same job (no second upload; `analyzeSession({ uploaded })`, results on the
+  laptop) or saves the file and deletes the server copy (`forgetVideo`; also when the remote leaves, and
+  by the phone on leaving if the remote never took it). Rooms are forgotten an hour after the last message. On Modal it
   is its own small function `rooms` (0.25 CPU, one container, rooms in memory + saved to the Dict
   "jumplab-rooms" in the background; ~1 cent/hour while in use), URL in `config.js` ROOMS_URL; locally
   `scripts/serve_local.py` serves /rooms too. `?remote=CODE` keeps a reloaded remote on its room.

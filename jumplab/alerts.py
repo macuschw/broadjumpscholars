@@ -32,6 +32,9 @@ PLAIN = {
     "foul_hand_down": ("Hand touched the ground",
                        "A hand was put down on the ground after landing, so the jump doesn't count.",
                        "Swing the arms forward on landing and stand up without touching down."),
+    "foul_fell": ("Fell after landing",
+                  "A knee or the seat touched the ground after landing, so the jump doesn't count.",
+                  "Land with the knees bent but stay on your feet: hold the landing until you've stood up."),
     "staggered_feet": ("Feet staggered at landing",
                        "One foot landed behind the other. A single side-on camera can't see the far foot well, "
                        "so the distance can be off by up to about 5 inches (12 cm), too long or too short.",

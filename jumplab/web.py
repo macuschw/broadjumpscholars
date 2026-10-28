@@ -84,7 +84,7 @@ def make_bundle(results, keypoints: Keypoints, name: Optional[str] = None, still
         "results": saved,
         "ratings": summary.ratings(saved),
         "warnings": [{**as_warning(w), **alerts.plain(w)} for w in saved.get("warnings", [])],
-        # Does the attempt count? (checks.check_landing: stepped forward / back, hand on the ground)
+        # Does the attempt count? (checks.check_landing: stepped forward / back, hand on the ground, fell)
         "valid": bool(saved.get("valid", True)),
         "fouls": [{**f, **alerts.plain(f)} for f in saved.get("fouls", [])],
         "series": series,

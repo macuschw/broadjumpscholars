@@ -26,7 +26,7 @@ import { analyzeSession, recompute, serverURL, wake } from "../demo/server.js";
 import { MAX_LABEL, canSave, clearJumps, listJumps, loadJump, removeJumps, renameJump, saveJump } from "../demo/history.js";
 import { formatQuantity, onUnitsChange } from "../lib/units.js";
 import { addFull, clear as clearTapeLog, csv as tapeCSV, entries as tapeEntries } from "../live/tapelog.js";
-import { renderTapeCheck } from "../live/shared.js";
+import { FOULS, renderTapeCheck } from "../live/shared.js";
 
 const $ = (id) => document.getElementById(id);
 const PAGE = document.body.dataset.page === "demo" ? "demo" : "analyze";
@@ -134,7 +134,9 @@ function renderSource(a) {
   const r = a.bundle.results;
   const fps = `${Math.round(r.fps)} fps${r.fps_source === "override" ? " (as you set)" : ""}`;
   const scale = a.calibrated ? `calibrated, 1 px = ${formatQuantity("tiny", r.scale_m_per_px)}` : "no tape calibration";
-  const kept = (a.live ? ` · live result ${formatQuantity("distance", a.live.meters)}` : "") + (a.historyId ? " · saved in My jumps" : "");
+  const live = a.live && (a.live.foul ? `didn't count live (${(FOULS[a.live.foul.code]?.headline || "a foul").toLowerCase()})`
+    : `live result ${formatQuantity("distance", a.live.meters)}`);
+  const kept = (live ? ` · ${live}` : "") + (a.historyId ? " · saved in My jumps" : "");
   const file = a.custom ? `${a.label} (${a.name})` : a.name;
   $("results-source").textContent = `${file} · ${fps} · ${scale} · ${r.side === "LEFT" ? "left" : "right"} side to the camera${kept}`;
 }
@@ -330,8 +332,9 @@ function showSample() {
 // ---------------------------------------------------------------- 1. a video -> the analysis server
 let job = null;
 /** A video to the server. From live measuring: its scale is known (no calibration step) and each
- *  jump's live distance is shown next to the full result. */
-async function startUpload(file, { scale = null, fps: liveFps = null, jumps: live = null, session = null } = {}) {
+ *  jump's live distance is shown next to the full result. uploaded: { job, chunks } when the video
+ *  is on the server already (a phone's recording, brought to its remote screen). */
+async function startUpload(file, { scale = null, fps: liveFps = null, jumps: live = null, session = null, uploaded = null } = {}) {
   const fps = liveFps || Number($("fps-select").value) || null;
   $("progress-source").textContent = `“${file.name}”`;
   $("analysis-error").hidden = true;
@@ -344,7 +347,7 @@ async function startUpload(file, { scale = null, fps: liveFps = null, jumps: liv
   const reach = (i, label) => { while (at < i) steps.done(at++); if (label) steps.label(i, label); };
   steps.active(0);
   job = analyzeSession(file, {
-    fps, scale,
+    fps, scale, uploaded,
     onProgress: (name, done, total) => {
       const i = stage[name] ?? at;
       if (i > at) { reach(i); steps.active(i); }
@@ -434,6 +437,7 @@ async function openRemote(code = null) {
         onDone: ({ scale }) => { cal.dispose(); show("remote"); remote.setScale(scale); },
       });
     },
+    onAnalyze: (file, info) => { remote.dispose(); remote = null; setParam("remote", null); startUpload(file, info); },   // the full data here
     onClose: () => { remote = null; setParam("remote", null); show("start"); $("remote-open")?.focus(); },
   });
   $("remote-title")?.focus();

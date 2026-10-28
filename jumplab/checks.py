@@ -267,6 +267,9 @@ STEP_BEHIND = 0.20     # ...or behind the rear foot's within 1.5 s, which moves 
 HAND_FLOOR = 0.04      # a hand this close to the floor (the lowest foot point at landing)...
 HAND_DOWN_S = 0.25     # ...for this long, moving less than HAND_STILL: put down, not swung past
 HAND_STILL = 0.10      #   (hands on the ground: 0.58 s, moved 0.03; valid at most 0.15 s, swinging)
+KNEE_FLOOR = 0.07      # a knee this close to the floor, or the hips within SEAT_FLOOR of it, for DOWN_S:
+SEAT_FLOOR = 0.09      #   fell (a knee or the seat on the ground). The deepest valid landing squats got the
+DOWN_S = 0.15          #   knees down to 0.17 and the hips to 0.14 (22 landings; the browser's tracker the same)
 FEET = {"left": (27, 29, 31), "right": (28, 30, 32)}        # ankle, heel, toe
 HANDS = (15, 16, 17, 18, 19, 20)                              # wrists, little fingers, index fingers
 
@@ -279,7 +282,7 @@ def _standing_height(xyv, onset_i, fps):
 
 def check_landing(xyv, direction, onset_i, landing_i, hi, fps):
     """Fouls after landing: a step forward past the front foot, a step back behind the rear foot,
-    or a hand put down on the ground. Bringing the back foot up to the front one is fine. Each foul
+    a hand put down on the ground, or a fall (a knee or the seat on the ground). Bringing the back foot up to the front one is fine. Each foul
     is a warning dict with severity FOUL and the frame it happened at."""
     with warnings.catch_warnings():                 # frames with nobody tracked are all-NaN: fine
         warnings.simplefilter("ignore", RuntimeWarning)
@@ -336,6 +339,21 @@ def _landing_fouls(xyv, direction, onset_i, landing_i, hi, fps):
                                          f"{(i - landing_i) / fps:.1f} s after landing (frame {i}).", FOUL, ("distance",)))
                     fouls[-1]["frame"] = int(i)
                     break
+    knee_y = np.nanmax(xy[landing_i:behind_end, [25, 26], 1], axis=1)      # the lower knee (image y is down)
+    hip_y = np.nanmean(xy[landing_i:behind_end, [23, 24], 1], axis=1)
+    if np.isfinite(floor):
+        down = (knee_y >= floor - KNEE_FLOOR * tall) | (hip_y >= floor - SEAT_FLOOR * tall)
+        need, run = max(2, int(DOWN_S * fps)), 0
+        for k, d in enumerate(down):
+            run = run + 1 if d else 0
+            if run >= need:
+                i = landing_i + k - run + 1
+                fouls.append(warning("foul_fell",
+                                     f"A knee or the seat was on the ground for at least {DOWN_S:.2f} s, from "
+                                     f"{(i - landing_i) / fps:.1f} s after landing (frame {i}): the jumper fell.",
+                                     FOUL, ("distance",)))
+                fouls[-1]["frame"] = int(i)
+                break
     return fouls
 
 def check_side_on(launch_angle_deg, size_before_px, size_after_px):

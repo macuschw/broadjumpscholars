@@ -3,7 +3,7 @@
 Each jump gets the normal analysis (pipeline.analyze_keypoints) on its own stretch of the video
 (pose_tracking.find_jumps / jumps_in_keypoints: 2.5 s before the dip to 1.8 s after), with the
 other jumps blanked out, so two athletes taking turns never mix. Its verdict is in its results:
-"valid" and "fouls" (checks.check_landing: stepped forward or back, hand on the ground).
+"valid" and "fouls" (checks.check_landing: stepped forward or back, hand on the ground, fell).
 """
 from __future__ import annotations
 

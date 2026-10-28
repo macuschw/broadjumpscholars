@@ -7,11 +7,15 @@ its state every couple of seconds until the results are ready:
     POST /jobs/<id>/start?chunks=n                -> the analysis starts in the background
     GET  /jobs/<id>            -> {"state": "uploading" | "queued" | "running" | "done" | "error",
                                    "stage", "done", "total", "error"?, "result"? (the session)}
+    GET  /jobs/<id>/<i>        -> piece i, before the job starts: Measure live's phone uploads its
+                                  recording and its remote screen (a laptop) downloads it from here
+    DELETE /jobs/<id>          -> the job and its pieces are deleted (the remote screen has the video)
 
 A store keeps each job's files and state: LocalJobs (a temporary folder and a thread, for
 scripts/serve_local.py); the Modal server keeps them in a Volume and a Dict and runs the analysis
 in a function of its own (server/modal_app.py). route() is the HTTP part both servers share.
-The video is deleted as soon as the analysis ends; the results once they've been collected.
+The video is deleted as soon as the analysis ends (or when deleted, or after an hour if never
+started); the results once they've been collected.
 """
 from __future__ import annotations
 
@@ -90,6 +94,15 @@ def run_job(folder, n_chunks, set_state):
             os.unlink(video)                                   # the video is never kept
 
 
+def read_chunk(folder, i):
+    """Piece i of a job's video, while the job hasn't started (once it has, the pieces are joined)."""
+    try:
+        with open(os.path.join(folder, f"chunk_{i:05d}"), "rb") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise JobError(404, "The video isn't on the server any more (it was analyzed, or it expired).") from None
+
+
 def read_result(folder):
     with gzip.open(os.path.join(folder, "result.json.gz"), "rt") as f:
         return json.load(f)
@@ -132,6 +145,13 @@ class LocalJobs:
         with open(os.path.join(folder, f"chunk_{i:05d}"), "wb") as f:
             f.write(data)
 
+    def get_chunk(self, job_id, i):
+        return read_chunk(self._folder(job_id), i)
+
+    def delete(self, job_id):
+        shutil.rmtree(self._folder(job_id), ignore_errors=True)
+        self.states.pop(job_id, None)
+
     def start(self, job_id, n):
         folder = self._folder(job_id)
         missing = [i for i in range(n) if not os.path.exists(os.path.join(folder, f"chunk_{i:05d}"))]
@@ -151,7 +171,8 @@ class LocalJobs:
 
 
 def route(store, method, path, query, body=b""):
-    """One /jobs request -> (HTTP status, JSON-able body); None if the path isn't a /jobs path."""
+    """One /jobs request -> (HTTP status, JSON-able body, or bytes: a piece of a video); None if the
+    path isn't a /jobs path."""
     parts = [p for p in path.split("/") if p]
     if not parts or parts[0] != "jobs":
         return None
@@ -178,6 +199,11 @@ def route(store, method, path, query, body=b""):
                 return 200, {"ok": True}
             if method == "GET" and len(parts) == 2:
                 return 200, store.status(job_id)
+            if method == "GET" and len(parts) == 3 and parts[2].isdigit():
+                return 200, store.get_chunk(job_id, int(parts[2]))     # bytes: sent as they are
+            if method == "DELETE" and len(parts) == 2:
+                store.delete(job_id)
+                return 200, {"ok": True}
         return 404, {"error": "Not found."}
     except JobError as e:
         return e.status, {"error": str(e)}

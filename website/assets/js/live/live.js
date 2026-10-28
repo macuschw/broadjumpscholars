@@ -1,10 +1,12 @@
 // Measure live: the phone's camera on the Analyze page. MediaPipe's pose tracker runs in the
 // browser on every camera frame (nothing is uploaded while measuring); live/detect.js spots each
-// jump and its distance is shown the moment the jumper lands. The whole session is recorded at the
-// same time, so the full analysis (angles, timing, the checks for steps, hands, someone in the
-// shot...) can follow, now or later, from that recording, like any uploaded video.
+// jump, and its distance is shown and said once the landing is held (about 1.5 s after landing; a
+// step, a hand down or a fall is said instead: that jump doesn't count). The whole session is
+// recorded at the same time, so the full analysis (angles, timing, someone in the shot...) can
+// follow, now or later, from that recording, like any uploaded video.
 // With a remote screen (live/room.js, live/remote.js), a laptop or another phone shows the
-// distances and runs this one, so nobody has to touch the phone on the tripod.
+// distances and runs this one, so nobody has to touch the phone on the tripod; after Stop it can
+// ask for the recording (sent through the analysis server) to save it or analyze it there.
 // "Save tracking data" downloads every tracked frame of the session (with the scale, the calibration
 // picture, the live jumps and any tape measurements typed in), so the live detector can be replayed
 // and checked against the tape away from the field.
@@ -13,9 +15,10 @@
 //   live.setScale(metersPerPixel)   after the visitor has marked the tape on onNeedScale's still
 import { createDetector } from "./detect.js";
 import { cleanCode, isCode, linkPhone, read } from "./room.js";
-import { createVoice, esc, feetApart, fullScreen, guardLeaving, jumpItemHTML, jumpWords, paintSkeleton, parseTapeText,
-  renderTapeCheck, resultHTML, setupHTML, tapeEntry } from "./shared.js";
+import { bindUnits, createVoice, esc, feetApart, fileStamp, fullScreen, guardLeaving, jumpItemHTML, jumpWords, paintSkeleton, parseTapeText,
+  renderTapeCheck, resultsCSV, saveFile, setupHTML, showResult, tapeEntry, unitsHTML } from "./shared.js";
 import { record as logTape } from "./tapelog.js";
+import { forgetVideo, uploadVideo } from "../demo/server.js";
 import { formatQuantity, isImperial, onUnitsChange } from "../lib/units.js";
 
 const VISION = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -41,8 +44,9 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
       <div class="live__head">
         <h2 id="live-title" tabindex="-1">Measure live</h2>
         <p class="live__lede">Put the phone on a tripod, <strong>turned sideways</strong>, side-on to the jump, with the whole jump and
-          the tape measure in the picture. The distance appears, and is said out loud, as soon as the jumper lands.
-          It's a quick estimate: for the measured distance, use <strong>Get the full data</strong> when you stop.</p>
+          the tape measure in the picture. The distance appears, and is said out loud, once the jumper has held the
+          landing (a step, a hand down or a fall is said instead). It's a quick estimate: for the measured distance,
+          use <strong>Get the full data</strong> when you stop.</p>
         ${setupHTML()}
       </div>
       <div class="live__stage">
@@ -53,6 +57,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
         <p class="live__turn" hidden>Turn the phone sideways: a jump needs a wide picture.</p>
       </div>
       <div class="live__options">
+        ${unitsHTML()}
         <label class="live__camera" hidden>Camera <select class="live__camera-select"></select></label>
         <button type="button" class="btn btn--quiet btn--sm live__speak" aria-pressed="true">Say each distance out loud</button>
         <button type="button" class="btn btn--quiet btn--sm live__full-screen" hidden>Full screen</button>
@@ -84,7 +89,8 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   const status = (text) => { q(".live__status").textContent = text; link?.soon(); };
   let stream = null, tracker = null, scale = null, recorder = null, chunks = [], recStart = 0, mime = "", clock0 = 0;
   let running = false, busy = false, lastSeen = 0, wake = null, frames = 0, closed = false, mediaBase = null, lastTs = 0;
-  let stage = "starting", air = false, lastPts = null, link = null, file = null, kept = false, rate = 0;
+  let stage = "starting", air = false, lastPts = null, link = null, file = null, kept = false, rate = 0, recFps = null;
+  let handoff = null, remoteTook = false;                      // the recording, sent to the remote screen (on its request)
   const tracked = [];                                          // when each recent frame was tracked: the tracking rate
   let trackingSince = 0;
   const session = Date.now();                                  // tells the remote screen a new session began
@@ -97,7 +103,8 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   const voice = createVoice(q(".live__speak"));
   const wide = fullScreen(q(".live__stage"), q(".live__full-screen"));
   const setStage = (s) => { stage = s; link?.soon(); };
-  const detector = createDetector({ onJump: (j) => showJump(j), onState: (s) => {
+  const offUnitSwitch = bindUnits(q(".live__options"));
+  const detector = createDetector({ onLanded: (j) => landed(j), onJump: (j) => showJump(j), onState: (s) => {
     air = s === "air";
     q(".live__badge").textContent = air ? "In the air" : "";
     q(".live__badge").hidden = !air;
@@ -315,17 +322,32 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     }, 1500);
   }
 
-  function showJump(j) {
-    const jump = { ...j, meters: j.distancePx * scale, apart: feetApart(j, scale), fps: rate };
+  /** Just landed: shown as "checking the landing" (no number yet), not said. */
+  function landed(j) {
+    const jump = { ...j, meters: j.distancePx * scale, apart: feetApart(j, scale), fps: rate, checking: true };
     jumps.push(jump);
+    showResult(q(".live__result"), jump);
+    q(".live__result").classList.remove("live__result--old");
+    renderList();
+    link?.soon();
+  }
+  /** Judged: the distance, or why it doesn't count; said out loud. Stays up until the next jump. */
+  function showJump(j) {
+    const jump = { ...j, meters: j.distancePx * scale, apart: feetApart(j, scale), fps: jumps.find((x) => x.n === j.n)?.fps ?? rate };
+    const at = jumps.findIndex((x) => x.n === j.n);
+    if (at >= 0) jumps[at] = jump; else jumps.push(jump);
     const box = q(".live__result");
-    box.innerHTML = resultHTML(jump);
-    box.hidden = false;                                        // stays up until the next jump replaces it
-    box.classList.remove("live__result--old");
+    if (jumps.at(-1) === jump) { showResult(box, jump); box.classList.toggle("live__result--old", air); }
     voice.say(jumpWords(jump));
     renderList();
     link?.soon();
   }
+  /** The jumps as the remote screen gets them, and as the results file lists them. */
+  const sharedJumps = () => jumps.map(({ n, meters, unsure, apart, tape, toeGapPx, heelGapPx, fps, checking, foul, tTakeoff, flight }) => ({
+    n, meters: Math.round(meters * 1e4) / 1e4, unsure: unsure || null, apart, tape: tape || null, fps,
+    checking: !!checking, foul: foul || null, flight: Math.round(flight * 100) / 100,
+    t: Math.round((tTakeoff - (recStart - clock0) / 1000) * 100) / 100,      // seconds into the recording
+    toeGapCm: Math.round((toeGapPx ?? 0) * scale * 1000) / 10, heelGapCm: Math.round((heelGapPx ?? 0) * scale * 1000) / 10 }));
   // The list, with each jump's tape check: typed here or on the remote screen, kept in the tape log
   const list = q(".live__jumps");
   const tape = tapeEntry(list, (n, m) => setTape(n, m, "phone"), () => renderList());
@@ -347,7 +369,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     renderList();
     renderTapeCheck(q(".live__tapecheck"));
     const last = jumps.at(-1);
-    if (last && !q(".live__result").hidden) q(".live__result").innerHTML = resultHTML(last);
+    if (last && !q(".live__result").hidden) showResult(q(".live__result"), last);
   };
   const offUnits = onUnitsChange(redraw);
   window.addEventListener("jl-tape-change", redraw);
@@ -359,23 +381,27 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     if (stage !== "measuring") return;
     setStage("stopping");
     q(".live__stop").hidden = true;
+    detector.flush();                                          // a landing still being checked: judged now
     file = await stopRecording();
+    const fps = recFps = stream?.getVideoTracks?.()[0]?.getSettings?.().frameRate || null;
     stop();
-    const n = jumps.length;
-    const fps = stream?.getVideoTracks?.()[0]?.getSettings?.().frameRate;
+    const n = jumps.length, counted = jumps.filter((j) => !j.foul).length;
     setStage("done");
-    status(n ? `${n} jump${n === 1 ? "" : "s"} measured live.` : "No jumps were measured.");
+    status(n ? `${n} jump${n === 1 ? "" : "s"} measured live${counted < n ? ` (${n - counted} didn't count)` : ""}.` : "No jumps were measured.");
     const done = q(".live__done");
     done.hidden = false;
     done.innerHTML = `
-      ${file ? `<p>The session was recorded (${(file.size / 1e6).toFixed(0)} MB). The full analysis adds the angles, the timing and the
+      ${file ? `<p>The session was recorded (${Math.max(1, Math.round(file.size / 1e6))} MB). The full analysis adds the angles, the timing and the
         checks (steps after landing, hands, someone in the shot), and confirms each distance.</p>
       <div class="live__done-actions">
         <button type="button" class="btn btn--primary live__full">Get the full data</button>
         <a class="btn btn--quiet live__save" href="${URL.createObjectURL(file)}" download="${file.name}">Save the video</a>
+        ${n ? '<button type="button" class="btn btn--quiet live__results">Save the results</button>' : ""}
       </div>
-      <p class="live__save-note">Saved videos can be uploaded here any time later, like any other video.</p>`
-        : "<p>This browser couldn't record the session, so only the live distances are available.</p>"}
+      <p class="live__save-note">Saved videos can be uploaded here any time later, like any other video. The results file is a
+        spreadsheet (CSV) of every jump.${link ? " The remote screen can bring the video and the results over too." : ""}</p>`
+        : `<p>This browser couldn't record the session, so only the live distances are available.</p>
+      ${n ? '<div class="live__done-actions"><button type="button" class="btn btn--quiet live__results">Save the results</button></div>' : ""}`}
       ${track.length ? `<details class="disclose live__check">
         <summary>Checking accuracy? Save the tracking data</summary>
         <div class="disclose__body">
@@ -394,9 +420,11 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     done.querySelector(".live__full")?.addEventListener("click", () => {
       kept = true;
       onAnalyze(file, { scale, fps: fps ? Math.round(fps) : null, session,
-        jumps: jumps.map(({ n, meters, tTakeoff, unsure }) => ({ n, meters, tTakeoff: tTakeoff - inFile, unsure })) });
+        jumps: jumps.map(({ n, meters, tTakeoff, unsure, foul }) => ({ n, meters, tTakeoff: tTakeoff - inFile, unsure, foul })) });
     });
     done.querySelector(".live__save")?.addEventListener("click", () => { kept = true; });
+    done.querySelector(".live__results")?.addEventListener("click", () => saveFile(new Blob([resultsCSV(sharedJumps())], { type: "text/csv" }),
+      `${file ? file.name.replace(/\.\w+$/, "") : `jumplab-live-${fileStamp(session)}`}-results.csv`));
     done.querySelector(".live__again").addEventListener("click", () => { if (sureToLeave()) again(); });
   }
   /** The session's tracking, the live jumps and the tape measurements, as a JSON file to download. */
@@ -416,11 +444,34 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     };
     const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
     const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob),
-      download: `jumplab-live-track-${data.saved.slice(0, 16).replace(/[:T]/g, "-")}.json` });
+      download: `jumplab-live-track-${fileStamp()}.json` });
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
   function again() { const code = link?.code || null; dispose("again"); onClose("again", { room: code }); }
+  // The remote screen asked for the recording: it goes up to the analysis server as a job not yet
+  // started, the remote downloads it from there (and may start the analysis on it)
+  async function sendVideo() {
+    if (!file || handoff?.state === "sending" || handoff?.state === "sent") return;
+    handoff = { state: "sending", sent: 0, size: file.size, name: file.name, type: file.type };
+    const note = () => status(`Sending the recording to the remote screen (${Math.round((100 * handoff.sent) / file.size)}%). Keep this page open.`);
+    note();
+    const up = uploadVideo(file, { fps: recFps ? Math.round(recFps) : null, scale, onProgress: (sent) => {
+      const before = Math.round((100 * handoff.sent) / file.size);
+      handoff.sent = sent;
+      if (Math.round((100 * sent) / file.size) !== before) note();
+    } });
+    handoff.abort = up.abort;
+    try {
+      Object.assign(handoff, await up.promise, { state: "sent", sent: file.size });
+      status("Sent to the remote screen. It can save the video or get the full data now.");
+    } catch (e) {
+      if (closed) return;
+      Object.assign(handoff, { state: "error", error: e.message });
+      status(`The recording couldn't be sent to the remote screen: ${e.message}`);
+    }
+    link?.soon();
+  }
   // Leaving would lose the session: measuring, or a recording not yet saved or sent for the full analysis
   const unsaved = () => running && !!scale || (stage === "done" && !!file && !kept);
   const sureToLeave = () => !unsaved() || confirm(stage === "done"
@@ -436,7 +487,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   }
   function toFile() {
     const type = (mime || chunks[0]?.type || "video/mp4").split(";")[0];
-    const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+    const stamp = fileStamp();
     return new File(chunks, `jumplab-live-${stamp}.${type.includes("webm") ? "webm" : "mp4"}`, { type });
   }
 
@@ -451,30 +502,36 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   // ---- a remote screen: it shows the distances and sends the scale, Stop and Measure again
   const LINK_TEXT = {
     watching: (c) => `Connected to the remote screen (${c}). It shows each distance and runs this phone.`,
-    waiting: (c) => `Linked to remote screen ${c}: waiting for it to open…`,
+    waiting: (c) => `Linked to remote screen ${c}: waiting for it to open… Until it does, this phone says each result.`,
     lost: () => "Lost the connection to the remote screen. Still trying…",
   };
   function connect(code) {
     link?.stop(null);
-    voice.mute();                                              // the remote screen does the talking
+    voice.mute();                                              // the remote screen does the talking (while it's there)
     q(".live__remote-form").hidden = true;
     q(".live__remote-open").hidden = true;
     q(".live__remote").hidden = false;
     q(".live__remote-text").textContent = LINK_TEXT.waiting(code);
     link = linkPhone(code, {
-      state: () => ({ session, stage, status: q(".live__status").textContent, air, rate,
-        jumps: jumps.map(({ n, meters, unsure, apart, tape, toeGapPx, heelGapPx, fps }) => ({ n, meters: Math.round(meters * 1e4) / 1e4,
-          unsure: unsure || null, apart, tape: tape || null, fps,
-          toeGapCm: Math.round((toeGapPx ?? 0) * scale * 1000) / 10, heelGapCm: Math.round((heelGapPx ?? 0) * scale * 1000) / 10 })) }),
+      state: () => ({ session, stage, status: q(".live__status").textContent, air, rate, scale, fps: recFps ? Math.round(recFps) : null,
+        jumps: sharedJumps(), recording: file ? { name: file.name, size: file.size, type: file.type } : null,
+        video: handoff && { state: handoff.state, sent: handoff.sent, size: handoff.size, name: handoff.name, type: handoff.type,
+          job: handoff.job || null, chunks: handoff.chunks || null, error: handoff.error || null } }),
       picture, still: () => (scaleStill = snapshot()),
       onCommand(c) {
         if (c.type === "scale" && stage === "ready" && c.scale > 0) { setScale(c.scale); onScaleSet(); }
         else if (c.type === "stop") finish();
         else if (c.type === "again" && stage === "done") again();      // (the remote screen asked first)
         else if (c.type === "tape") setTape(c.n, c.meters, "remote");
+        else if (c.type === "video" && stage === "done") sendVideo();
+        else if (c.type === "kept" && stage === "done") {          // the recording is on the remote screen now
+          kept = remoteTook = true;
+          status("The remote screen has the recording. You can measure again, or leave.");
+        }
       },
       onLink(how) {
         if (how === "gone") { disconnect(`The remote screen ${code} has closed (or the code was wrong).`); return; }
+        if (how === "watching") voice.mute(); else voice.unmute();   // nobody watching there: this phone says each result
         q(".live__remote-text").textContent = LINK_TEXT[how](code);
       },
     });
@@ -513,7 +570,9 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   function dispose(why = "back") {
     closed = true;
     clearInterval(rateTimer);
-    offUnits(); offGuard();
+    offUnits(); offGuard(); offUnitSwitch();
+    handoff?.abort?.();
+    if (handoff?.job && !remoteTook) forgetVideo(handoff.job);   // sent, but the remote never took it
     window.removeEventListener("jl-tape-change", redraw);
     link?.stop(why === "again" ? null : why);
     link = null;

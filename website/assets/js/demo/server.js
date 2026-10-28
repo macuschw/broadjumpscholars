@@ -58,20 +58,19 @@ async function ask(url, options = {}) {
 }
 
 /**
- * A video with one jump or several, analyzed as a background job (jumplab/jobs.py on the server).
- * onProgress(stage, done, total): "upload" (bytes sent of the file's size), then "looking" (frames
- * looked at), "tracking" (stretch done of all), "analyzing" (jump done of all). Each piece is tried
- * up to three times, and a few failed checks in a row are waited out, so a moment's wifi trouble
- * doesn't lose the job. Returns { promise, abort }; the promise gives the session.
+ * A video to the server in pieces, as a job not yet started (jumplab/jobs.py). onProgress(sent, size).
+ * Each piece is tried up to three times, so a moment's wifi trouble doesn't lose it. Returns
+ * { promise, abort }; the promise gives { job, chunks }. Measure live's phone hands its recording to
+ * its remote screen this way; analyzeSession uploads with it.
  */
-export function analyzeSession(file, { fps = null, scale = null, onProgress } = {}) {
+export function uploadVideo(file, { fps = null, scale = null, onProgress } = {}) {
   let stopped = false, xhr = null;
   const piece = (url, blob, sent) => new Promise((resolve, reject) => {
     xhr = new XMLHttpRequest();
     xhr.open("PUT", url);
     xhr.setRequestHeader("Content-Type", "application/octet-stream");
     xhr.timeout = 120 * 1000;
-    xhr.upload.onprogress = (e) => onProgress?.("upload", sent + e.loaded, file.size);
+    xhr.upload.onprogress = (e) => onProgress?.(sent + e.loaded, file.size);
     xhr.onload = () => (xhr.status === 200 ? resolve() : reject(new Error(message(xhr, xhr.responseText))));
     xhr.onerror = xhr.ontimeout = () => reject(Object.assign(new Error("The upload was interrupted. Check the connection and try again."), { network: true }));
     xhr.onabort = () => reject(canceled());
@@ -93,13 +92,86 @@ export function analyzeSession(file, { fps = null, scale = null, onProgress } = 
         }
       }
     }
-    onProgress?.("upload", file.size, file.size);
-    await ask(`${serverURL}/jobs/${job.job}/start?chunks=${n}`, { method: "POST" });
+    onProgress?.(file.size, file.size);
+    return { job: job.job, chunks: n };
+  })();
+  return { promise, abort: () => { stopped = true; xhr?.abort(); } };
+}
+
+/**
+ * A video uploaded with uploadVideo, back from the server piece by piece (a phone's live recording,
+ * on its remote screen). onProgress(received, size). Returns { promise, abort }; the promise gives a File.
+ */
+export function downloadVideo({ job, chunks, size, name, type }, { onProgress } = {}) {
+  let stopped = false, xhr = null;
+  const piece = (url, got) => new Promise((resolve, reject) => {
+    xhr = new XMLHttpRequest();
+    xhr.open("GET", url);
+    xhr.responseType = "blob";
+    xhr.timeout = 120 * 1000;
+    xhr.onprogress = (e) => onProgress?.(got + e.loaded, size);
+    xhr.onload = () => (xhr.status === 200 ? resolve(xhr.response)
+      : xhr.response.text().then((text) => reject(new Error(message(xhr, text))), () => reject(new Error(message(xhr, "")))));
+    xhr.onerror = xhr.ontimeout = () => reject(Object.assign(new Error("The download was interrupted. Check the connection and try again."), { network: true }));
+    xhr.onabort = () => reject(canceled());
+    xhr.send();
+  });
+  const promise = (async () => {
+    const parts = [];
+    let got = 0;
+    for (let i = 0; i < chunks; i++) {
+      for (let attempt = 1; ; attempt++) {
+        if (stopped) throw canceled();
+        try { parts.push(await piece(`${serverURL}/jobs/${job}/${i}`, got)); break; } catch (e) {
+          if (e.canceled || !e.network || attempt >= 3) throw e;
+          await pause(1500 * attempt);
+        }
+      }
+      got += parts.at(-1).size;
+    }
+    onProgress?.(got, size);
+    return new File(parts, name, { type });
+  })();
+  return { promise, abort: () => { stopped = true; xhr?.abort(); } };
+}
+
+/** Delete an uploaded video that won't be analyzed (it's on the remote screen now). Best effort. */
+export function forgetVideo(job) {
+  if (serverURL && job) fetch(`${serverURL}/jobs/${job}`, { method: "DELETE", mode: "cors", keepalive: true }).catch(() => {});
+}
+
+/**
+ * A video with one jump or several, analyzed as a background job (jumplab/jobs.py on the server).
+ * onProgress(stage, done, total): "upload" (bytes sent of the file's size), then "looking" (frames
+ * looked at), "tracking" (stretch done of all), "analyzing" (jump done of all). A few failed checks
+ * in a row are waited out. uploaded: { job, chunks } when the video is on the server already (a
+ * phone's live recording, handed to its remote screen): no second upload, unless it's gone.
+ * Returns { promise, abort }; the promise gives the session.
+ */
+export function analyzeSession(file, { fps = null, scale = null, uploaded = null, onProgress } = {}) {
+  let stopped = false, up = null;
+  const promise = (async () => {
+    if (!serverURL) throw new Error("Video analysis isn't switched on for this site yet.");
+    let job = null;
+    if (uploaded) {
+      try {
+        await ask(`${serverURL}/jobs/${uploaded.job}/start?chunks=${uploaded.chunks}`, { method: "POST" });
+        job = uploaded.job;
+        onProgress?.("upload", file.size, file.size);
+      } catch (e) { if (e.network) throw e; }                  // gone (expired, or analyzed already): upload it
+    }
+    if (!job) {
+      if (stopped) throw canceled();
+      up = uploadVideo(file, { fps, scale, onProgress: (sent, size) => onProgress?.("upload", sent, size) });
+      const { job: id, chunks } = await up.promise;
+      await ask(`${serverURL}/jobs/${id}/start?chunks=${chunks}`, { method: "POST" });
+      job = id;
+    }
     for (let misses = 0; ; ) {
       await pause(2000);
       if (stopped) throw canceled();
       let st;
-      try { st = await ask(`${serverURL}/jobs/${job.job}`); misses = 0; } catch (e) {
+      try { st = await ask(`${serverURL}/jobs/${job}`); misses = 0; } catch (e) {
         if (!e.network || ++misses >= 10) throw e;
         continue;
       }
@@ -108,7 +180,7 @@ export function analyzeSession(file, { fps = null, scale = null, onProgress } = 
       if (st.state === "running") onProgress?.(st.stage, st.done, st.total);
     }
   })();
-  return { promise, abort: () => { stopped = true; xhr?.abort(); } };
+  return { promise, abort: () => { stopped = true; up?.abort(); } };
 }
 
 /** Analyze a bundle's landmarks again with a new scale (no video upload). */

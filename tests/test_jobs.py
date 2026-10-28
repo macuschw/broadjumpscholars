@@ -75,3 +75,19 @@ def test_bad_requests_are_refused_plainly(store):
     assert jobs.route(store, "PUT", f"/jobs/{job}/0", {}, b"x" * (jobs.CHUNK_BYTES + 1))[0] == 400
     assert jobs.route(store, "PUT", f"/jobs/{job}/{jobs.MAX_CHUNKS}", {}, b"x")[0] == 413
     assert jobs.route(store, "POST", "/jobs", {"scale": "5"})[0] == 422
+
+
+def test_a_live_recording_can_be_read_back_by_the_remote_screen_then_deleted(store, monkeypatch):
+    """Measure live: the phone uploads its recording, the remote screen (a laptop) downloads it piece
+    by piece, then either starts the analysis on it or deletes it."""
+    monkeypatch.setattr(web, "analyze_session_upload", lambda *a, **k: {"format": web.SESSION_FORMAT, "jumps": [], "best": None})
+    job, n = _upload(store, VIDEO)
+    assert b"".join(jobs.route(store, "GET", f"/jobs/{job}/{i}", {})[1] for i in range(n)) == VIDEO
+    assert jobs.route(store, "GET", f"/jobs/{job}/{n}", {})[0] == 404           # no such piece
+    assert jobs.route(store, "DELETE", f"/jobs/{job}", {}) == (200, {"ok": True})
+    assert not os.path.exists(os.path.join(store.root, job))
+    assert jobs.route(store, "GET", f"/jobs/{job}/0", {})[0] == 404
+    job, n = _upload(store, VIDEO)                                              # ...or analyzed: the pieces go
+    jobs.route(store, "POST", f"/jobs/{job}/start", {"chunks": str(n)})
+    _wait(store, job)
+    assert jobs.route(store, "GET", f"/jobs/{job}/0", {})[0] == 404

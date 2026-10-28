@@ -33,10 +33,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Vary", "Origin")
 
     def _send(self, status, body):
-        data = json.dumps(body, separators=(",", ":")).encode()
+        raw = isinstance(body, bytes)                          # a piece of a video (jobs.route)
+        data = body if raw else json.dumps(body, separators=(",", ":")).encode()
         self.send_response(status)
         self._cors()
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", "application/octet-stream" if raw else "application/json")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -44,7 +45,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):                                      # CORS preflight
         self.send_response(204)
         self._cors()
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Max-Age", "600")
         self.end_headers()
@@ -75,6 +76,9 @@ class Handler(BaseHTTPRequestHandler):
         if url.path.endswith("/start"):
             print(f"{url.path} -> {reply[0] if reply else 404}")
         self._send(*(reply or (404, {"error": "Not found."})))
+
+    def do_DELETE(self):
+        self._jobs("DELETE")
 
     def do_PUT(self):
         if urlparse(self.path).path.startswith("/rooms"):

@@ -3,7 +3,9 @@
 It runs the same analysis as the command line (jumplab/web.py: MediaPipe 0.10.14, then
 analyze_keypoints), for videos uploaded from the website's Demo page. Modal starts it when a
 request arrives and stops it a few minutes after the last one, so it costs nothing while idle.
-Uploaded videos are written to a temporary file, analyzed, and deleted; nothing is stored.
+Uploaded videos are analyzed and deleted; nothing is stored. (A live recording handed to a remote
+screen waits until the remote screen has saved or analyzed it; tidy_jobs clears anything left
+behind every hour.)
 
 One-time setup (from this repo's folder):
     python3 -m pip install modal
@@ -18,6 +20,8 @@ Endpoints
     /jobs ...                      a video in pieces, analyzed in the background (jumplab/jobs.py):
                                    every jump in it, each with its verdict. No request comes near
                                    Modal's 150 s limit, however long the video or slow the wifi.
+                                   Also how Measure live's phone hands its recording to its remote
+                                   screen (pieces read back before the job starts, then deleted).
     POST /analyze?name=&fps=&scale=&event_method=    body: the video file -> website bundle
                                    (the older one-request upload; kept for pages not yet updated)
     POST /recompute                body: {"landmarks", "name", "fps", "scale", "event_method", "still"}
@@ -55,6 +59,18 @@ rooms_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastap
 room_store = modal.Dict.from_name("jumplab-rooms", create_if_missing=True)
 
 
+def tidy_jobs_dir(keep_s, skip=None):
+    """Delete uploads nobody came back for: never started (a live recording a remote screen never
+    took), or results never collected. Runs hourly (tidy_jobs), and before each new job."""
+    import shutil
+    import time
+    for old in os.listdir(JOBS_DIR):
+        path = os.path.join(JOBS_DIR, old)
+        if old != skip and time.time() - os.path.getmtime(path) > keep_s:
+            shutil.rmtree(path, ignore_errors=True)
+            job_states.pop(old, None)
+
+
 class ModalJobs:
     """jobs.py's store on Modal: files in the Volume, states in the Dict, the analysis in
     process_job (its own container, so it can run as long as a video needs)."""
@@ -75,6 +91,7 @@ class ModalJobs:
         import json
         import time
         import uuid
+        tidy_jobs_dir(self.jobs.KEEP_S)
         job_id = uuid.uuid4().hex
         os.makedirs(self._folder(job_id))
         with open(os.path.join(self._folder(job_id), "options.json"), "w") as f:
@@ -89,6 +106,18 @@ class ModalJobs:
         with open(os.path.join(self._folder(job_id), f"chunk_{i:05d}"), "wb") as f:
             f.write(data)
         volume.commit()
+
+    def get_chunk(self, job_id, i):
+        self._state(job_id)
+        volume.reload()                                        # (the pieces may have come in elsewhere)
+        return self.jobs.read_chunk(self._folder(job_id), i)
+
+    def delete(self, job_id):
+        import shutil
+        self.jobs.check_id(job_id)
+        shutil.rmtree(self._folder(job_id), ignore_errors=True)
+        volume.commit()
+        job_states.pop(job_id, None)
 
     def start(self, job_id, n):
         import time
@@ -111,16 +140,12 @@ class ModalJobs:
 @app.function(cpu=2.0, memory=4096, timeout=1800, volumes={JOBS_DIR: volume})
 def process_job(job_id: str, n_chunks: int):
     """One upload's analysis: join its pieces, find and judge every jump, save the result."""
-    import shutil
     import time
 
     from jumplab import jobs
 
     volume.reload()
-    for old in os.listdir(JOBS_DIR):                           # tidy jobs nobody came back for
-        path = os.path.join(JOBS_DIR, old)
-        if old != job_id and time.time() - os.path.getmtime(path) > jobs.KEEP_S:
-            shutil.rmtree(path, ignore_errors=True)
+    tidy_jobs_dir(jobs.KEEP_S, skip=job_id)
     folder = os.path.join(JOBS_DIR, job_id)
     missing = [i for i in range(n_chunks) if not os.path.exists(os.path.join(folder, f"chunk_{i:05d}"))]
     if missing:
@@ -133,6 +158,16 @@ def process_job(job_id: str, n_chunks: int):
         volume.commit()                                        # the result in, the video gone
 
 
+@app.function(cpu=0.25, memory=1024, schedule=modal.Period(hours=1), volumes={JOBS_DIR: volume})
+def tidy_jobs():
+    """Hourly, so nothing uploaded stays on the server longer than about an hour, even when nobody
+    starts another job (Modal's free plan allows 5 scheduled functions; this is the only one)."""
+    from jumplab import jobs
+    volume.reload()
+    tidy_jobs_dir(jobs.KEEP_S)
+    volume.commit()
+
+
 @app.function(cpu=2.0, memory=4096, timeout=900, scaledown_window=300, volumes={JOBS_DIR: volume})
 @modal.asgi_app()
 def web():
@@ -141,7 +176,7 @@ def web():
     from fastapi import FastAPI, Request
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.middleware.gzip import GZipMiddleware
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import JSONResponse, Response
     from starlette.concurrency import run_in_threadpool
 
     from jumplab import jobs
@@ -150,16 +185,18 @@ def web():
 
     api = FastAPI(title="JumpLab analysis", docs_url=None, redoc_url=None)
     api.add_middleware(CORSMiddleware, allow_origins=list(ALLOWED_ORIGINS),
-                       allow_methods=["GET", "POST", "PUT", "OPTIONS"], allow_headers=["Content-Type"])
+                       allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], allow_headers=["Content-Type"])
     api.add_middleware(GZipMiddleware, minimum_size=2000)        # results are mostly numbers: ~10x smaller
     store = ModalJobs(jobs)
 
     @api.api_route("/jobs", methods=["POST"])
-    @api.api_route("/jobs/{rest:path}", methods=["GET", "POST", "PUT"])
+    @api.api_route("/jobs/{rest:path}", methods=["GET", "POST", "PUT", "DELETE"])
     async def job(request: Request, rest: str = ""):
         body = await request.body() if request.method == "PUT" else b""
         status, reply = await run_in_threadpool(jobs.route, store, request.method, request.url.path,
                                                 dict(request.query_params), body) or (404, {"error": "Not found."})
+        if isinstance(reply, bytes):                               # a piece of a video, for a remote screen
+            return Response(reply, status, media_type="application/octet-stream")
         return JSONResponse(reply, status)
 
     @api.get("/health")
@@ -244,7 +281,7 @@ def rooms():
 
     api = FastAPI(title="JumpLab rooms", docs_url=None, redoc_url=None)
     api.add_middleware(CORSMiddleware, allow_origins=list(ALLOWED_ORIGINS),
-                       allow_methods=["GET", "POST", "PUT", "OPTIONS"], allow_headers=["Content-Type"], max_age=3600)
+                       allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], allow_headers=["Content-Type"], max_age=3600)
     store = rm.Rooms(MemoryFirst(room_store))
 
     @api.api_route("/rooms", methods=["POST"])
