@@ -14,7 +14,7 @@ this repo (GitHub: macuschw/broadjumpscholars):
 
 ```bash
 python3 -m pip install -r requirements.txt          # mediapipe==0.10.14 is required (newer removed the API)
-python3 -m pytest -q                                 # 194 tests should pass
+python3 -m pytest -q                                 # 197 tests should pass
 python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration output/calibration.json
 python scripts/run_session.py "../test videos/IMG_6233.MOV"     # a video with many jumps: a verdict table
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
@@ -31,7 +31,20 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   side-on camera can't see the far foot. The code flags it (`checks.check_stagger`, SERIOUS) as a big
   banner + "APPROXIMATE" marker + final "CHECK THIS JUMP" line (`jumplab/alerts.py`).
 - Tried and rejected: both-feet correction, measuring from the takeoff line (both made errors worse).
-  A real fix needs a second camera or ~10 more tape-measured staggered jumps.
+  A real fix needs a second camera or ~10 more tape-measured staggered jumps. (Oct 27: the both-feet
+  number was pulled ~10 cm short by perspective, below; worth re-testing now that's removed.)
+- **Perspective** (Oct 27, `feet.perspective_shift`, also `live/detect.js`): the far foot is ~a stance
+  width (`DEPTH_M` 0.25 m) further from the camera, so it shows up shifted toward the picture's middle by
+  (x - cx) * DEPTH_M / Z, Z = focal (0.73 x the long side, a phone's ~69 degree lens) x scale. Away from
+  the middle that read as staggered feet: the Oct 27 live session (takeoff 650 px off center, feet side by
+  side) had toes "12-17 cm apart" while standing, and every left-right body pair (heels, ankles, knees,
+  hips, shoulders) shifted the same way. The far foot is now moved back by the shift before comparing,
+  and gaps within 30% of it (`PERSPECTIVE_SLACK`) aren't called staggered. Real data: 19 of 20 jumps
+  flagged -> 4 (step-forward foul, stumble foul, tracker on someone behind, one ~7 cm landing gap);
+  live "feet apart" on the 20 test jumps 18 -> 9; distances unchanged. Trade-off: a small takeoff
+  stagger (< ~8-9 cm) near the frame's edge can't be told from perspective with one camera. The
+  synthetic jumper now sees through a lens too (`perspective=True`). Hip-based estimates of the shift
+  were tried and rejected: baggy dark clothes hide the hips (IMG_6233).
 - Blur: tracking records each frame's athlete sharpness (Laplacian variance of a 240 px crop around
   the body). `checks.check_blur`: median during the jump < 250 → SERIOUS, < 500 → CAUTION. Our real
   clips score 780–4400; the same clip Gaussian-blurred scores 20–310. Older `_keypoints.npz` files
@@ -59,6 +72,16 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   jump" (walking off fast from the landing squat). Benchmark: `tests/data/multi_jump_120fps_*`
   (IMG_6233, 8 jumps by Reece and Macus, the last 3 failed; answer key by eye) -> all 8 found, every
   verdict and foul right.
+- **Uneven frame timing** (phone browsers record live video at a variable rate): when
+  `check_frame_timing` finds drift over half a frame, every time, duration and the flight fit use the
+  frames' own timestamps (`pipeline._real_times`) and the note is information. Oct 27 session: effect
+  under 1%. `low_fps` is information too (the ground-contact rating already says rough), and no
+  `fps_override` note when the set rate matches the file. Live jumps went from 3-6 cautions each to 0-1.
+- **Open: early takeoff at 30 fps.** With the default `ankle` events, takeoff is sometimes found at the
+  heel raise, 6-8 frames before the toes leave (Oct 27 jumps 6-7: flight 0.70-0.77 s, launch angle up to
+  54 deg, a gravity "scale mismatch" and a false "slow motion suspected"). Distance is unaffected. The
+  `toe_heel` method fixes jump 6 (0.43 s) and jump 1's mismatch; switching the default needs a check
+  against tape-measured jumps first.
 - Every warning code has plain words in `alerts.PLAIN` (headline / what happened / how to fix);
   a test fails if a new code is added without them. On the website, serious problems show as a red
   panel right above the numbers, and the stats they affect (the warning's `affects`) get a
@@ -68,7 +91,8 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
 
 - Pages: Home (3D draggable hero, the problem, call to action; no testimonials), How it works,
   Metrics (3D sculpted mannequin, drag 360°, in-scene metric overlays + callout labels), Setup,
-  Science (KaTeX formulas, tabs), About (team: Reece, Macus), Analyze
+  Science (KaTeX formulas, tabs; "The math" tab: every formula with a worked example from the Oct 27
+  session and the file that does it: keep it in step with the code), About (team: Reece, Macus), Analyze
   (upload your own video; the header's "Upload a video" button), Demo (the simulated sample jump, its own
   page). Both use one script (`pages/demo.js`, picks by `<body data-page>`) and one shared dashboard
   markup (`demo/dashboard-html.js`).
