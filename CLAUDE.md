@@ -156,7 +156,7 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   downloads it for later. Checked on our videos at 30 fps: all 21 jumps found, no false ones; live vs
   full analysis within ~1% typically, 5% worst (browser tracker), Jump 2 of IMG_6233 (person behind)
   -14% and marked unsure. Phone cameras give 30-60 fps in a browser (no slow motion): fine for the
-  distance, not for timing. Not yet tried on a real phone at the time of writing.
+  distance, not for timing. Used on real phones since Oct 26 (later tests with the setup guide: about spot on).
   Hands-off use (a phone on a tripod is hard to tap): a Camera picker (shown when there are 2+
   cameras; locked once the scale is set; remembered by label in `jl-live-camera`). On a laptop an
   iPhone camera is picked automatically the first time (Mac Continuity Camera: the iPhone on the
@@ -164,7 +164,6 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   is said out loud (`speechSynthesis`, toggle remembered in `jl-live-speak`; "Ready" is spoken on the
   "Use this scale" tap, which also unlocks speech on iPhones). The result stays up until the next jump
   (faded while that one is in the air), Full screen button / double-click for reading it from afar.
-  Tested with fake cameras in the browser only.
   Accuracy (Oct 26): first real test read ~3 in long, often over. Replaying the live detector on our
   own Python tracking (IMG_6233 at 24-120 fps, two single jumps) gave the same distances as the full
   analysis within ~1-2%, no long bias, so the over-reading is likely the browser tracker or the live
@@ -221,7 +220,7 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   is its own small function `rooms` (0.25 CPU, one container, rooms in memory + saved to the Dict
   "jumplab-rooms" in the background; ~1 cent/hour while in use), URL in `config.js` ROOMS_URL; locally
   `scripts/serve_local.py` serves /rooms too. `?remote=CODE` keeps a reloaded remote on its room.
-  Tested with two browser tabs (fake camera) and simulated phone messages, not yet on real devices.
+  Works with a real phone on the tripod + a remote screen (Oct 2026).
 - Calibration (`demo/calibrate.js`), made for phones after a real iPhone test: drag markers A and B
   (they move with the finger, never jump under it; tapping elsewhere brings the selected one), a 4x
   close-up of the selected marker under the picture, arrow buttons that nudge it one pixel, the
