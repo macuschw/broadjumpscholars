@@ -50,34 +50,76 @@
         <details class="disclose" open>
           <summary>Are the numbers on this site real?</summary>
           <div class="disclose__body"><p>The sample jump and the figures on these pages are simulated, and labeled as demo data. Your own jumps are real:
-            a video analyzed on the <a href="analyze.html">Analyze page</a>, or results opened from the JumpLab app, go through the same
-            analysis that was checked against tape-measured jumps.</p></div>
+            a video analyzed on the <a href="analyze.html">Analyze page</a>, a jump measured on the <a href="live.html">Live page</a>,
+            or results opened from the JumpLab app all go through analysis that was checked against tape-measured jumps.</p></div>
+        </details>
+        <details class="disclose">
+          <summary>What's the difference between Upload and Live?</summary>
+          <div class="disclose__body"><p><strong>Upload</strong> analyzes a video you've already filmed: the distance plus takeoff speed and angle, body angles,
+            contact and flight times, the tracked skeleton and charts. <strong>Live</strong> uses the phone's camera in the browser
+            and says each distance out loud the moment the jumper holds the landing, with nothing to upload. When you stop, Live
+            can send its recording for the full analysis, so you get both.</p></div>
         </details>
         <details class="disclose">
           <summary>What equipment do I need?</summary>
-          <div class="disclose__body"><p>A phone that records 120–240 fps slow motion, a tripod, and a tape measure for calibration. See the <a href="setup.html">setup guide</a>.</p></div>
+          <div class="disclose__body"><p>A phone, a tripod, and a tape measure on the floor for the scale. For uploads, slow motion (120–240 fps) makes the
+            timing numbers meaningful. Live works with any recent phone in its web browser. A laptop or second phone as a
+            remote screen is optional. See the <a href="setup.html">setup guide</a>.</p></div>
         </details>
         <details class="disclose">
           <summary>How accurate is it?</summary>
-          <div class="disclose__body"><p>It's a single 2D camera, so it's built for consistent field testing rather than lab precision. A validation study against tape-measured jumps is in progress.</p></div>
+          <div class="disclose__body"><p>In our tape checks, jumps that land with the feet together came within about 0.3 in (1 cm) of the tape. With the feet
+            apart, one side-on camera can't see the far foot, and the reading was off by 1.5–5 in, so the site warns you when it sees
+            this. Live's quick estimate is usually within about 1% of the full analysis of the same jump. Setup matters most: tape on
+            the camera's side of the feet, the camera square to the jump, and toes level with the start of the tape.</p></div>
         </details>
         <details class="disclose">
           <summary>Can I use normal 30 fps video?</summary>
-          <div class="disclose__body"><p>Yes for distance and angles, but timing is only good to ±33 ms per event. Slow motion (120–240 fps) makes contact and flight times meaningful.</p></div>
+          <div class="disclose__body"><p>Yes for distance and angles, but timing is only good to ±33 ms per event. Slow motion (120–240 fps) makes contact and
+            flight times meaningful. Live runs at the 30–60 fps a phone's browser gives, which is fine for the distance.</p></div>
+        </details>
+        <details class="disclose">
+          <summary>Does it know when a jump doesn't count?</summary>
+          <div class="disclose__body"><p>Yes. A step forward or back after landing, a hand put down, or a fall marks the jump as not counting, and the distance is
+            crossed out instead of shown as a result. In Live, the reason is said out loud. These rules were tuned on our own
+            test jumps, so tell us if one gets it wrong.</p></div>
+        </details>
+        <details class="disclose">
+          <summary>What else does it check?</summary>
+          <div class="disclose__body"><p>Anything that makes a number unreliable: a blurry video, someone else walking through the shot, feet apart at takeoff or
+            landing, or the body leaving the frame. Serious problems show in red above the results, and the numbers they affect are
+            marked "Not reliable", with how to fix it next time.</p></div>
+        </details>
+        <details class="disclose">
+          <summary>Can one video have several jumps?</summary>
+          <div class="disclose__body"><p>Yes. Every jump in an uploaded video is found and measured on its own, even with two people taking turns. You get a list
+            with each jump's distance, which ones count, and the best one.</p></div>
+        </details>
+        <details class="disclose">
+          <summary>What is the remote screen?</summary>
+          <div class="disclose__body"><p>A laptop or second phone that shows the distances in big type, says them out loud, and runs the phone on the tripod: set the
+            scale, stop, measure again, so nobody has to touch the filming phone. Open it on the <a href="live.html">Live page</a> and scan its
+            QR code with the filming phone. No accounts or sign-in. Afterwards it can bring the video and the results over.</p></div>
         </details>
         <details class="disclose">
           <summary>Does my video get uploaded?</summary>
-          <div class="disclose__body"><p>Only when you analyze a video on the Analyze page: it is sent to the JumpLab analysis server, analyzed,
-            and deleted straight away. Measure live tracks on the phone itself and uploads nothing while measuring; if a remote screen
-            asks for the recording afterwards, it passes through the server and is deleted as soon as the remote screen has saved or
-            analyzed it (within an hour at most). Nothing is kept on the server. Opening a results file from the JumpLab app never uploads anything.</p></div>
+          <div class="disclose__body"><p>Only when you upload a video, or choose "Get the full data" after measuring live: it is sent to the JumpLab analysis
+            server, analyzed, and deleted straight away. Live tracks on the phone itself and uploads nothing while measuring; if a
+            remote screen asks for the recording afterwards, it passes through the server and is deleted as soon as the remote screen
+            has saved or analyzed it (within an hour at most). Nothing is kept on the server. Opening a results file from the
+            JumpLab app never uploads anything.</p></div>
         </details>
         <details class="disclose">
           <summary>Where are my results saved?</summary>
-          <div class="disclose__body"><p>Only in your own browser, under “My jumps” on the Analyze page, so you can open them again on a later
-            visit. They never leave your device and nobody else can see them. They stay in that browser on that device: another
-            browser or your phone starts empty, and clearing your browsing data deletes them. The videos aren't saved, so add a
-            video back to see it under the skeleton. Use “Download results” to keep a copy anywhere.</p></div>
+          <div class="disclose__body"><p>Only in your own browser, under “My jumps” on the Analyze page, so you can open them again on a later visit. They never
+            leave your device and nobody else can see them; another browser or device starts empty, and clearing your browsing data
+            deletes them. Videos aren't saved, so add one back to see it under the skeleton. To keep copies anywhere, use “Download
+            results”, or after measuring live “Save the video” and “Save the results” (a spreadsheet of every jump).</p></div>
+        </details>
+        <details class="disclose">
+          <summary>Can I see feet and inches?</summary>
+          <div class="disclose__body"><p>Yes: switch between m and ft at the top of any page (in the menu on a phone), or on the Live screen. Every distance and
+            speed changes, and the choice is remembered.</p></div>
         </details>
       </div>
     </section>
