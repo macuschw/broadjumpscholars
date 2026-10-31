@@ -18,9 +18,9 @@ import { record } from "./tapelog.js";
 const QR = "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/+esm";
 const LOST_S = 8;                      // the phone hasn't written for this long: lost (it writes every 2 s)
 
-/** The link the phone opens: this site's Analyze page, as the camera of this room. */
+/** The link the phone opens: this site's Live page, as the camera of this room. */
 function joinURL(code) {
-  const url = new URL("analyze.html", location.href);
+  const url = new URL("live.html", location.href);
   url.searchParams.set("camera", code);
   const server = analysisServer();                             // a local test server goes along (localhost only)
   if (server && server !== ANALYSIS_URL.replace(/\/+$/, "")) url.searchParams.set("server", server);
@@ -56,7 +56,7 @@ export function createRemote(host, { code, onNeedScale, onAnalyze, onClose }) {
       <div class="remote__pair">
         <div class="remote__qr"></div>
         <div class="remote__how">
-          <p><strong>On the phone that will film:</strong> scan this with its camera app. Or open this site's Analyze page
+          <p><strong>On the phone that will film:</strong> scan this with its camera app. Or open this site's <strong>Live</strong> page
             there, choose <strong>Start the camera</strong>, then <strong>Use a remote screen</strong>, and type the code:</p>
           <p class="remote__code">${code.slice(0, 3)} ${code.slice(3)}</p>
           <p class="remote__url">${esc(join)}</p>

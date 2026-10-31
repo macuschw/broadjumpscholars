@@ -15,7 +15,10 @@ export const ROUTES = [
 class JlHeader extends HTMLElement {
   connectedCallback() {
     const current = this.getAttribute("current");
-    const isAnalyze = current === "analyze";
+    const here = (id) => (current === id ? ' aria-current="page"' : "");
+    // The two ways to measure: upload a video (Analyze) or the phone's camera, live (Live)
+    const ctas = (cls) => `<a class="btn btn--primary ${cls}" href="analyze.html"${here("analyze")}>${icon("upload")}Upload</a>
+      <a class="btn btn--live ${cls}" href="live.html"${here("live")}>${icon("record")}Live</a>`;
     const link = (r) => `<li><a class="nav-link" href="${r.href}"${r.id === current ? ' aria-current="page"' : ""}>${r.label}</a></li>`;
     this.innerHTML = `
       <header class="site-header">
@@ -33,10 +36,10 @@ class JlHeader extends HTMLElement {
                   <button type="button" class="units-switch__btn" data-units="imperial" aria-label="ft (feet and inches)" title="Imperial: feet and inches">ft</button>
                 </div>
               </li>
-              <li class="nav-item--cta"><a class="btn btn--primary" href="analyze.html"${isAnalyze ? ' aria-current="page"' : ""}>${icon("upload")}Upload</a></li>
+              <li class="nav-item--cta">${ctas("")}</li>
             </ul>
           </nav>
-          <a class="btn btn--primary btn--nav" href="analyze.html"${isAnalyze ? ' aria-current="page"' : ""}>${icon("upload")}Upload</a>
+          <div class="nav-ctas">${ctas("btn--nav")}</div>
           <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
             ${icon("menu")}<span>Menu</span>
           </button>
@@ -85,6 +88,7 @@ class JlFooter extends HTMLElement {
               <li><a href="index.html">Home</a></li>
               ${ROUTES.map((r) => `<li><a href="${r.href}">${r.label}</a></li>`).join("")}
               <li><a href="analyze.html">Analyze a video</a></li>
+              <li><a href="live.html">Measure live</a></li>
             </ul>
           </nav>
         </div>

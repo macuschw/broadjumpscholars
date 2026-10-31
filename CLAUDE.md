@@ -93,9 +93,12 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   Metrics (3D sculpted mannequin, drag 360°, in-scene metric overlays + callout labels), Setup,
   Science (KaTeX formulas, tabs; "The math" tab: every formula with a worked example from the Oct 27
   session and the file that does it: keep it in step with the code), About (team: Reece, Macus), Analyze
-  (upload your own video; the header's "Upload a video" button), Demo (the simulated sample jump, its own
-  page). Both use one script (`pages/demo.js`, picks by `<body data-page>`) and one shared dashboard
-  markup (`demo/dashboard-html.js`).
+  (upload your own video, My jumps; the header's "Upload" button), Live (`live.html`: Measure live, the
+  remote screen, the tape check; the header's "Live" button, next to Upload), Demo (the simulated sample
+  jump, its own page). All three use one script (`pages/demo.js`, picks by `<body data-page>`; each page
+  has only its own parts, so every lookup of another page's element is guarded) and one shared dashboard
+  markup (`demo/dashboard-html.js`). Old links and QR codes to `analyze.html?camera=` / `?remote=` / `#live`
+  forward to `live.html`.
 - Spelling: American throughout (analyze, meter, center, color), site and analysis messages alike.
 - Units switch m / ft in the header (`assets/js/lib/units.js`); all lengths/speeds go through it.
 - Design rules are in `website/DESIGN.md` (one accent color, flat buttons, motion tokens, reduced motion).
@@ -135,7 +138,7 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   doesn't count" panel and a "Doesn't count" tag on the distance for fouls. Download saves the
   whole session (`jumplab-session/1`); each jump also goes into My jumps ("<video> · jump N").
 - Shared server logic: `jumplab/web.py` (`make_bundle`, `analyze_session_upload`, `recompute`, `handle`).
-- **Measure live** (`live/live.js`, `live/detect.js`; Analyze page card "Measure live"): the phone's camera
+- **Measure live** (`live/live.js`, `live/detect.js`; the Live page, `live.html`): the phone's camera
   in the browser. MediaPipe Tasks for Web (`@mediapipe/tasks-vision@0.10.14` from jsDelivr, the
   pose_landmarker_full model from Google's model storage, ~10 MB on first use) tracks every frame on the
   phone; nothing is uploaded while measuring. Set the scale on a camera frame (same calibration screen,
@@ -192,7 +195,7 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   land together) sits in Measure live, the remote screen and their calibration screen (`tips: true`).
 - **Tape check** (`live/tapelog.js`): "Add the tape" on any live jump, on the phone or the remote (sent to
   the other side), logs live, tape, feet gaps and tracking rate on that device (localStorage
-  `jl-tape-log`); "Get the full data" adds the full analysis's distance. The Analyze page's Tape check panel
+  `jl-tape-log`); "Get the full data" adds the full analysis's distance. The Live page's Tape check panel
   lists them, downloads a CSV, clears. From 5 checks on, "Correct live distances by X" (the median of
   tape - live, a constant offset) can be switched on per device; corrected values say "corrected".
   The "Save tracking data" boxes after Stop start with these tapes, and readings typed there join the log.
@@ -202,10 +205,10 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   would be lost). If "Get the full data" fails or is canceled, the error offers "Save the video" (the recording
   exists only in that tab) and asks before "Try another video" or closing the tab.
 - **Remote screen** (`live/remote.js`, `live/room.js`, server `jumplab/rooms.py`; the Measure live card's
-  "Remote screen" button): a laptop or second phone shows the distances (big, said out loud) and runs the
+  "Remote screen" button, on the Live page): a laptop or second phone shows the distances (big, said out loud) and runs the
   phone on the tripod: Set the scale (the phone sends a full frame, the tape is marked on the remote),
   Stop, Measure again. It shows a 6-character code + QR code (qrcode-generator@1.4.4 from jsDelivr) for
-  `analyze.html?camera=CODE`; scanning it opens Measure live already linked (or type the code under
+  `live.html?camera=CODE`; scanning it opens Measure live already linked (or type the code under
   "Use a remote screen"). No accounts or Apple IDs involved. The two never talk directly: each writes its
   own slot in a room on the server and reads the other's (~1/s): "phone" {session, stage, status, air,
   jumps}, "preview" (480 px picture + skeleton, every 1 s, 3 s while measuring, only while the remote

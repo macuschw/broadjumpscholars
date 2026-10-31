@@ -1,4 +1,4 @@
-// Measure live: the phone's camera on the Analyze page. MediaPipe's pose tracker runs in the
+// Measure live: the phone's camera on the Live page (live.html). MediaPipe's pose tracker runs in the
 // browser on every camera frame (nothing is uploaded while measuring); live/detect.js spots each
 // jump, and its distance is shown and said once the landing is held (about 1.5 s after landing; a
 // step, a hand down or a fall is said instead: that jump doesn't count). The whole session is
@@ -68,7 +68,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
           <input class="live__remote-code" type="text" inputmode="text" autocapitalize="characters" autocomplete="off"
             spellcheck="false" maxlength="9" placeholder="K7P2QX" aria-describedby="live-remote-help"></label>
         <button type="submit" class="btn btn--primary btn--sm">Connect</button>
-        <p class="live__remote-help" id="live-remote-help">On a laptop or another phone, open the Analyze page and choose
+        <p class="live__remote-help" id="live-remote-help">On a laptop or another phone, open the Live page and choose
           <strong>Remote screen</strong>: it shows a code (or a QR code to scan with this phone's camera).</p>
       </form>
       <p class="live__remote" hidden><span class="live__remote-text"></span>

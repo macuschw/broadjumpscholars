@@ -54,7 +54,13 @@ jl-header { display: block; min-height: var(--nav-h); background: var(--ink); } 
 .units-switch__btn[aria-pressed="true"] { background: var(--paper); color: var(--ink); }
 .units-switch__btn:focus-visible { outline-offset: 1px; }
 
-@media (max-width: 1080px) {                               /* below this the links, units and button don't fit one row */
+/* The two ways to measure, side by side: Upload (the accent) and Live (outlined, on the dark header) */
+.nav-ctas { display: flex; gap: var(--s-2); }
+.btn--live { background: transparent; color: var(--paper); border-color: var(--muted-dark); }
+.btn--live:hover { border-color: var(--paper); }
+.btn--live[aria-current="page"] { border-color: var(--accent-on-dark); }
+
+@media (max-width: 1200px) {                               /* below this the links, units and buttons don't fit one row */
   .nav-item--units { margin: var(--s-2) 0 0; padding: var(--s-2) 0 0 var(--s-4); border-top: 1px solid var(--ink-3); }
   .units-switch { gap: var(--s-1); border: 0; padding: 0; }
   .units-switch__label { display: inline; margin-right: auto; padding-right: var(--s-4); font-weight: 500; color: var(--muted-dark); }
@@ -71,10 +77,11 @@ jl-header { display: block; min-height: var(--nav-h); background: var(--ink); } 
   .nav-link { padding-left: var(--s-4); min-height: 48px; }
   .nav-link::after { left: 0; right: auto; top: 10px; bottom: 10px; width: 3px; height: auto; transform: scaleY(0); transform-origin: top; }
   .nav-link:hover::after, .nav-link[aria-current="page"]::after { transform: scaleY(1); }
-  .site-header .btn--nav { display: none; }
-  .nav-list .btn { margin-top: var(--s-3); justify-content: center; }
+  .site-header .nav-ctas { display: none; }
+  .nav-item--cta { display: flex; gap: var(--s-2); margin-top: var(--s-3); }
+  .nav-list .btn { flex: 1; justify-content: center; }
 }
-@media (min-width: 1081px) { .nav-list .nav-item--cta { display: none; } }
+@media (min-width: 1201px) { .nav-list .nav-item--cta { display: none; } }
 
 /* ---------- Buttons: flat fills, minimal rounding, no shadows ---------- */
 .btn {

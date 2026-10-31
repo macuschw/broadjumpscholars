@@ -32,6 +32,18 @@
 /* My jumps: earlier analyses kept in this browser, under the upload card */
 .my-jumps, .tape-check { grid-column: 1 / -1; min-width: 0; margin-top: var(--s-6); }
 /* Measure live: the card on the start screen, and the live view (live/live.js) */
+/* The Live page's main card (live.html), beside its checklist */
+.demo-start--live .live-card { grid-column: auto; flex-direction: column; align-items: flex-start; padding: var(--s-6); }
+.demo-start--live .live-card__buttons { margin-left: 0; flex-direction: row; flex-wrap: wrap; width: auto; }
+.demo-start--live .live-card__buttons .btn { width: auto; }
+/* The Analyze page's pointer to the Live page */
+.live-link { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-4); min-height: 56px;
+  border: 1.5px solid var(--line-strong); border-radius: var(--radius); color: var(--text); text-decoration: none; transition: border-color var(--dur-fast) var(--ease); }
+.live-link:hover { border-color: var(--text); }
+.live-link__icon, .live-link__arrow { flex: none; display: inline-flex; }
+.live-link__icon { color: var(--accent); }
+.live-link__icon .icon, .live-link__arrow .icon { width: 24px; height: 24px; }
+.live-link__arrow { margin-left: auto; }
 .live-card { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--s-4); padding: var(--s-4) var(--s-5); background: var(--white); border: 2px solid var(--text); border-radius: var(--radius); }
 .live-card h2 { font-size: var(--step-2); }
 .live-card p { margin-top: var(--s-1); color: var(--muted); max-width: 60ch; }

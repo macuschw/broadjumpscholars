@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Measure live · JumpLab</title>
+  <meta name="description" content="Measure a standing broad jump live with a phone camera: the distance appears, and is said out loud, the moment the jumper holds the landing. A second screen can show the results and run the phone.">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+  <link rel="stylesheet" href="assets/css/demo.css">
+  <script type="module" src="assets/js/components/site-chrome.js" blocking="render"></script>
+  <script type="module" src="assets/js/pages/demo.js" blocking="render"></script>
+</head>
+<body data-page="live">
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <jl-header current="live"></jl-header>
+
+  <main id="main">
+    <header class="page-head container demo-head">
+      <div>
+        <p class="eyebrow">Live</p>
+        <h1>Measure live</h1>
+      </div>
+      <div class="notice" role="note" id="demo-notice"></div>
+    </header>
+
+    <!-- 1. Start the camera, or open a remote screen; the tape check below -->
+    <section class="container demo-start demo-start--live" id="demo-start" aria-label="Measure live">
+      <!-- Measure live: the phone's camera, the distance once the landing is held (live/live.js) -->
+      <div class="live-card" id="live-card" hidden>
+        <span class="live-card__icon" data-icon="record"></span>
+        <h2>Point a phone at the jump</h2>
+        <p>The distance appears, and is said out loud, as soon as the jumper has held the landing. A step, a hand down
+          or a fall is called out instead: that jump doesn't count. Nothing is uploaded while measuring, and the session
+          is recorded, so the full analysis can follow, now or later.</p>
+        <div class="live-card__buttons">
+          <button type="button" class="btn btn--primary" id="live-open">Start the camera</button>
+          <button type="button" class="btn btn--quiet" id="remote-open">Remote screen</button>
+        </div>
+        <p class="live-card__more"><strong>Remote screen:</strong> a laptop or a second phone shows the distances and runs
+          the phone on the tripod, so nobody has to touch it, then brings the video and the results over. Open it here,
+          then scan its code with the filming phone.</p>
+        <p class="live-card__laptop" hidden>On a Mac, an iPhone signed in to the same Apple ID can also be this laptop's own
+          camera (Continuity Camera): pick it after Start the camera.</p>
+      </div>
+      <section class="film-check is-dark" aria-labelledby="live-check-title">
+        <p class="eyebrow">Before you start</p>
+        <h2 id="live-check-title">A setup that measures well</h2>
+        <ul class="film-check__list" role="list">
+          <li><span data-icon="check"></span>Phone on a tripod, side-on, 4–5 m back</li>
+          <li><span data-icon="check"></span>A tape measure on the floor, on the camera's side of the feet</li>
+          <li><span data-icon="check"></span>Toes level with the start of the tape</li>
+          <li><span data-icon="check"></span>Feet together at takeoff and landing</li>
+          <li><span data-icon="check"></span>Nobody else in the frame</li>
+        </ul>
+        <a class="btn btn--ghost btn--sm" href="setup.html">Full setup guide</a>
+      </section>
+
+      <!-- Tape check: live distances next to the tape (live/tapelog.js); shown once there is one -->
+      <section class="tape-check" id="tape-check" aria-labelledby="tape-check-title" hidden>
+        <div class="my-jumps__head">
+          <div>
+            <h2 id="tape-check-title">Tape check</h2>
+            <p class="my-jumps__lede">Live distances next to the tape measurements typed in for them (in Measure live or
+              on the remote screen), kept on this device. The full analysis joins in when it's run here.</p>
+          </div>
+          <div class="my-jumps__actions">
+            <button type="button" class="btn btn--quiet btn--sm" id="tape-check-download">Download (CSV)</button>
+            <button type="button" class="btn btn--quiet btn--sm" id="tape-check-clear">Clear</button>
+          </div>
+        </div>
+        <p class="live__tapecheck" id="tape-check-summary"></p>
+        <div class="tape-check__scroll" tabindex="0" role="region" aria-label="Tape checks (scrolls sideways)">
+          <table class="tape-check__table">
+            <thead><tr><th scope="col">Jump</th><th scope="col">Live</th><th scope="col">Tape</th><th scope="col">Live − tape</th>
+              <th scope="col">Full analysis</th><th scope="col">Full − tape</th><th scope="col">Feet</th><th scope="col">When</th></tr></thead>
+            <tbody id="tape-check-rows"></tbody>
+          </table>
+        </div>
+        <p class="tape-check__more" id="tape-check-more" hidden></p>
+      </section>
+
+    </section>
+
+    <!-- 1b. Measuring live (live/live.js) -->
+    <section class="container demo-live" id="demo-live" hidden aria-labelledby="live-title"></section>
+    <section class="container demo-live" id="demo-remote" hidden aria-labelledby="remote-title"></section>
+
+    <div id="dashboard"></div>
+  </main>
+
+  <jl-footer></jl-footer>
+</body>
+</html>

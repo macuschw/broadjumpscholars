@@ -1,9 +1,11 @@
-// The jump dashboard, on two pages (<body data-page>):
+// The jump dashboard, on three pages (<body data-page>):
 //   Analyze (analyze.html), your own jumps:
 //     1. A video -> the JumpLab analysis server (demo/server.js) -> click the tape to set the scale
 //        (demo/calibrate.js) -> results. Real numbers, the same analysis as the command line.
 //     2. A results file from the JumpLab app (<video>_web.json, with the video if available) -> results.
 //     Every real jump is also kept in this browser ("My jumps", demo/history.js) to open again later.
+//   Live (live.html): Measure live with the phone's camera, a remote screen, the tape check; "Get the
+//     full data" opens the results here too.
 //   Demo (demo.html): the sample jump, three simulated attempts (data/mock-data.js), clearly marked
 //     as demo data, shown straight away.
 // The dashboard itself (progress, calibration, results) is shared: demo/dashboard-html.js.
@@ -29,7 +31,11 @@ import { addFull, clear as clearTapeLog, csv as tapeCSV, entries as tapeEntries 
 import { FOULS, renderTapeCheck } from "../live/shared.js";
 
 const $ = (id) => document.getElementById(id);
-const PAGE = document.body.dataset.page === "demo" ? "demo" : "analyze";
+const PAGE = ["demo", "live"].includes(document.body.dataset.page) ? document.body.dataset.page : "analyze";
+// Measure live moved to its own page: old links and QR codes (analyze.html?camera=CODE, ?remote=CODE, #live) go there
+if (PAGE === "analyze" && (/[?&](camera|remote)=/.test(location.search) || location.hash === "#live")) {
+  location.replace(`live.html${location.search}`);
+}
 $("dashboard").outerHTML = DASHBOARD_HTML;
 const views = { start: $("demo-start"), live: $("demo-live"), remote: $("demo-remote"), progress: $("demo-progress"), calibrate: $("demo-calibrate"), results: $("demo-results") };
 const show = (name) => Object.entries(views).forEach(([k, v]) => { if (v) v.hidden = k !== name; });   // Demo: no start
@@ -42,12 +48,14 @@ function setNotice(mode) {
     ? `${icon("info")}<p><strong>Demo data.</strong> ${DEMO_NOTICE}</p>`
     : mode === "real"
       ? `${icon("info")}<p><strong>Your jump.</strong> Analyzed with the same pose tracking and physics as the JumpLab app; see the Science page for how.</p>`
-      : `${icon("info")}<p>Want to see what you get first? <a href="demo.html">Try the demo</a> with a simulated sample jump.</p>`;
+      : PAGE === "live"
+        ? `${icon("info")}<p>Have a video already? <a href="analyze.html">Upload it</a> for the full analysis instead.</p>`
+        : `${icon("info")}<p>Want to see what you get first? <a href="demo.html">Try the demo</a> with a simulated sample jump.</p>`;
 }
 setNotice(PAGE === "demo" ? "sample" : "start");
 
 // The start card says what this site can do right now
-if (PAGE === "demo") {
+if (PAGE !== "analyze") {
   // nothing to upload here
 } else if (serverURL) {
   $("drop-privacy").textContent = "Your video is sent to the JumpLab analysis server, analyzed, and deleted straight away. Your results are kept only in this browser, under My jumps.";
@@ -288,7 +296,7 @@ function showResults(list, which, m, { focus = true } = {}) {
   current = which;
   setNotice(m);
   $("download-results").hidden = m !== "real";
-  $("add-jump").hidden = m !== "real";
+  $("add-jump").hidden = m !== "real" || !input;               // Live page: no upload to add from
   $("result-tabs").querySelector("#tab-compare").hidden = list.length < 2;
   if (activeTab === "compare" && list.length < 2) $("tab-playback").click();
   compare = null;
@@ -335,7 +343,7 @@ let job = null;
  *  jump's live distance is shown next to the full result. uploaded: { job, chunks } when the video
  *  is on the server already (a phone's recording, brought to its remote screen). */
 async function startUpload(file, { scale = null, fps: liveFps = null, jumps: live = null, session = null, uploaded = null } = {}) {
-  const fps = liveFps || Number($("fps-select").value) || null;
+  const fps = liveFps || Number($("fps-select")?.value) || null;
   $("progress-source").textContent = `“${file.name}”`;
   $("analysis-error").hidden = true;
   $("analysis-cancel").hidden = false;
@@ -514,11 +522,12 @@ function fail(text, keep = null) {
   $("analysis-retry").classList.toggle("btn--primary", !keep);
   $("analysis-retry").classList.toggle("btn--quiet", !!keep);
 }
+if (PAGE === "live") $("analysis-retry").textContent = "Back to Measure live";
 $("analysis-save").addEventListener("click", () => { unsavedRecording = null; });
 $("analysis-retry").addEventListener("click", () => {
   if (unsavedRecording && !confirm("Leave without saving this session's recording? It can't be measured again later.")) return;
   unsavedRecording = null;
-  show("start"); $("file-input").value = "";
+  show("start"); if (input) input.value = "";
 });
 $("analysis-cancel").addEventListener("click", () => job?.abort());
 
@@ -597,18 +606,18 @@ $("start-over").addEventListener("click", () => {
   realPlayback?.pause();
   realSession.length = 0;
   $("results-stats").replaceChildren();                      // the next run counts up from zero again
-  input.value = "";
+  if (input) input.value = "";
   show("start");
   setNotice("start");
   renderMyJumps();
-  $("drop-button").focus();
+  ($("drop-button") || $("live-open"))?.focus();
 });
 $("add-jump").addEventListener("click", () => {
   realPlayback?.pause();
-  input.value = "";
+  if (input) input.value = "";
   renderMyJumps();
   show("start");
-  $("drop-button").focus();
+  $("drop-button")?.focus();
 });
 $("download-results").addEventListener("click", () => current.real && downloadBundle(current, session.filter((a) => a.real && a.name === current.name)));
 
