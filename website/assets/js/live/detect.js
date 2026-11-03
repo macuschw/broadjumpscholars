@@ -123,6 +123,12 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
   };
 
   function reset() { hist = []; state = "ground"; up = 0; jump = null; judging = null; onState(state); }
+  /** "In the air" for longer than anyone flies: they were standing, on a floor we had in the wrong place
+   *  (someone who stayed in the picture and moved). Those frames are the floor now; everything before is out of date. */
+  function notAJump() {
+    hist.forEach((h) => { h.grounded = h.t >= jump.tTakeoff; });
+    state = "ground"; up = 0; jump = null; onState(state);
+  }
 
   /** One frame of the landing being checked (m: null when nobody was tracked in it). */
   function judge(t, m) {
@@ -159,7 +165,7 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
     if (judging) judge(t, m);
     if (!m) {
       if (state === "landed" && jump) jump.missed++;
-      if (state !== "ground" && jump && t - jump.tTakeoff > MAX_FLIGHT + 0.5) { state = "ground"; jump = null; onState(state); }
+      if (state !== "ground" && jump && t - jump.tTakeoff > MAX_FLIGHT + 0.5) { state = "ground"; up = 0; jump = null; onState(state); }
       return;
     }
     const tall = pct(hist.map((h) => h.tall).concat(m.tall), 0.8);
@@ -171,6 +177,7 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
     const switched = speed > TELEPORT || (resized && speed > RESIZE_SPEED);
     hist.push({ t, ...m, grounded: state === "ground", switched });
     while (hist.length && t - hist[0].t > KEEP_S) hist.shift();
+    if (state === "air" && t - jump.tTakeoff > MAX_FLIGHT + 0.2) notAJump();
     const standing = hist.filter((h) => h.grounded);
     const floor = median(standing.slice(-45).map((h) => Math.max(h.left.low, h.right.low)));
     if (!(tall > 0) || !Number.isFinite(floor)) return;
@@ -181,6 +188,9 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
       up = inAir && !judging ? up + 1 : 0;                    // (no new jump while a landing is being checked)
       if (up < 2) return;                                     // two frames off the floor: a takeoff
       const tTakeoff = hist[hist.length - 2].t;
+      // No dip, no jump: the feet only look off the floor because the jumper moved further from the camera.
+      // These frames stay "standing", so the floor catches up with them.
+      if (!hist.some((h) => h.t >= tTakeoff - CROUCH_S && h.t <= tTakeoff && h.tall < CROUCH * tall)) return;
       const recent = hist.filter((h) => h.t >= t - 1);
       const side = median(recent.map((h) => h.left.vis)) >= median(recent.map((h) => h.right.vis)) ? "left" : "right";
       const dip = hist.filter((h) => h.t >= tTakeoff - CROUCH_S && h.t <= tTakeoff)
@@ -188,7 +198,6 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
       const planted = standing.filter((h) => h.t >= Math.min(dip.t, tTakeoff - O.TOE_MIN_S) && h.t < tTakeoff);
       jump = { tTakeoff, side, toeX: median(planted.map((h) => h[side].toeX)), hipX: median(planted.map((h) => h.hipX)), tall,
         toe: gapOf(planted, side, "toeX"),
-        crouched: hist.some((h) => h.t >= tTakeoff - CROUCH_S && h.t <= tTakeoff && h.tall < CROUCH * tall),
         hipY: median(planted.map((h) => h.hipY)), top: m.hipY,
         switched: hist.some((h) => h.switched && h.t >= tTakeoff - 1) };
       hist[hist.length - 1].grounded = hist[hist.length - 2].grounded = false;
@@ -199,7 +208,6 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
     if (state === "air") {
       jump.switched ||= hist[hist.length - 1].switched;
       jump.top = Math.min(jump.top, m.hipY);                  // image y is down: the highest the hips got
-      if (t - jump.tTakeoff > MAX_FLIGHT + 0.2) { state = "ground"; jump = null; onState(state); return; }   // not a jump
       if (inAir) return;
       jump.tLanding = t;
       if (t - jump.tTakeoff < MIN_FLIGHT) { state = "ground"; jump = null; onState(state); return; }        // a twitch
@@ -217,7 +225,7 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
       hist.forEach((h) => { if (h.t >= jump.tTakeoff) h.grounded = false; });   // the floor stays the floor before the jump
       const rise = (jump.hipY - jump.top) / jump.tall;
       // (when the tracker switched people around the jump, its rise is meaningless: it's kept, marked unsure)
-      if (jump.crouched && (rise >= MIN_RISE || jump.switched) && travel >= MIN_TRAVEL && distancePx > 0) {
+      if ((rise >= MIN_RISE || jump.switched) && travel >= MIN_TRAVEL && distancePx > 0) {
         const j = { n: ++count, distancePx, tTakeoff: jump.tTakeoff, tLanding: jump.tLanding, flight: jump.tLanding - jump.tTakeoff,
           side: jump.side, toeX: jump.toeX, heelX, direction: dir > 0 ? "right" : "left", tall: jump.tall,
           ...(() => { const heel = gapOf(jump.down, jump.side, "heelX");

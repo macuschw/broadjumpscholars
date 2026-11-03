@@ -1,0 +1,19 @@
+session,jump,live_in,tape_in,error_in,feet_together,outcome,notes
+reported 2026-11-02,1,80.5,77,3.5,yes,counted,
+reported 2026-11-02,2,83.5,82.25,1.25,yes,counted,"tape written as 6'10"".25, read as 6'10.25"""
+reported 2026-11-02,3,83,81,2,yes,counted,
+reported 2026-11-02,4,60.5,,,,no tape,didn't stick the landing; live still gave a number
+reported 2026-11-02,5,62,58,4,yes,counted,
+reported 2026-11-02,6,,,,,foul shown,gave a failure message; which one wasn't recorded
+reported 2026-11-02,7,84.5,84,0.5,left foot slightly back,counted,
+reported 2026-11-02,8,88.5,87,1.5,yes,counted,
+reported 2026-11-02,9,65.5,64,1.5,yes,counted,
+reported 2026-11-02,10,,,,,foul shown,hands touched the ground; correct failure
+reported 2026-11-02,11,86.5,87,-0.5,,counted,took a few attempts to register; after an error message it took fooling around to work again
+reported 2026-11-02,12,80,78,2,,counted,people in the background
+reported 2026-11-02,13,71.5,70.5,1,,counted,took a few attempts to register
+reported 2026-11-02,14,73,72,1,,counted,
+reported 2026-11-02,15,58,54.5,3.5,,counted,
+reported 2026-11-02,16,88,84,4,staggered left behind,counted,
+reported 2026-11-02,17,88.5,87,1.5,,counted,
+reported 2026-11-02,18,77.5,76.5,1,,counted,

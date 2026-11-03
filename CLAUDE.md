@@ -19,7 +19,7 @@ python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration outpu
 python scripts/run_session.py "../test videos/IMG_6233.MOV"     # a video with many jumps: a verdict table
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
 node scripts/replay_live.mjs jumplab-live-track-*.json          # Measure live vs tape, from saved tracking
-node scripts/check_live.mjs                          # Measure live vs the full analysis on 20 test jumps, + fouls (2 = a slow phone)
+node scripts/check_live.mjs                          # Measure live vs the full analysis on 20 test jumps, fouls, staying in the picture (2 = a slow phone)
 cd website && python3 -m http.server 8000           # then http://localhost:8000
 ```
 Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run writes `_results.json`,
@@ -189,6 +189,19 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   px), which would read 2-7 in long, but the October tape check found the far foot unreliable, so the
   tape check below is how to find out. (Both live checks agree: replaying our own Python tracking at
   24-120 fps also matched the full analysis within ~1-2%; see the paragraph above.)
+- **Staying in the picture** (reported Nov 2, fixed): live learns the floor from the standing frames. Someone who
+  moved further from the camera after a jump had their feet above that floor, so it saw a takeoff; those frames
+  didn't teach it the new floor, so it said "In the air" over and over, then for good, until nobody was tracked
+  (= until they left the picture), and missed the jumps meanwhile. Now no dip means no takeoff (the same test the
+  jump had to pass at landing anyway), and over 1.2 s "in the air" makes those frames the new floor. At 30 frames/s
+  `check_live.mjs` gives the same numbers as before; it now also replays jump, move around (or a foul), jump again:
+  the old code failed 7 of 8, the new one passes all at 30, 15 and 10 (the moves are made from real poses, not filmed).
+  Side effect: IMG_6233 jump 2 (person behind), which the old code missed at 15 and 10 frames/s, is now found, 16-29%
+  short (feet apart shown; unsure only at 10); the 1.3% and 2.6% worsts above leave it out.
+- **Tape session (reported Nov 2, `tests/data/live_tape_checks.csv`)**: 15 jumps with a tape reading: live median
+  +1.5 in, mean +1.85, 14 of 15 long, range -0.5 to +4. The error doesn't grow with distance (slope -0.06 in per in),
+  so it looks like an offset, not a wrong scale. Cause unknown (no tracking file or video from that session), so no
+  built-in correction yet: next session save the tracking data and the video, and compare live, full analysis, tape.
 - Live also: **feet apart** (toes or heels > 5 cm apart along the jump, the full analysis's rule) is shown
   on the result, said, and marked in the list; the **tracking rate** is shown (warning under 12 frames/s);
   a **setup guide** (diagram: tape on the camera side of the feet, camera square, 4-5 m back, toes level,

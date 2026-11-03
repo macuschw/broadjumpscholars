@@ -2,7 +2,8 @@
 // test videos (20 jumps, 30 frames a second; tests/data/live_frames.json) through
 // website/assets/js/live/detect.js, and compares each jump with the full analysis of the same video
 // (tests/data/live_reference.json: takeoff/landing times, toe and heel positions, distance in px,
-// and whether it counts: IMG_6233's last 3 are fouls). Exits with 1 if a jump's verdict is wrong.
+// and whether it counts: IMG_6233's last 3 are fouls). Then someone who stays in the picture between
+// jumps (at the end). Exits with 1 if a jump's verdict is wrong or a jump after staying is missed.
 //
 //   node scripts/check_live.mjs              every frame (30 frames a second)
 //   node scripts/check_live.mjs 2            every 2nd frame: a phone that tracks 15 a second (3: 10, 4: 7.5)
@@ -58,3 +59,66 @@ console.log(`mean dToe ${mean(ok.map((r) => r.dToe)).toFixed(1)} px, mean dHeel 
 const judged = rows.filter((r) => !r.extra && r.live != null), wrong = judged.filter((r) => !!r.foul === r.valid);
 console.log(`verdicts: ${judged.length - wrong.length}/${judged.length} right (fouls caught ${judged.filter((r) => !r.valid && r.foul).length}/${judged.filter((r) => !r.valid).length}, valid jumps called fouls ${judged.filter((r) => r.valid && r.foul).length})`);
 if (wrong.length) process.exitCode = 1;
+
+// Someone who doesn't clear the picture after a jump. A jump, the jumper moves around in the shot, then
+// the same jump again: both must be found, the same size, and nothing false in between. (Real sessions:
+// live got stuck on "In the air" until the jumper left the picture, and missed the jumps after a foul.)
+const unflat = (flat) => (flat ? Array.from({ length: 33 }, (_, k) => flat.slice(3 * k, 3 * k + 3)) : null);
+const clip = live.IMG_6199.frames.map(([t, f]) => [t, unflat(f)]).filter(([t]) => t >= 2);   // a jump, ~3 s lead-in
+const pose = clip[0][1];
+const known = ref.IMG_6199[0].distance_px;
+const ys = pose.filter((p) => p[2] > 0.5).map((p) => p[1]), H = Math.max(...ys) - Math.min(...ys);
+const footY = Math.max(...[29, 30, 31, 32].map((i) => pose[i][1])), hipX = pose[23][0];
+// the pose further from (dy < 0, smaller) or nearer to the camera, with its feet moved dy body heights up or down the picture
+const moved = (dy, p = pose) => p.map(([x, y, v]) => [hipX + (x - hipX) * (1 + 0.8 * dy), footY + (y - footY) * (1 + 0.8 * dy) + dy * H, v]);
+const hold = (s, p) => Array.from({ length: Math.round(s * 30) }, () => p);
+const walk = (s, a, b) => Array.from({ length: Math.round(s * 30) }, (_, i) => moved(a + (b - a) * (i + 1) / Math.round(s * 30)));
+const legsLost = pose.map(([x, y, v], i) => (i >= 25 ? [x, y - 0.4 * H, 0.3] : [x, y, v]));
+const crouch = moved(0, pose.map(([x, y, v]) => [x, footY + (y - footY) * 0.55, v]));
+const STAY = {
+  "stands still": hold(4, pose),
+  "walks further from the camera, stays there": [...walk(1, 0, -0.15), ...hold(8, moved(-0.15)), ...walk(1, -0.15, 0), ...hold(3, pose)],
+  "walks nearer, then back past the start": [...walk(1, 0, 0.3), ...hold(3, moved(0.3)), ...walk(1.5, 0.3, -0.15), ...hold(8, moved(-0.15)), ...walk(1, -0.15, 0), ...hold(3, pose)],
+  "crouches, gets up further back": [...hold(1, crouch), ...walk(0.5, 0, -0.2), ...hold(5, moved(-0.2)), ...walk(1, -0.2, 0), ...hold(3, pose)],
+  "legs out of the picture for a while": [...hold(5, legsLost), ...hold(3, pose)],
+};
+let stayBad = 0;
+console.log("\nstaying in the picture between two jumps:");
+for (const [label, between] of Object.entries(STAY)) {
+  const found = [];
+  let air = false;
+  const d = createDetector({ onJump: (j) => found.push(j), onState: (s) => { air = s === "air"; } });
+  d.setGeometry({ width: 1920, height: 1080, metersPerPixel: M_PER_PX });
+  let t = 0, i = 0, airAfter = false;
+  const feed = (pts) => { t += 1 / 30; if (i++ % Number(step) === 0) d.feed(t, pts); };
+  clip.forEach(([, p]) => feed(p));
+  between.forEach(feed);
+  airAfter = air;
+  clip.forEach(([, p]) => feed(p));
+  d.flush();
+  const ok = found.length === 2 && !airAfter && found.every((j) => Math.abs(j.distancePx - known) / known < 0.05);
+  if (!ok) stayBad++;
+  console.log(`  ${ok ? "ok   " : "WRONG"} ${label}: ${found.length} jumps (${found.map((j) => j.distancePx.toFixed(0)).join(", ")} px, full analysis ${known.toFixed(0)})${airAfter ? ', stuck on "In the air"' : ""}`);
+}
+// ...and after a foul: IMG_6233's last jumps fail; the jumper stays in the shot, moves, and jumps again
+{
+  const frames = live.IMG_6233.frames.map(([t, f]) => [t, unflat(f)]);
+  const refs = ref.IMG_6233, foulAt = refs.filter((r) => !r.valid);
+  for (const r of foulAt) {
+    const found = [];
+    const d = createDetector({ onJump: (j) => found.push(j) });
+    d.setGeometry({ width: 1920, height: 1080, metersPerPixel: M_PER_PX });
+    let t = 0, i = 0;
+    const feed = (t1, pts) => { t = t1; if (i++ % Number(step) === 0) d.feed(t, pts); };
+    const seg = frames.filter(([tt]) => tt >= r.takeoff_s - 3 && tt <= r.takeoff_s + 3);
+    seg.forEach(([tt, p]) => feed(tt, p));
+    let tt = t;
+    for (const p of [...walk(1, 0.1, -0.15), ...hold(4, moved(-0.15)), ...walk(1, -0.15, 0), ...hold(3, pose)]) feed(tt += 1 / 30, p);
+    clip.forEach(([, p]) => feed(tt += 1 / 30, p));
+    d.flush();
+    const ok = found.length === 2 && found[0].foul && !found[1].foul && Math.abs(found[1].distancePx - known) / known < 0.05;
+    if (!ok) stayBad++;
+    console.log(`  ${ok ? "ok   " : "WRONG"} after a foul (${r.takeoff_s.toFixed(1)} s): ${found.map((j) => `${j.foul ? j.foul.code.replace("foul_", "") : "counts"} ${j.distancePx.toFixed(0)} px`).join(", ") || "nothing found"}`);
+  }
+}
+if (stayBad) process.exitCode = 1;
