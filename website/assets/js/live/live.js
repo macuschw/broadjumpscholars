@@ -12,7 +12,7 @@
 // and checked against the tape away from the field.
 //
 //   const live = createLive(host, { onNeedScale(still), onAnalyze(file, info), onClose(why, { room }), room, onScaleSet });
-//   live.setScale(metersPerPixel)   after the visitor has marked the tape on onNeedScale's still
+//   live.setScale(metersPerPixel, tiltDeg)   after the visitor has marked the tape on onNeedScale's still
 import { createDetector } from "./detect.js";
 import { cleanCode, isCode, linkPhone, read } from "./room.js";
 import { bindUnits, createVoice, esc, feetApart, fileStamp, fullScreen, guardLeaving, jumpItemHTML, jumpWords, paintSkeleton, parseTapeText,
@@ -20,6 +20,9 @@ import { bindUnits, createVoice, esc, feetApart, fileStamp, fullScreen, guardLea
 import { record as logTape } from "./tapelog.js";
 import { forgetVideo, uploadVideo } from "../demo/server.js";
 import { formatQuantity, isImperial, onUnitsChange } from "../lib/units.js";
+
+// (a browser that blocks site data throws on any use of localStorage)
+const stored = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch { /* not kept */ } } };
 
 const VISION = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 const MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
@@ -91,11 +94,13 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   let running = false, busy = false, lastSeen = 0, wake = null, frames = 0, closed = false, mediaBase = null, lastTs = 0;
   let stage = "starting", air = false, lastPts = null, link = null, file = null, kept = false, rate = 0, recFps = null;
   let handoff = null, remoteTook = false;                      // the recording, sent to the remote screen (on its request)
+  let lastTick = 0, trackerFails = 0, problem = null, hiddenAt = 0, saveURL = null, reshaped = false;
   const tracked = [];                                          // when each recent frame was tracked: the tracking rate
   let trackingSince = 0;
   const session = Date.now();                                  // tells the remote screen a new session began
   const jumps = [];
-  // Every tracked frame while measuring, for "Save tracking data": [seconds, 33 x [x, y, visibility] | null]
+  // Every tracked frame while measuring, for "Save tracking data": [seconds, 33 x x, y, visibility | null]
+  // (flat numbers: a long session on a phone would otherwise hold ~90 MB of arrays)
   const track = [], MAX_TRACK = 20 * 60 * 60;                  // up to 20 minutes at 60 fps
   let scaleStill = null, camInfo = null;
   const round = (v, k) => Math.round(v * k) / k;
@@ -136,12 +141,60 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     }
     if (closed) return;
     running = true;
-    trackingSince = performance.now();
+    trackingSince = lastTick = performance.now();
     loop();
-    try { wake = await navigator.wakeLock?.request("screen"); } catch { /* the screen may dim; fine */ }
+    keepAwake();
     setStage("ready");
     stageStatus();
     q(".live__scale").hidden = false;
+  }
+
+  // ---- staying alive on a tripod. The browser drops the screen's wake lock whenever the page is hidden, may pause
+  // the camera, and phones can lose the tracker's graphics context: each of those would just stop jumps being measured.
+  async function keepAwake() {
+    try {
+      const w = await navigator.wakeLock?.request("screen");
+      if (closed || !running) w?.release?.().catch?.(() => {}); else wake = w;
+    } catch { /* the screen may dim; fine */ }
+  }
+  function onVisibility() {
+    if (document.visibilityState !== "visible") {
+      hiddenAt = performance.now();
+      if (stage === "measuring") { problem = "This page isn't on the phone's screen, so jumps aren't being measured."; status(problem); }   // (for the remote: not said)
+      return;
+    }
+    if (!running) return;
+    lastTick = performance.now();
+    video.play().catch(() => {});
+    keepAwake();
+    if (!reshaped) setProblem(null);
+    const away = hiddenAt ? (performance.now() - hiddenAt) / 1000 : 0;
+    hiddenAt = 0;
+    if (stage === "measuring" && away > 2) status(`This page wasn't on the screen for ${Math.round(away)} s: any jumps then weren't measured. Keep it open while measuring.`);
+  }
+  document.addEventListener("visibilitychange", onVisibility);
+  /** The camera or the picture went wrong, or (null) is fine again: told here, out loud, and on the remote screen. */
+  function setProblem(text) {
+    if (text === problem) return;
+    problem = text;
+    if (text) { status(text); if (stage === "measuring") voice.say(text); } else stageStatus();
+  }
+  /** The tracker fails on every frame (its graphics context is gone, usually): a new one. */
+  async function restartTracker() {
+    const old = tracker;
+    tracker = null;
+    setProblem("The tracker stopped working. Restarting it…");
+    try { old?.close?.(); } catch { /* it's already broken */ }
+    trackerPromise = null;
+    try {
+      const next = await loadTracker();
+      if (closed) return;
+      tracker = next;
+      trackerFails = 0;
+      setProblem(null);
+    } catch {
+      setProblem("The tracker couldn't be restarted. Stop to keep what was measured, then reload the page.");
+    }
   }
 
   // ---- which camera. On a laptop, an iPhone nearby can be the camera (Apple's Continuity Camera:
@@ -155,7 +208,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   }
   let cameras = [];
   function remembered() {
-    const label = localStorage.getItem("jl-live-camera");
+    const label = stored.get("jl-live-camera");
     return cameras.find((c) => c.label === label)?.deviceId || null;
   }
   async function findCameras() {
@@ -169,7 +222,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     const now = stream.getVideoTracks()[0]?.getSettings?.().deviceId;
     select.innerHTML = cameras.map((c) => `<option value="${esc(c.deviceId)}"${c.deviceId === now ? " selected" : ""}>${esc(c.label)}</option>`).join("");
     // First visit on a laptop: the iPhone, if one is offered (it's on the tripod; the laptop's own camera isn't)
-    const phone = !IS_TOUCH && !localStorage.getItem("jl-live-camera") && cameras.find((c) => /iphone|continuity/i.test(c.label));
+    const phone = !IS_TOUCH && !stored.get("jl-live-camera") && cameras.find((c) => /iphone|continuity/i.test(c.label));
     const want = remembered() || phone?.deviceId;
     if (want && want !== now) await switchCamera(want);
   }
@@ -179,10 +232,11 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     const next = await openCamera(id).catch(() => null);
     if (!next) { status("That camera couldn't be opened. Try another, or reload the page."); return; }
     stream = next;
+    mediaBase = null;                                          // the new camera's media time starts again from 0
     const used = stream.getVideoTracks()[0]?.getSettings?.().deviceId || id;
     q(".live__camera-select").value = used;
     const label = cameras.find((c) => c.deviceId === used)?.label;
-    if (label) localStorage.setItem("jl-live-camera", label);
+    if (label) stored.set("jl-live-camera", label);
     video.srcObject = stream;
     await video.play().catch(() => {});
   }
@@ -216,7 +270,8 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     const next = () => (video.requestVideoFrameCallback ? video.requestVideoFrameCallback(tick) : requestAnimationFrame(tick));
     function tick(_, meta) {
       if (!running) return;
-      if (!busy && video.readyState >= 2) {
+      lastTick = performance.now();
+      if (!busy && tracker && video.readyState >= 2) {
         busy = true;
         // The frame's own time (when the camera caught it, or its media time anchored to this page's
         // clock), so uneven processing doesn't skew speeds; always moving forward, as the tracker needs
@@ -230,14 +285,21 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
           const r = tracker.detectForVideo(video, now);
           const lm = r.landmarks?.[0];
           if (lm) pts = lm.map((p) => [p.x * video.videoWidth, p.y * video.videoHeight, p.visibility ?? 1]);
-        } catch { /* a dropped frame */ }
+          trackerFails = 0;
+        } catch {                                              // a dropped frame; a second's worth: it's broken
+          if (++trackerFails === 30) restartTracker();
+        }
         if (pts) { lastSeen = performance.now(); lastPts = pts; }
         frames++;
         tracked.push(performance.now());
-        if (scale) {
+        if (stage === "measuring") {                           // (not while stopping: a jump judged now would never be finished)
           const t = (now - clock0) / 1000;                     // seconds since measuring began
           detector.feed(t, pts);
-          if (track.length < MAX_TRACK) track.push([round(t, 1000), pts && pts.map(([x, y, v]) => [round(x, 10), round(y, 10), round(v, 100)])]);
+          if (track.length < MAX_TRACK) track.push([round(t, 1000), pts && Float32Array.from(pts.flat())]);
+          if (!reshaped && camInfo.width && (video.videoWidth !== camInfo.width || video.videoHeight !== camInfo.height)) {
+            reshaped = true;
+            setProblem("The camera's picture changed size (was the phone turned?), so the scale no longer fits. Stop, and set the scale again.");
+          }
         }
         draw(pts);
         busy = false;
@@ -261,6 +323,13 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   // roughly (our replay: 1.3% worst at 15 frames/s, a missed jump at 7.5)
   const rateTimer = setInterval(() => {
     const now = performance.now();
+    if (document.visibilityState !== "visible") return;        // (no frames while hidden: says nothing about the phone's speed)
+    if (running && (stage === "ready" || stage === "measuring") && !reshaped && tracker) {
+      const ended = stream?.getVideoTracks?.()[0]?.readyState === "ended";
+      if (ended) setProblem("The camera stopped (did another app take it?). Stop to keep what was measured, then measure again.");
+      else if (now - lastTick > 3000) { setProblem("The camera's picture has stopped. Is something else using the camera?"); video.play().catch(() => {}); }
+      else setProblem(null);
+    }
     while (tracked.length && now - tracked[0] > 2000) tracked.shift();
     const el = q(".live__rate"), span = Math.min(2000, now - trackingSince);   // the last 2 s, or since tracking began
     // only while measuring (or about to), and not in the first second of tracking: too soon to tell
@@ -280,22 +349,23 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     scaleStill = still;
     onNeedScale(still);
   });
-  function setScale(metersPerPixel) {
+  function setScale(metersPerPixel, tiltDeg = 0) {
     scale = metersPerPixel;
     const track0 = stream?.getVideoTracks?.()[0], set = track0?.getSettings?.() || {};
     camInfo = { label: track0?.label || "", width: video.videoWidth || set.width || null,
-      height: video.videoHeight || set.height || null, fps: set.frameRate || null };   // (gone once the camera stops)
+      height: video.videoHeight || set.height || null, fps: set.frameRate || null, tiltDeg };   // (gone once the camera stops)
     q(".live__scale").hidden = true;
     q(".live__stop").hidden = false;
     detector.reset();
-    detector.setGeometry({ width: camInfo.width, height: camInfo.height, metersPerPixel });   // feet-apart allows for perspective
+    detector.setGeometry({ width: camInfo.width, height: camInfo.height, metersPerPixel, tiltDeg });   // perspective in feet-apart; level
     clock0 = performance.now();
     record();
     setStage("measuring");
     stageStatus();
     q(".live__camera-select").disabled = true;                 // the scale belongs to this camera
     voice.say("Ready. Jump when you like.");                   // (also lets phones speak later: it follows a tap)
-    q("#live-title").focus();
+    q("#live-title").focus({ preventScroll: true });
+    requestAnimationFrame(() => q(".live__stage")?.scrollIntoView({ block: "start" }));   // the picture, not the instructions above it
   }
   // The recording: video only. Some browsers say they can record MP4 and then record nothing (no
   // H.264 encoder), so a format that has produced almost nothing after 1.5 s is swapped for the next
@@ -325,7 +395,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
 
   /** Just landed: shown as "checking the landing" (no number yet), not said. */
   function landed(j) {
-    const jump = { ...j, meters: j.distancePx * scale, apart: feetApart(j, scale), fps: rate, checking: true };
+    const jump = { ...j, meters: j.distancePx * scale, apart: feetApart(j, scale), fps: rate, checking: true, unsure: j.unsure || (reshaped ? "reshaped" : null) };
     jumps.push(jump);
     showResult(q(".live__result"), jump);
     q(".live__result").classList.remove("live__result--old");
@@ -334,7 +404,8 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   }
   /** Judged: the distance, or why it doesn't count; said out loud. Stays up until the next jump. */
   function showJump(j) {
-    const jump = { ...j, meters: j.distancePx * scale, apart: feetApart(j, scale), fps: jumps.find((x) => x.n === j.n)?.fps ?? rate };
+    const jump = { ...j, meters: j.distancePx * scale, apart: feetApart(j, scale), fps: jumps.find((x) => x.n === j.n)?.fps ?? rate,
+      unsure: j.unsure || (reshaped ? "reshaped" : null) };
     const at = jumps.findIndex((x) => x.n === j.n);
     if (at >= 0) jumps[at] = jump; else jumps.push(jump);
     const box = q(".live__result");
@@ -384,6 +455,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     q(".live__stop").hidden = true;
     detector.flush();                                          // a landing still being checked: judged now
     file = await stopRecording();
+    if (closed) return;                                        // (left while it stopped)
     const fps = recFps = stream?.getVideoTracks?.()[0]?.getSettings?.().frameRate || null;
     stop();
     const n = jumps.length, counted = jumps.filter((j) => !j.foul).length;
@@ -396,7 +468,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
         checks (steps after landing, hands, someone in the shot), and confirms each distance.</p>
       <div class="live__done-actions">
         <button type="button" class="btn btn--primary live__full">Get the full data</button>
-        <a class="btn btn--quiet live__save" href="${URL.createObjectURL(file)}" download="${file.name}">Save the video</a>
+        <a class="btn btn--quiet live__save" href="${saveURL = URL.createObjectURL(file)}" download="${file.name}">Save the video</a>
         ${n ? '<button type="button" class="btn btn--quiet live__results">Save the results</button>' : ""}
       </div>
       <p class="live__save-note">Saved videos can be uploaded here any time later, like any other video. The results file is a
@@ -430,18 +502,20 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   }
   /** The session's tracking, the live jumps and the tape measurements, as a JSON file to download. */
   function saveTrack(done, fps) {
-    const tapes = Object.fromEntries([...done.querySelectorAll(".live__tape")].map((i) => [i.dataset.n, i.value.trim()]));
-    for (const [n, text] of Object.entries(tapes)) {             // typed here: in the tape check as well
-      const m = parseTapeText(text);
-      if (m >= 0.3 && m <= 4 && jumps.find((j) => j.n === +n)?.tape !== m) setTape(+n, m, "phone");
+    const inputs = [...done.querySelectorAll(".live__tape")];
+    const tapes = Object.fromEntries(inputs.map((i) => [i.dataset.n, i.value.trim()]));
+    for (const i of inputs) {                                    // typed here: in the tape check as well
+      const m = parseTapeText(i.value);                          // (not the box's first value: that's rounded for reading)
+      if (i.value !== i.defaultValue && m >= 0.3 && m <= 4) setTape(+i.dataset.n, m, "phone");
     }
     const data = {
       format: "jumplab-live-track/1", saved: new Date().toISOString(), userAgent: navigator.userAgent,
       camera: { ...camInfo, fps: fps || camInfo?.fps || null },
       measured_fps: track.length > 1 ? Math.round((track.length - 1) / (track.at(-1)[0] - track[0][0]) * 10) / 10 : null,
-      scale_m_per_px: scale, units: isImperial() ? "imperial" : "metric", still: scaleStill,
-      jumps: jumps.map((j) => ({ ...j, tape: tapes[j.n] || "" })),
-      frames: track,
+      scale_m_per_px: scale, tilt_deg: camInfo?.tiltDeg || 0, units: isImperial() ? "imperial" : "metric", still: scaleStill,
+      // (a tape in meters, exact; or added to the list after Stop or on the remote screen, which these boxes don't show)
+      jumps: jumps.map((j) => ({ ...j, tape: j.tape > 0 ? `${round(j.tape, 1e4)} m` : tapes[j.n] || "" })),
+      frames: track.map(([t, f]) => [t, f && Array.from({ length: 33 }, (_, i) => [round(f[3 * i], 10), round(f[3 * i + 1], 10), round(f[3 * i + 2], 100)])]),
     };
     const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
     const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob),
@@ -481,8 +555,10 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   const offGuard = guardLeaving(unsaved);
   function stopRecording() {
     return new Promise((resolve) => {
-      if (!recorder || recorder.state === "inactive") { resolve(chunks.length ? toFile() : null); return; }
-      recorder.onstop = () => resolve(chunks.length ? toFile() : null);
+      const done = () => resolve(chunks.length ? toFile() : null);
+      if (!recorder || recorder.state === "inactive") { done(); return; }
+      recorder.onstop = done;
+      setTimeout(done, 5000);                                  // a recorder that never finishes mustn't lose the session
       recorder.stop();
     });
   }
@@ -494,7 +570,8 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
 
   /** What to do now, while setting the scale or measuring (it depends on whether a remote screen runs this phone). */
   function stageStatus() {
-    if (stage === "ready") status(link ? "Step 1: set the scale (on the remote screen, or here). Have the tape measure on the floor in the picture."
+    if (problem) status(problem);
+    else if (stage === "ready") status(link ? "Step 1: set the scale (on the remote screen, or here). Have the tape measure on the floor in the picture."
       : "Step 1: set the scale. Have the tape measure on the floor in the picture.");
     else if (stage === "measuring") status(link ? "Measuring: jump whenever you like. The remote screen shows each distance and has the Stop button."
       : "Ready: jump whenever you like. Keep the camera still. Stop when you're done.");
@@ -514,13 +591,13 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     q(".live__remote").hidden = false;
     q(".live__remote-text").textContent = LINK_TEXT.waiting(code);
     link = linkPhone(code, {
-      state: () => ({ session, stage, status: q(".live__status").textContent, air, rate, scale, fps: recFps ? Math.round(recFps) : null,
+      state: () => ({ session, stage, status: q(".live__status").textContent, problem, air, rate, scale, fps: recFps ? Math.round(recFps) : null,
         jumps: sharedJumps(), recording: file ? { name: file.name, size: file.size, type: file.type } : null,
         video: handoff && { state: handoff.state, sent: handoff.sent, size: handoff.size, name: handoff.name, type: handoff.type,
           job: handoff.job || null, chunks: handoff.chunks || null, error: handoff.error || null } }),
       picture, still: () => (scaleStill = snapshot()),
       onCommand(c) {
-        if (c.type === "scale" && stage === "ready" && c.scale > 0) { setScale(c.scale); onScaleSet(); }
+        if (c.type === "scale" && stage === "ready" && c.scale > 0) { setScale(c.scale, c.tilt || 0); onScaleSet(); }
         else if (c.type === "stop") finish();
         else if (c.type === "again" && stage === "done") again();      // (the remote screen asked first)
         else if (c.type === "tape") setTape(c.n, c.meters, "remote");
@@ -564,6 +641,7 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
   function stop() {
     running = false;
     wake?.release?.().catch?.(() => {});
+    wake = null;
     if (!given) stream?.getTracks().forEach((t) => t.stop());
     video.srcObject = null;
   }
@@ -575,6 +653,8 @@ export function createLive(host, { onNeedScale, onAnalyze, onClose, onScaleSet =
     handoff?.abort?.();
     if (handoff?.job && !remoteTook) forgetVideo(handoff.job);   // sent, but the remote never took it
     window.removeEventListener("jl-tape-change", redraw);
+    document.removeEventListener("visibilitychange", onVisibility);
+    if (saveURL) URL.revokeObjectURL(saveURL);                 // (else every session's video stays in memory)
     link?.stop(why === "again" ? null : why);
     link = null;
     wide.exit();

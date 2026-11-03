@@ -2,8 +2,9 @@
 // test videos (20 jumps, 30 frames a second; tests/data/live_frames.json) through
 // website/assets/js/live/detect.js, and compares each jump with the full analysis of the same video
 // (tests/data/live_reference.json: takeoff/landing times, toe and heel positions, distance in px,
-// and whether it counts: IMG_6233's last 3 are fouls). Then someone who stays in the picture between
-// jumps (at the end). Exits with 1 if a jump's verdict is wrong or a jump after staying is missed.
+// and whether it counts: IMG_6233's last 3 are fouls). Then, at the end: someone who stays in the picture
+// between jumps, a camera not quite level, and the tracker jumping to someone else during the landing check.
+// Exits with 1 if a jump's verdict is wrong or one of those goes wrong.
 //
 //   node scripts/check_live.mjs              every frame (30 frames a second)
 //   node scripts/check_live.mjs 2            every 2nd frame: a phone that tracks 15 a second (3: 10, 4: 7.5)
@@ -121,4 +122,57 @@ for (const [label, between] of Object.entries(STAY)) {
     console.log(`  ${ok ? "ok   " : "WRONG"} after a foul (${r.takeoff_s.toFixed(1)} s): ${found.map((j) => `${j.foul ? j.foul.code.replace("foul_", "") : "counts"} ${j.distancePx.toFixed(0)} px`).join(", ") || "nothing found"}`);
   }
 }
-if (stayBad) process.exitCode = 1;
+
+// A camera that isn't quite level: leveled by the tape's slope (exact, or a tape 1 degree off the jump's line),
+// everything as on a level camera; with no leveling at all, the jumps are at least found.
+const every = Object.entries(live).map(([name, v]) => [name, v.frames.map(([t, f]) => [t, unflat(f)])]);
+let tiltBad = 0;
+console.log("\na camera not quite level:");
+for (const deg of [-6, -3, -1.5, 1.5, 3, 6]) {
+  const a = (deg * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a), cx = 960, cy = 540;
+  const turn = ([x, y, v]) => [cx + c * (x - cx) - s * (y - cy), cy + s * (x - cx) + c * (y - cy), v];
+  for (const [label, tape] of [["leveled", deg], ["tape 1 deg off", deg + 1], ["not leveled", 0]]) {
+    let found = 0, wrong = 0, total = 0, worst = 0, extra = 0;
+    for (const [name, frames] of every) {
+      const out = [];
+      const d = createDetector({ onJump: (j) => out.push(j) });
+      d.setGeometry({ width: 1920, height: 1080, metersPerPixel: M_PER_PX, tiltDeg: tape });
+      frames.forEach(([t, p], i) => { if (i % Number(step) === 0) d.feed(t, p && p.map(turn)); });
+      d.flush();
+      for (const r of ref[name]) {
+        total++;
+        const j = out.find((f) => Math.abs(f.tTakeoff - r.takeoff_s) < 0.6);
+        if (!j) continue;
+        found++;
+        if (!!j.foul === r.valid) wrong++;
+        if (r.valid && !r.stagger && j.unsure !== "switched") worst = Math.max(worst, Math.abs(j.distancePx - r.distance_px) / r.distance_px * 100);
+      }
+      extra += out.filter((f) => !ref[name].some((r) => Math.abs(f.tTakeoff - r.takeoff_s) < 0.6)).length;
+    }
+    // Leveled: all of it, as a level camera (with the tape off, IMG_6197's jump, far foot 17% up the picture, may go at low rates).
+    // Not leveled, which needs a tape that doesn't run along the jump: up to 3 degrees, nearly all found
+    const ok = label === "leveled" ? found === total && !wrong && !extra
+      : label === "tape 1 deg off" ? found >= total - 1 && !wrong && !extra
+      : Math.abs(deg) > 3 || (found >= total - 2 && !extra);
+    if (!ok) tiltBad++;
+    console.log(`  ${ok ? "ok   " : "WRONG"} ${String(deg).padStart(4)} deg, ${label.padEnd(14)}: found ${found}/${total}, false ${extra}, wrong verdicts ${wrong}, worst ${worst.toFixed(1)}%`);
+  }
+}
+// Someone walks through during the landing check and the tracker jumps to them: not a foul, but unsure
+{
+  const landAt = clip.findIndex(([t]) => t > ref.IMG_6199[0].landing_s + 0.4);
+  const landed = clip[landAt - 1][1], away = landed[23][0] > 960 ? -600 : 600;    // across the picture from the jumper
+  const stranger = pose.map(([x, y, v]) => [landed[23][0] + away + (x - hipX), footY - 60 + (y - footY) * 0.7, v]);
+  const out = [];
+  const d = createDetector({ onJump: (j) => out.push(j) });
+  d.setGeometry({ width: 1920, height: 1080, metersPerPixel: M_PER_PX });
+  let t = 0, i = 0;
+  const feed = (p) => { t += 1 / 30; if (i++ % Number(step) === 0) d.feed(t, p); };
+  clip.slice(0, landAt).forEach(([, p]) => feed(p));
+  hold(1.5, stranger).forEach(feed);
+  d.flush();
+  const ok = out.length === 1 && !out[0].foul && out[0].unsure === "switched";
+  if (!ok) tiltBad++;
+  console.log(`\n${ok ? "ok   " : "WRONG"} tracker jumps to someone else during the landing check: ${out.map((j) => j.foul?.code || `counts, unsure: ${j.unsure}`).join(", ") || "nothing"}`);
+}
+if (stayBad || tiltBad) process.exitCode = 1;

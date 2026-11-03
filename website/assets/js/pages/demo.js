@@ -396,14 +396,14 @@ let live = null, liveCal = null;
 async function openLive({ room = null } = {}) {
   live?.dispose();
   show("live");
-  const { createLive } = await import("../live/live.js");
+  const [{ createLive }, { tapeTilt }] = await Promise.all([import("../live/live.js"), import("../live/detect.js")]);
   live = createLive($("demo-live"), {
     room,
     onNeedScale: (still) => {
       show("calibrate");
       liveCal = calibrate($("demo-calibrate"), still, {
         tips: true,
-        onDone: ({ scale }) => { liveCal.dispose(); liveCal = null; show("live"); live.setScale(scale); },
+        onDone: ({ scale, p1, p2 }) => { liveCal.dispose(); liveCal = null; show("live"); live.setScale(scale, tapeTilt(p1, p2)); },
       });
     },
     onScaleSet: () => { if (liveCal) { liveCal.dispose(); liveCal = null; show("live"); } },   // the remote screen set it
@@ -426,7 +426,7 @@ async function openRemote(code = null) {
   show("remote");
   const host = $("demo-remote");
   host.innerHTML = '<p class="live__status" role="status">Opening a remote screen…</p>';
-  const [{ createRemote }, { openRoom }] = await Promise.all([import("../live/remote.js"), import("../live/room.js")]);
+  const [{ createRemote }, { openRoom }, { tapeTilt }] = await Promise.all([import("../live/remote.js"), import("../live/room.js"), import("../live/detect.js")]);
   if (!code) {
     try { code = await openRoom(); } catch (e) {
       host.innerHTML = `<p class="live__status" role="status">${esc(e.message)} Try again in a moment.</p>
@@ -442,7 +442,7 @@ async function openRemote(code = null) {
       show("calibrate");
       const cal = calibrate($("demo-calibrate"), still, {
         tips: true,
-        onDone: ({ scale }) => { cal.dispose(); show("remote"); remote.setScale(scale); },
+        onDone: ({ scale, p1, p2 }) => { cal.dispose(); show("remote"); remote.setScale(scale, tapeTilt(p1, p2)); },
       });
     },
     onAnalyze: (file, info) => { remote.dispose(); remote = null; setParam("remote", null); startUpload(file, info); },   // the full data here

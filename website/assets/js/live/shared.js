@@ -38,6 +38,7 @@ const UNSURE = {
   switched: { text: "The tracker jumped to someone else around this jump, so this number may be off.", say: "Not sure: someone else may be in the picture." },
   unseen: { text: "The jumper wasn't tracked for most of the landing, so a step or a fall may have been missed.", say: "Couldn't see the whole landing." },
   stopped: { text: "Measuring stopped before the landing was checked, so a step or a fall may have been missed.", say: "Stopped before the landing was checked." },
+  reshaped: { text: "The camera's picture changed size after the scale was set, so this number may be off.", say: "The camera's picture changed: set the scale again." },
 };
 const unsureOf = (j) => (j.unsure ? UNSURE[j.unsure] || { text: typeof j.unsure === "string" ? j.unsure : "the tracker may have followed someone else.", say: "Not sure about this one." } : null);
 
@@ -101,9 +102,12 @@ export function readTape(form) {
     : num(form.querySelector(".live__tape-ft")) * FOOT + num(form.querySelector(".live__tape-in")) * INCH;
   return Number.isFinite(m) && m >= 0.3 && m <= 4 ? m : null;
 }
-/** "7 ft 2 in", "7' 2\"", "7-2", "86 in", "2.18 m", "218 cm", "2,18" -> meters, or null (as scripts/replay_live.mjs reads them). */
+/** "7 ft 2 in", "7' 2\"", "7-2", "86 in", "2.18 m", "218 cm", "2,18" -> meters, or null (as scripts/replay_live.mjs reads them).
+ *  Also phones' curly quotes (7’ 2”) and fractions (10½, 10 1/4). */
 export function parseTapeText(text) {
-  const s = String(text || "").trim().toLowerCase().replace(",", ".");
+  const s = String(text || "").trim().toLowerCase().replace(",", ".").replace(/[’‘′`]/g, "'").replace(/[”“″]/g, '"')
+    .replace(/(\d*)\s*([¼½¾])/g, (_, n, f) => String(+n + { "¼": 0.25, "½": 0.5, "¾": 0.75 }[f]))
+    .replace(/(\d+)\s+(\d)\/(\d+)/g, (_, n, a, b) => String(+n + a / b));
   let m;
   if (!s) return null;
   if ((m = s.match(/^([\d.]+)\s*cm$/))) return +m[1] / 100;

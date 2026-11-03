@@ -51,11 +51,12 @@ export function repeat(ms, step) {
  * connection), "gone" (no such room: it closed or the code was wrong).
  */
 export function linkPhone(code, { state, picture, still, onCommand, onLink }) {
-  let lastCmd = null, sent = "", sentAt = 0, picAt = 0, picId = 0, stillId = null, remoteAge = Infinity, misses = 0, how = "";
+  let lastCmd = null, sent = "", sentAt = 0, picAt = 0, picId = 0, stillId = null, remoteAge = Infinity, misses = 0, how = "", over = false;
   const tell = (h) => { if (h !== how) { how = h; onLink(h); } };
   const loop = repeat(400, async () => {
     try {
       const { value, age } = await read(code, "remote");
+      if (over) return;                                        // (left while that was on its way)
       misses = 0;
       remoteAge = age ?? Infinity;
       const cmds = value?.cmds || [];
@@ -74,17 +75,17 @@ export function linkPhone(code, { state, picture, still, onCommand, onLink }) {
     }
     tell(remoteAge < 15 ? "watching" : "waiting");
     const now = Date.now(), s = state();
+    const msg = JSON.stringify({ ...s, previewId: picId, stillId });       // first: a slow picture mustn't hold up a result
+    if (msg !== sent || now - sentAt > 2000) { await send(code, "phone", JSON.parse(msg)); sent = msg; sentAt = now; }
     if (remoteAge < 15 && now - picAt > (s.stage === "measuring" ? 1000 : 450)) {   // a picture while someone watches
       const jpeg = picture();
       if (jpeg) { await send(code, "preview", { id: picId + 1, jpeg }); picId++; picAt = now; }
     }
-    const msg = JSON.stringify({ ...s, previewId: picId, stillId });
-    if (msg !== sent || now - sentAt > 2000) { await send(code, "phone", JSON.parse(msg)); sent = msg; sentAt = now; }
   });
   return {
     code,
     soon: loop.soon,
     /** reason: told to the remote ("back", "analyzing", "disconnected"); null: say nothing (a new session follows). */
-    stop(reason = "back") { loop.stop(); if (reason) send(code, "phone", { ...state(), stage: "closed", reason }).catch(() => {}); },
+    stop(reason = "back") { over = true; loop.stop(); if (reason) send(code, "phone", { ...state(), stage: "closed", reason }).catch(() => {}); },
   };
 }

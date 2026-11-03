@@ -19,7 +19,7 @@ python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration outpu
 python scripts/run_session.py "../test videos/IMG_6233.MOV"     # a video with many jumps: a verdict table
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
 node scripts/replay_live.mjs jumplab-live-track-*.json          # Measure live vs tape, from saved tracking
-node scripts/check_live.mjs                          # Measure live vs the full analysis on 20 test jumps, fouls, staying in the picture (2 = a slow phone)
+node scripts/check_live.mjs                          # Measure live vs the full analysis on 20 test jumps, fouls, staying in the picture, a tilted camera (2 = a slow phone)
 cd website && python3 -m http.server 8000           # then http://localhost:8000
 ```
 Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run writes `_results.json`,
@@ -198,6 +198,26 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   the old code failed 7 of 8, the new one passes all at 30, 15 and 10 (the moves are made from real poses, not filmed).
   Side effect: IMG_6233 jump 2 (person behind), which the old code missed at 15 and 10 frames/s, is now found, 16-29%
   short (feet apart shown; unsure only at 10); the 1.3% and 2.6% worsts above leave it out.
+- **A camera not quite level** (Nov 3): live's landing rule (both feet within 6% of body height of the floor learned at
+  takeoff) lost jumps on a tilted camera, since the landing spot sits higher in the picture: 18 of 20 found at 1 degree,
+  14 at 2, 10 at 3 (our near-level videos already land 3-5% up). Now every frame is leveled by the tape's slope (the two
+  calibration markers, `tapeTilt`, `setGeometry({ tiltDeg })`, ignored over 15 degrees; also sent by the remote screen and
+  saved as `tilt_deg` in tracking files), so the distance runs along the tape; and feet that stop moving for 0.1 s count as
+  landed even above that floor (`feetStopped`; in the air they travel with the jump). Level camera: the same numbers as
+  before at 30, 15, 10 frames/s. Leveled: 20 of 20 at up to 6 degrees, all verdicts right; with a tape 1 degree off the
+  jump's line, 19-20. Not leveled at all: 19-20 at 30 frames/s, but some verdicts wrong. Simulated by turning real tracking.
+- **Other live fixes (Nov 3)**: the tracker jumping to someone else during the landing check no longer reads as a foul
+  (it was "stepped back"; now it counts, unsure). A tracker failing on every frame (a phone's lost graphics context) is
+  replaced after 30 failures. The phone re-takes the screen wake lock and restarts its video when the page returns, says
+  when the page was away, and warns if the camera stops or its picture changes size (`problem`, shown on the remote too;
+  a changed size marks jumps unsure). Stop can't hang on a recorder that never finishes, and no jump starts while stopping.
+  Tape boxes read phones' curly quotes and fractions (7’ 2”, 10½, 10 1/4), a saved tracking file keeps tapes exact and
+  keeps those added after Stop. Blocked site data no longer stops the camera starting; a video's download link is freed on
+  leaving, tracked frames are flat numbers (long sessions on phones); the phone sends results before its picture.
+  Checked in a browser with the real tracker on IMG_6199 fed in as a camera. Not on a real phone yet; the wake lock,
+  lost-graphics and curly-quote cases need one. Still open: if the jumper leaves and the tracker settles on someone in
+  the background, it can stay on them after the jumper returns (`numPoses: 1`); tracking two people costs frame rate on
+  phones and hasn't been measured.
 - **Tape session (reported Nov 2, `tests/data/live_tape_checks.csv`)**: 15 jumps with a tape reading: live median
   +1.5 in, mean +1.85, 14 of 15 long, range -0.5 to +4. The error doesn't grow with distance (slope -0.06 in per in),
   so it looks like an offset, not a wrong scale. Cause unknown (no tracking file or video from that session), so no

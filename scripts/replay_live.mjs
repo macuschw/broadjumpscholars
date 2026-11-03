@@ -22,7 +22,9 @@ const { createDetector } = await import(pathToFileURL(detPath).href);
 
 /** "7 ft 2 in", "7' 2\"", "7-2", "86 in", "86\"", "2.18 m", "218 cm", "2,18" -> meters (null if unreadable). */
 export function parseTape(text) {
-  const s = String(text || "").trim().toLowerCase().replace(",", ".");
+  const s = String(text || "").trim().toLowerCase().replace(",", ".").replace(/[’‘′`]/g, "'").replace(/[”“″]/g, '"')
+    .replace(/(\d*)\s*([¼½¾])/g, (_, n, f) => String(+n + { "¼": 0.25, "½": 0.5, "¾": 0.75 }[f]))
+    .replace(/(\d+)\s+(\d)\/(\d+)/g, (_, n, a, b) => String(+n + a / b));
   if (!s) return null;
   let m;
   if ((m = s.match(/^([\d.]+)\s*cm$/))) return +m[1] / 100;
@@ -42,7 +44,7 @@ for (const file of args) {
   if (!String(data.format || "").startsWith("jumplab-live-track/")) { console.error(`${file}: not a live tracking file`); continue; }
   const replayed = [];
   const det = createDetector({ onJump: (j) => replayed.push(j) });
-  det.setGeometry?.({ width: data.camera?.width, height: data.camera?.height, metersPerPixel: data.scale_m_per_px });
+  det.setGeometry?.({ width: data.camera?.width, height: data.camera?.height, metersPerPixel: data.scale_m_per_px, tiltDeg: data.tilt_deg || 0 });
   for (const [t, pts] of data.frames) det.feed(t, pts);
   det.flush();
   const cam = data.camera || {};

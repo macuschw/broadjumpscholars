@@ -1,6 +1,6 @@
 // Live jump detection, frame by frame, from MediaPipe's 33 pose landmarks (in the camera's pixels).
 // A jump: a dip, then both feet leave the floor while the hips move forward, then come down. Its distance
-// is measured the way the full analysis does it (jumplab/pipeline.py): from the camera-side toe
+// is measured the way the full analysis does it (jumplab/pipeline.py), along the tape: from the camera-side toe
 // while planted (from the bottom of the dip to takeoff), to the camera-side heel once landed. Then the
 // landing has to be held, as in the full analysis (jumplab/checks.py check_landing): a step forward or
 // back, a hand put down or a fall make it a foul. The full analysis of the recorded video checks it
@@ -49,6 +49,12 @@ const HAND_FLOOR = 0.04, HAND_DOWN_S = 0.25, HAND_STILL = 0.10;   // a hand at t
 const KNEE_FLOOR = 0.07, SEAT_FLOOR = 0.09, DOWN_S = 0.15;   // a knee or the seat at the floor: fell (the deepest
                                      //   valid landing squats: knees 0.17, hips 0.14 above it)
 const SEEN = 0.5;                    // tracked in under half the frames after landing: unsure
+// A camera that isn't quite level: the floor where the jumper lands sits higher or lower in the picture than
+// where they took off (3 degrees: 7% of body height over a jump), and our near-level videos already land 3-5%
+// up, against a 6% rule. So setGeometry({ tiltDeg }) levels every frame by the tape's slope in the picture...
+const MAX_TILT = 15;                 //   (steeper: that's no tape along the floor, so it says nothing about level)
+// ...and, whatever the floor seems to say, feet that have stopped moving have landed: in the air they travel with the jump
+const STOP_S = 0.1, STOP_MOVE = 0.02;    // both feet within this (x body height) for at least this long (seconds)
 // Perspective (as jumplab/feet.py): the far foot is about a stance width further from the camera, so it
 // shows up shifted toward the middle of the picture; away from the middle that looks like feet apart
 // (our live session of Oct 27: toes "12-17 cm apart" while standing side by side, 650 px off center).
@@ -66,6 +72,12 @@ const pct = (xs, p) => {
   const v = xs.filter(Number.isFinite).sort((a, b) => a - b);
   return v.length ? v[Math.min(v.length - 1, Math.floor(p * v.length))] : NaN;
 };
+
+/** The tape's slope in the picture, in degrees (-90 to 90), from its two ends: how far the camera is off level. */
+export function tapeTilt(a, b) {
+  const deg = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+  return ((((deg + 90) % 180) + 180) % 180) - 90;
+}
 
 /** What one frame says: body height, the lowest point of each foot, the hips, foot visibility. */
 function measure(pts) {
@@ -112,7 +124,7 @@ export function perspectiveShift(xNear, geo) {
 
 export function createDetector({ onJump = () => {}, onLanded = () => {}, onState = () => {}, ...options } = {}) {
   const O = { ...OPTIONS, ...options };
-  let hist = [], state = "ground", up = 0, jump = null, count = 0, judging = null, geo = null;
+  let hist = [], state = "ground", up = 0, jump = null, count = 0, judging = null, geo = null, level = null;
   /** The far foot's gap to the near one along the jump, perspective removed (px), and that shift's size. */
   const gapOf = (frames, side, key) => {
     const other = side === "left" ? "right" : "left";
@@ -128,6 +140,21 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
   function notAJump() {
     hist.forEach((h) => { h.grounded = h.t >= jump.tTakeoff; });
     state = "ground"; up = 0; jump = null; onState(state);
+  }
+
+  /** When both feet stopped moving (the first frame of the last STOP_S or more), if they have. */
+  function feetStopped(t, tall) {
+    const from = hist.findLast((h) => t - h.t >= STOP_S - 0.001);   // (at a low frame rate, the frame before that)
+    if (!from) return null;
+    const w = hist.filter((h) => h.t >= from.t);
+    const spread = (xs) => Math.max(...xs) - Math.min(...xs);
+    const still = ["left", "right"].every((side) => spread(w.map((h) => h[side].x)) < STOP_MOVE * tall && spread(w.map((h) => h[side].low)) < STOP_MOVE * tall);
+    return still ? w[0].t : null;
+  }
+  /** The tracker jumped to someone else during the landing check: their moves say nothing about this landing. */
+  function lostToSomeoneElse(since) {
+    judging.j.unsure ||= "switched";
+    finish(null, since);
   }
 
   /** One frame of the landing being checked (m: null when nobody was tracked in it). */
@@ -160,10 +187,11 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
   /** Measuring stopped: a landing still being checked counts, marked unsure (it wasn't watched to the end). */
   function flush() { if (judging) finish(null, 0, true); }
 
-  function feed(t, pts) {
+  function feed(t, raw) {
+    const pts = raw && level ? raw.map(level) : raw;
     const m = pts ? measure(pts) : null;
-    if (judging) judge(t, m);
     if (!m) {
+      if (judging) judge(t, null);
       if (state === "landed" && jump) jump.missed++;
       if (state !== "ground" && jump && t - jump.tTakeoff > MAX_FLIGHT + 0.5) { state = "ground"; up = 0; jump = null; onState(state); }
       return;
@@ -175,6 +203,7 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
     const last = hist.at(-1);
     const resized = !!last && t - last.t <= RESIZE_S && Math.max(m.tall / last.tall, last.tall / m.tall) > RESIZE;
     const switched = speed > TELEPORT || (resized && speed > RESIZE_SPEED);
+    if (judging) { if (switched) lostToSomeoneElse(t - judging.j.tLanding); else judge(t, m); }
     hist.push({ t, ...m, grounded: state === "ground", switched });
     while (hist.length && t - hist[0].t > KEEP_S) hist.shift();
     if (state === "air" && t - jump.tTakeoff > MAX_FLIGHT + 0.2) notAJump();
@@ -208,24 +237,30 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
     if (state === "air") {
       jump.switched ||= hist[hist.length - 1].switched;
       jump.top = Math.min(jump.top, m.hipY);                  // image y is down: the highest the hips got
-      if (inAir) return;
-      jump.tLanding = t;
-      if (t - jump.tTakeoff < MIN_FLIGHT) { state = "ground"; jump = null; onState(state); return; }        // a twitch
-      jump.down = []; jump.missed = 0;
+      const stopped = inAir ? feetStopped(t, tall) : null;
+      if (inAir && stopped === null) return;
+      jump.tLanding = stopped ?? t;
+      if (jump.tLanding - jump.tTakeoff < MIN_FLIGHT) {        // a twitch; or feet that never moved: the floor is out of date
+        if (stopped !== null) { notAJump(); return; }
+        state = "ground"; jump = null; onState(state); return;
+      }
+      jump.down = stopped === null ? [] : hist.filter((h) => h.t >= stopped && h.t < t); jump.missed = 0;
       state = "landed";
     }
     if (state === "landed") {
-      jump.down.push({ t, ...m });
+      jump.down.push({ t, ...m, switched });
       jump.switched ||= hist[hist.length - 1].switched;
       if (t - jump.tLanding < O.HEEL_S) return;
       const heelX = median(jump.down.map((h) => h[jump.side].heelX)), hipX = median(jump.down.map((h) => h.hipX));
       const dir = Math.sign(hipX - jump.hipX), travel = Math.abs(hipX - jump.hipX) / jump.tall;
       const distancePx = dir * (heelX - jump.toeX);
       state = "ground"; onState(state);
-      hist.forEach((h) => { if (h.t >= jump.tTakeoff) h.grounded = false; });   // the floor stays the floor before the jump
       const rise = (jump.hipY - jump.top) / jump.tall;
       // (when the tracker switched people around the jump, its rise is meaningless: it's kept, marked unsure)
-      if ((rise >= MIN_RISE || jump.switched) && travel >= MIN_TRAVEL && distancePx > 0) {
+      const counted = (rise >= MIN_RISE || jump.switched) && travel >= MIN_TRAVEL && distancePx > 0;
+      // After a jump the floor stays the floor before it; after what wasn't one, those frames were on the floor
+      hist.forEach((h) => { if (h.t >= jump.tTakeoff) h.grounded = !counted; });
+      if (counted) {
         const j = { n: ++count, distancePx, tTakeoff: jump.tTakeoff, tLanding: jump.tLanding, flight: jump.tLanding - jump.tTakeoff,
           side: jump.side, toeX: jump.toeX, heelX, direction: dir > 0 ? "right" : "left", tall: jump.tall,
           ...(() => { const heel = gapOf(jump.down, jump.side, "heelX");
@@ -234,12 +269,21 @@ export function createDetector({ onJump = () => {}, onLanded = () => {}, onState
           unsure: jump.switched ? "switched" : null };
         judging = { j, dir, tall: jump.tall, settle: [], hand: [], downSince: null, land: null, seen: 0, total: jump.missed };
         onLanded(j);
-        for (const h of jump.down) if (judging) judge(h.t, h);  // the frames since landing
+        for (const h of jump.down) {                            // the frames since landing
+          if (!judging) break;
+          if (h.switched) lostToSomeoneElse(h.t - jump.tLanding); else judge(h.t, h);
+        }
       }
       jump = null;
     }
   }
-  /** The picture's size and the scale, once known: lets the gaps allow for perspective. */
-  function setGeometry(g) { geo = g && g.width && g.metersPerPixel > 0 ? { ...g } : null; }
+  /** The picture's size, the scale and the tape's slope, once known: for perspective in the gaps, and to level each frame. */
+  function setGeometry(g) {
+    geo = g && g.width && g.metersPerPixel > 0 ? { ...g } : null;
+    const a = (-(geo?.tiltDeg || 0) * Math.PI) / 180, c = Math.cos(a), s = Math.sin(a);
+    const cx = (geo?.width || 0) / 2, cy = (geo?.height || 0) / 2;
+    level = geo?.tiltDeg && Math.abs(geo.tiltDeg) <= MAX_TILT
+      ? ([x, y, v]) => [cx + c * (x - cx) - s * (y - cy), cy + s * (x - cx) + c * (y - cy), v] : null;
+  }
   return { feed, reset, flush, setGeometry };
 }

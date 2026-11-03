@@ -6,7 +6,7 @@
 // phone joins by scanning the QR code shown here, or by typing the code in Measure live.
 //
 //   const remote = createRemote(host, { code, onNeedScale(still), onAnalyze(file, info), onClose() });
-//   remote.setScale(metersPerPixel)   after the tape was marked on onNeedScale's still
+//   remote.setScale(metersPerPixel, tiltDeg)   after the tape was marked on onNeedScale's still
 import { ANALYSIS_URL, analysisServer } from "../config.js";
 import { downloadVideo, forgetVideo } from "../demo/server.js";
 import { onUnitsChange } from "../lib/units.js";
@@ -274,7 +274,7 @@ export function createRemote(host, { code, onNeedScale, onAnalyze, onClose }) {
       if (!wantStill) status("Set the scale: have the tape measure on the floor in the picture, then click Set the scale.");
     } else if (s.stage === "measuring") {
       q(".remote__stop").hidden = false;
-      status("Measuring: jump whenever you like. Each distance shows here and is said out loud.");
+      status(s.problem ? `On the phone: ${s.problem}` : "Measuring: jump whenever you like. Each distance shows here and is said out loud.");
     } else if (s.stage === "stopping") status("Stopping…");
     else if (s.stage === "done") {
       q(".remote__again").hidden = false;
@@ -341,8 +341,8 @@ export function createRemote(host, { code, onNeedScale, onAnalyze, onClose }) {
   document.addEventListener("visibilitychange", keepAwake);
   keepAwake();
 
-  function setScale(scale) {
-    command("scale", { scale });
+  function setScale(scale, tilt = 0) {
+    command("scale", { scale, tilt });
     voice.say("Ready. Jump when you like.");                   // (it follows a click: lets phones speak later)
     status("Sending the scale to the phone…");
     q("#remote-title").focus();
