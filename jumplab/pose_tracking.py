@@ -312,6 +312,12 @@ LOOK_MIN_TRAVEL = 0.5         # ...at least this far (x standing height; our jum
 JUMP_GAP_S = 1.5              # crouches closer than this are one jump (the dip, then the landing squat)
 TRIM_BEFORE_S = 2.5           # track from this long before the jump (standing still, the dip)...
 TRIM_AFTER_S = 1.8            # ...to this long after it (landing, settling, other people)
+# A phone's slow motion saved for playback: a jump 4-8x slower than life, in a video that says nothing about
+# it and may mix it with normal jumps. So the look runs a second time as if everything were this much slower,
+# which also cuts the track at anything faster than 4 / LOOK_SLOWED heights a second (a walk). What it finds
+# is only a candidate (SlowedSegment): session.analyze_session keeps it only if its physics says it's slowed.
+LOOK_SLOWED = 8
+SLOWED_BEFORE_S, SLOWED_AFTER_S = 8.0, 8.0    # seconds of the file around one: the slowed dip and landing
 MIN_CLIP_TO_TRIM_S = 6.5      # shorter clips are mostly the ~5 s tracked anyway: no gain
 
 
@@ -356,6 +362,20 @@ def jump_moments(looks, fps, slow=1.0, with_travel=False, tall=None):
         jumps.append(max(group, key=lambda g: g[2]))
     return [(a, b) for a, b, travel in jumps if travel >= LOOK_MIN_TRAVEL] if not with_travel else \
         [j for j in jumps if j[2] >= LOOK_MIN_TRAVEL]
+
+
+class SlowedSegment(tuple):
+    """(first, last) frames around what may be a slowed-down jump."""
+
+
+def _slowed_segments(people, fps, n_frames, normal):
+    """The stretches around jumps seen only if the video is slowed down (not overlapping a normal jump's)."""
+    found = []
+    for a, b in _moments_of_people(people, fps, LOOK_SLOWED):
+        seg = SlowedSegment((max(0, a - int(SLOWED_BEFORE_S * fps)), min(n_frames - 1, b + int(SLOWED_AFTER_S * fps))))
+        if not any(a <= last and b >= first for first, last in normal):
+            found.append(seg)
+    return found
 
 
 def _around(moment, fps, slow, n_frames):
@@ -407,7 +427,8 @@ def find_jumps(video_path, real_fps=None, model_complexity=1, progress=None):
             people.append((i, bodies))
     cap.release()
     times = np.array(times)
-    return times, [_around(m, fps, slow, len(times)) for m in _moments_of_people(people, fps, slow)]
+    segments = [_around(m, fps, slow, len(times)) for m in _moments_of_people(people, fps, slow)]
+    return times, segments + ([] if real_fps else _slowed_segments(people, fps, len(times), segments))
 
 
 TELEPORT = 4.0               # standing heights per second: nobody moves this fast (jumps: under 2.3)
@@ -452,7 +473,10 @@ def jumps_in_keypoints(kp, real_fps=None):
         look = _look_at(kp.xyv[i, :, :2], kp.xyv[i, :, 2])
         if look:
             looks.append((i, *look))
-    return [_around(m, kp.fps, slow, kp.n_frames) for m in jump_moments(looks, kp.fps, slow)]
+    segments = [_around(m, kp.fps, slow, kp.n_frames) for m in jump_moments(looks, kp.fps, slow)]
+    if real_fps:
+        return segments
+    return segments + _slowed_segments([(look[0], [look[1:]]) for look in looks], kp.fps, kp.n_frames, segments)
 
 
 def track_segments(video_path, segments, frame_times, model_complexity=1, progress=None):

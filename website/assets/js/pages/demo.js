@@ -140,7 +140,8 @@ function renderSource(a) {
   }
   tag.textContent = a.calibrated ? "Your jump" : a.rough ? "Rough: no calibration" : "Not calibrated";
   const r = a.bundle.results;
-  const fps = `${Math.round(r.fps)} fps${r.fps_source === "override" ? " (as you set)" : ""}`;
+  const fps = r.fps_source === "slowed" ? `slow motion, about ${r.slowed_by}x (timed at ${Math.round(r.fps)} fps)`
+    : `${Math.round(r.fps)} fps${r.fps_source === "override" ? " (as you set)" : ""}`;
   const scale = a.calibrated ? `calibrated, 1 px = ${formatQuantity("tiny", r.scale_m_per_px)}` : "no tape calibration";
   const live = a.live && (a.live.foul ? `didn't count live (${(FOULS[a.live.foul.code]?.headline || "a foul").toLowerCase()})`
     : `live result ${formatQuantity("distance", a.live.meters)}`);

@@ -13,6 +13,11 @@ from .pose_tracking import BODY_PARTS, load_or_track
 from .smoothing import DEFAULT_CUTOFF_HZ, fill_and_smooth, fill_gaps
 
 EVENT_METHODS = ("ankle", "toe_heel")
+TYPICAL_HEIGHT_M = 1.7       # for the slow-down of a jump before the tape is marked
+SLOWED_MIN, SLOWED_MAX = 1.5, 12.0   # a jump's slow-down: 60 fps at 40 fps... to 240+ fps at 30 fps
+SLOWED_SNAP = 0.15           # within this share of 2x, 4x or 8x: that's what it is
+SLOWED_MIN_RISE = 0.06       # x standing height: as session.NOT_A_JUMP_RISE
+SLOWED_MAX_FLIGHT_S = 0.8    # seconds: nobody's broad jump flies longer (ours: 0.4-0.6)
 TRAJECTORY_POINTS = ("com", "hip")
 POINT_NAMES = {"com": "center of mass", "hip": "hip"}
 
@@ -109,11 +114,47 @@ def _real_times(kp, fps):
     return t
 
 
+def slowdown(results, kp, scale_m_per_px=None):
+    """How many times slower than life this jump plays, or None. A phone's slow motion, saved for
+    playback, slows only the stretch around the jump, so nothing in the file says so, and a video can
+    mix normal and slowed jumps (IMG_1607). The physics does: the flight lasts impossibly long, and
+    the body falls k^2 times too slowly, so k = sqrt(real g / the fitted g). k must leave a real
+    flight time, with hips that really rose. Near a phone's own rates it is taken to be that rate."""
+    flight, g = results["timing"].get("flight_time_s"), results["trajectory"].get("g_fit_px_s2")
+    if not flight or flight <= checks.MAX_FLIGHT_S or not g or g <= 0:
+        return None
+    tall = checks._standing_height(kp.xyv, results["events"]["movement_onset"]["frame"], results["fps"])
+    if not tall or results["pixels"]["hip_rise_px"] < SLOWED_MIN_RISE * tall:
+        return None
+    m_per_px = scale_m_per_px or TYPICAL_HEIGHT_M / tall       # (before the tape is marked: a typical body)
+    k = (physics.G / m_per_px / g) ** 0.5
+    near = [f for f in checks.SLOW_MOTION_FACTORS if abs(k / f - 1) < SLOWED_SNAP]
+    k = float(near[0]) if near else float(k)
+    if not SLOWED_MIN <= k <= SLOWED_MAX or not checks.MIN_FLIGHT_S <= flight / k <= SLOWED_MAX_FLIGHT_S:
+        return None
+    return k
+
+
 def analyze_keypoints(kp, scale_m_per_px=None, config=None, fps_override=None):
     """Full analysis of already-tracked keypoints. scale_m_per_px=None -> uncalibrated
     (pixel results, plus gravity/flight-time estimates that need no calibration).
     fps_override: the real frame rate, for a file whose own timing is wrong (e.g. slow-motion
-    saved for slowed-down playback)."""
+    saved for slowed-down playback). Without it, a jump that plays slowed down (slowdown) is
+    timed by how slowed it looks: results["fps_source"] "slowed", results["slowed_by"]."""
+    results = _analyze_keypoints(kp, scale_m_per_px, config, fps_override)
+    k = None if fps_override else slowdown(results, kp, scale_m_per_px)
+    if not k:
+        return results
+    results = _analyze_keypoints(kp, scale_m_per_px, config, results["fps"] * k)
+    results["fps_source"], results["slowed_by"] = "slowed", k
+    results["warnings"] = [w for w in results["warnings"] if w["code"] != "fps_override"] + [checks.warning(
+        "slowed_jump", f"This jump plays about {k:g}x slower than life, judged from how slowly the body "
+        f"falls, so it was timed at {results['fps']:.0f} fps. The distance doesn't depend on this; "
+        "times and speeds are estimates.", checks.CAUTION, ("timing", "trajectory"))]
+    return results
+
+
+def _analyze_keypoints(kp, scale_m_per_px, config, fps_override):
     config = config or AnalysisConfig()
     header_fps = kp.fps
     kp, fps_source, warnings = _frame_rate(kp, fps_override)

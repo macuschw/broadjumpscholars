@@ -14,6 +14,7 @@ import numpy as np
 from .checks import _standing_height
 from .events import NoJumpFound
 from .pipeline import analyze_keypoints, look_for_others
+from .pose_tracking import SlowedSegment
 
 NOT_A_JUMP_RISE = 0.06     # x standing height: the hips rose less than this, with an impossible
                            # flight time -> not a jump (walking off from a crouch rises ~0.02; jumps 0.11-0.18)
@@ -71,6 +72,9 @@ def analyze_session(kp, segments, scale_m_per_px=None, config=None, fps_override
         except NoJumpFound as e:
             skipped.append({"segment": [int(v) for v in segment], "reason": str(e)})
             continue
+        if isinstance(segment, SlowedSegment) and r["fps_source"] != "slowed":
+            skipped.append({"segment": [int(v) for v in segment], "reason": "not a jump (it isn't a slowed-down one)"})
+            continue
         if len(segments) > 1 and not_a_jump(r, k):
             skipped.append({"segment": [int(v) for v in segment], "reason": "not a jump (the hips barely rose)"})
             continue
@@ -85,10 +89,11 @@ def summary_rows(jumps):
     rows = []
     for k, r in jumps:
         ev, d = r["events"], r["distance"]
+        file_s = r.get("slowed_by", 1)                         # (a slowed jump's times run in real seconds)
         serious = [w for w in r["warnings"] if w["severity"] == "serious"]
         rows.append({
             "jump": r["jump"],
-            "takeoff_s": ev["takeoff"]["time_s"], "landing_s": ev["landing"]["time_s"],
+            "takeoff_s": ev["takeoff"]["time_s"] * file_s, "landing_s": ev["landing"]["time_s"] * file_s,
             "distance_m": d.get("jump_distance_m") if d.get("jump_distance_m") is not None else d.get("jump_distance_m_gravity_scale"),
             "calibrated": r["scale_m_per_px"] is not None,
             "valid": r["valid"],

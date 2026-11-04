@@ -14,7 +14,7 @@ this repo (GitHub: macuschw/broadjumpscholars):
 
 ```bash
 python3 -m pip install -r requirements.txt          # mediapipe==0.10.14 is required (newer removed the API)
-python3 -m pytest -q                                 # 197 tests should pass
+python3 -m pytest -q                                 # 206 tests should pass
 python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration output/calibration.json
 python scripts/run_session.py "../test videos/IMG_6233.MOV"     # a video with many jumps: a verdict table
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
@@ -82,6 +82,20 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   54 deg, a gravity "scale mismatch" and a false "slow motion suspected"). Distance is unaffected. The
   `toe_heel` method fixes jump 6 (0.43 s) and jump 1's mismatch; switching the default needs a check
   against tape-measured jumps first.
+- **Slow-motion jumps in a normal file** (Nov 3, `pipeline.slowdown`): a phone's slow motion saved for playback
+  slows only the stretch around the jump, and nothing in the file says so; IMG_1607 (30 fps) holds one normal jump and
+  two 4x. On Auto each jump is now judged alone: a flight over 1 s, with hips that rose, and k = sqrt(real g / fitted g)
+  leaving a real flight (0.15-0.8 s; near 2, 4 or 8x it's taken to be that) is timed at k x the rate: `fps_source`
+  "slowed", `slowed_by`, note `slowed_jump`; before the tape is marked a 1.7 m body stands in for the scale. The quick
+  look runs a second time as if 8x slower (`LOOK_SLOWED`; this also cuts the track at walking speed), and what only that
+  finds (`SlowedSegment`) is kept only if its physics says slowed. A rate set under "Recorded at" still wins for the whole
+  video. IMG_1607 on Auto: 3 of 3, timed 0.46-0.57 s in the air, the false foul on the short one gone. All 19 saved videos:
+  same jumps and distances, no false ones; the one newly timed as slowed, IMG_6171, really is (2.0 s "in the air" before).
+- **Upload tape check (Nov 3, IMG_1605 / IMG_1607, 12 ft tape, hook tip to where it leaves the case)**: long jumps
+  (6-7 ft) 0 to +2.5 in, short jumps (~4 ft 3) +4.5 to +6.5 in, the same pattern as the live session above; one jump (7 ft 4.5
+  vs 6 ft 11.5) +5 in if the table's order is the video's. Cause unknown: a skewed camera doesn't clearly explain it (fitting
+  one: mean error 2.9 -> 2.1 in, no better than a fixed offset), and the tracked heel and toe do sit on the shoes despite wide
+  jeans. Next: short jumps on a tape with marks at 3, 6, 9 ft, to see if the picture's scale is even along the floor.
 - Every warning code has plain words in `alerts.PLAIN` (headline / what happened / how to fix);
   a test fails if a new code is added without them. On the website, serious problems show as a red
   panel right above the numbers, and the stats they affect (the warning's `affects`) get a

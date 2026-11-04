@@ -91,6 +91,10 @@ PLAIN = {
                               "The timing suggests the video's frame rate isn't what the file says (common with "
                               "slow-motion clips that were exported or shared).",
                               "Choose the real rate under “Recorded at”, or use the original file from the phone."),
+    "slowed_jump": ("Slow-motion jump",
+                    "This jump plays slower than life, so its times and speeds were worked out from how slowly the body "
+                    "falls. The distance doesn't depend on that.",
+                    "For exact timing, use the original file from the phone instead of a saved or shared copy."),
     "variable_frame_rate": ("Uneven frame timing",
                             "The frames in this file aren't evenly spaced in time, so timings may be slightly off.",
                             "Use the original file straight from the phone."),
