@@ -14,7 +14,7 @@ this repo (GitHub: macuschw/broadjumpscholars):
 
 ```bash
 python3 -m pip install -r requirements.txt          # mediapipe==0.10.14 is required (newer removed the API)
-python3 -m pytest -q                                 # 206 tests should pass
+python3 -m pytest -q                                 # 207 tests should pass
 python scripts/run_analysis.py "../test videos/IMG_6199.MOV" --calibration output/calibration.json
 python scripts/run_session.py "../test videos/IMG_6233.MOV"     # a video with many jumps: a verdict table
 python scripts/summarize.py "../test videos/IMG_6199.MOV"
@@ -91,6 +91,8 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
   finds (`SlowedSegment`) is kept only if its physics says slowed. A rate set under "Recorded at" still wins for the whole
   video. IMG_1607 on Auto: 3 of 3, timed 0.46-0.57 s in the air, the false foul on the short one gone. All 19 saved videos:
   same jumps and distances, no false ones; the one newly timed as slowed, IMG_6171, really is (2.0 s "in the air" before).
+- A fingertip past the picture's edge no longer counts as "part of the body left the frame" (`checks.FINGERTIPS`, Nov 4): on
+  IMG_1605 that was all that left, marking 5 of 6 jumps "Not reliable" with their distances within 0.5-5 in like the rest.
 - **Upload tape check (Nov 3, IMG_1605 / IMG_1607, 12 ft tape, hook tip to where it leaves the case)**: long jumps
   (6-7 ft) 0 to +2.5 in, short jumps (~4 ft 3) +4.5 to +6.5 in, the same pattern as the live session above; one jump (7 ft 4.5
   vs 6 ft 11.5) +5 in if the table's order is the video's. Cause unknown: a skewed camera doesn't clearly explain it (fitting

@@ -89,6 +89,11 @@ def check_missing_frames(detected, onset_i, takeoff_i, landing_i, hi, fps):
                     "positions were filled in by interpolation.", CAUTION)]
 
 
+# A fingertip past the picture's edge on the backswing changes no distance, and barely the center of mass: it
+# isn't "part of the body left the frame" (IMG_1605: the only thing that left, flagged on 5 of 6 jumps)
+FINGERTIPS = ("INDEX",)        # (the one fingertip the analysis uses)
+
+
 def check_landmarks(kp, landmarks, a, b):
     """Low MediaPipe visibility or positions outside the frame, for the landmarks the
     analysis uses, over frames a..b. `landmarks` is a list of (side, name)."""
@@ -101,7 +106,7 @@ def check_landmarks(kp, landmarks, a, b):
             continue
         if np.mean(v[ok] < MIN_VISIBILITY) > MAX_LOW_VIS_FRACTION:
             low.append(f"{side.lower()} {name.lower()}")
-        if np.any((x[ok] < 0) | (x[ok] >= kp.width) | (y[ok] < 0) | (y[ok] >= kp.height)):
+        if name not in FINGERTIPS and np.any((x[ok] < 0) | (x[ok] >= kp.width) | (y[ok] < 0) | (y[ok] >= kp.height)):
             off.append(f"{side.lower()} {name.lower()}")
     if low:
         out.append(warning("low_confidence_landmarks",
