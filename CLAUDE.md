@@ -108,7 +108,7 @@ Outputs go to `output/<video name>/` (gitignored, as are all videos). Each run w
 - Pages: Home (3D draggable hero, the problem, call to action; no testimonials), How it works,
   Metrics (3D sculpted mannequin, drag 360°, in-scene metric overlays + callout labels), Setup,
   Science (KaTeX formulas, tabs; "The math" tab: every formula with a worked example from the Oct 27
-  session and the file that does it: keep it in step with the code), About (team: Reece, Macus), Analyze
+  session, a legend of its symbols and the file that does it: keep it in step with the code), About (team: Reece, Macus), Analyze
   (upload your own video, My jumps; the header's "Upload" button), Live (`live.html`: Measure live, the
   remote screen, the tape check; the header's "Live" button, next to Upload), Demo (the simulated sample
   jump, its own page). All three use one script (`pages/demo.js`, picks by `<body data-page>`; each page

@@ -150,7 +150,7 @@
       <div class="science-math__head">
         <h2>Every formula, step by step.</h2>
         <p>The math JumpLab runs on a real jump, in order, each with a worked example from a session we filmed on October 27
-          (jump 10, 30 fps, phone on a tripod) and the file in the code that does it.</p>
+          (jump 10, 30 fps, phone on a tripod) and the file in the code that does it. The small letters under a symbol are labels, not numbers to multiply: <span class="tex" data-tex="x_B">x<sub>B</sub></span> is the x of point B.</p>
       </div>
       <ol class="math-list" role="list">
         <li class="math-item">
@@ -167,6 +167,16 @@
             <p class="math-item__example"><strong>Example.</strong> On October 27 the tape gave
               <span class="tex" data-tex="s = 2.779\ \text{mm/px}" data-tex-imperial="s = 0.1094\ \text{in/px}">s = <span data-imperial="0.1094 in/px">2.779 mm/px</span></span>:
               each pixel along the jump line is <span data-imperial="about a tenth of an inch">under 3 mm</span>.</p>
+            <div class="math-legend">
+              <h4 class="math-legend__title">What the letters mean</h4>
+              <dl class="math-legend__list">
+                <dt><span class="tex" data-tex="s">s</span></dt><dd>The scale: how much real length one pixel covers (<span data-imperial="in/px">mm/px</span>)</dd>
+                <dt><span class="tex" data-tex="L">L</span></dt><dd>The real length of the tape between the two marks (<span data-imperial="ft">m</span>)</dd>
+                <dt><span class="tex" data-tex="A,\ B">A, B</span></dt><dd>The two marks you place on the ends of the tape</dd>
+                <dt><span class="tex" data-tex="x_A,\ y_A">x<sub>A</sub>, y<sub>A</sub></span></dt><dd>Where mark A is in the picture, across and up/down (px)</dd>
+                <dt><span class="tex" data-tex="x_B,\ y_B">x<sub>B</sub>, y<sub>B</sub></span></dt><dd>Where mark B is in the picture, across and up/down (px)</dd>
+              </dl>
+            </div>
           </div>
         </li>
 
@@ -185,6 +195,17 @@
             <p class="math-item__example"><strong>Example.</strong> Toe at <span class="tex" data-tex="x = 1601.3">x = 1601.3</span> px, heel at
               <span class="tex" data-tex="x = 797.6">x = 797.6</span> px, jumping left (<span class="tex" data-tex="d = -1"><var>d</var> = −1</span>):
               <span class="tex" data-tex="D = 2.779\ \text{mm} \times 803.7 = 2.23\ \text{m}" data-tex-imperial="D = 0.1094\ \text{in} \times 803.7 = 7\ \text{ft}\ 4\ \text{in}">D = 803.7 px × s = <span data-imperial="7 ft 4 in">2.23 m</span></span>.</p>
+            <div class="math-legend">
+              <h4 class="math-legend__title">What the letters mean</h4>
+              <dl class="math-legend__list">
+                <dt><span class="tex" data-tex="D">D</span></dt><dd>The jump distance (<span data-imperial="ft">m</span>)</dd>
+                <dt><span class="tex" data-tex="s">s</span></dt><dd>The scale from step 1</dd>
+                <dt><span class="tex" data-tex="d">d</span></dt><dd>The jump's direction in the picture: +1 is right, −1 is left</dd>
+                <dt><span class="tex" data-tex="x_{\text{toe}}">x<sub>toe</sub></span></dt><dd>How far across the picture the toe is, before takeoff (px)</dd>
+                <dt><span class="tex" data-tex="x_{\text{heel}}">x<sub>heel</sub></span></dt><dd>How far across the picture the heel is, after landing (px)</dd>
+                <dt><span class="tex" data-tex="\operatorname{median}">median</span></dt><dd>The middle value over several frames</dd>
+              </dl>
+            </div>
           </div>
         </li>
 
@@ -204,6 +225,17 @@
             <p class="math-item__example"><strong>Why 15%?</strong> High enough that walking and tracking jitter never cross it, low enough that it's crossed within a
               frame of the foot leaving the ground. (On some 30 fps clips the ankle rises with the heel during the push-off, so takeoff reads a few frames
               early; the toe-and-heel method, an option, avoids that.)</p>
+            <div class="math-legend">
+              <h4 class="math-legend__title">What the letters mean</h4>
+              <dl class="math-legend__list">
+                <dt><span class="tex" data-tex="h">h</span></dt><dd>The ankle's height in each frame (px)</dd>
+                <dt><span class="tex" data-tex="P_{20}(h)">P<sub>20</sub>(h)</span></dt><dd>The 20th percentile: 20% of the heights are below this value</dd>
+                <dt><span class="tex" data-tex="b">b</span></dt><dd>The ankle's ground level (px)</dd>
+                <dt><span class="tex" data-tex="\max h">max h</span></dt><dd>The ankle's highest point (px)</dd>
+                <dt><span class="tex" data-tex="R">R</span></dt><dd>The rise: how far the ankle got above its ground level (px)</dd>
+                <dt><span class="tex" data-tex="h_{\text{thr}}">h<sub>thr</sub></span></dt><dd>The height that counts as being in the air (px)</dd>
+              </dl>
+            </div>
           </div>
         </li>
 
@@ -226,6 +258,25 @@
             <p class="math-item__example"><strong>Example.</strong> 14 frames in the air, fitted in pixels:
               <span class="tex" data-tex="v_x = 974.7\ \text{px/s},\ v_y = 662.8\ \text{px/s},\ g = 3522\ \text{px/s}^2">v<sub>x</sub> = 974.7 px/s, v<sub>y</sub> = 662.8 px/s, g = 3522 px/s²</span>.
               The forward fit <span class="tex" data-tex="x(t) = x_0 + v_x t">x(t) = x<sub>0</sub> + v<sub>x</sub>t</span> is the same idea with a straight line.</p>
+            <div class="math-legend">
+              <h4 class="math-legend__title">What the letters mean</h4>
+              <dl class="math-legend__list">
+                <dt><span class="tex" data-tex="t,\ t_i">t, t<sub>i</sub></span></dt><dd>Time since takeoff, and that time at frame i (s)</dd>
+                <dt><span class="tex" data-tex="x(t),\ y(t)">x(t), y(t)</span></dt><dd>The center of mass's position across and up at time t (px)</dd>
+                <dt><span class="tex" data-tex="x_0,\ y_0">x<sub>0</sub>, y<sub>0</sub></span></dt><dd>The position at takeoff, t = 0 (px)</dd>
+                <dt><span class="tex" data-tex="v_x">v<sub>x</sub></span></dt><dd>Forward speed (px/s)</dd>
+                <dt><span class="tex" data-tex="v_y">v<sub>y</sub></span></dt><dd>Upward speed at takeoff (px/s)</dd>
+                <dt><span class="tex" data-tex="g">g</span></dt><dd>Gravity, as fitted from the video (px/s²)</dd>
+                <dt><span class="tex" data-tex="i,\ n">i, n</span></dt><dd>The frame number, and how many frames were in the air</dd>
+                <dt><span class="tex" data-tex="y_i">y<sub>i</sub></span></dt><dd>The height actually tracked at frame i (px)</dd>
+                <dt><span class="tex" data-tex="\sum">Σ</span></dt><dd>Add up over all the frames</dd>
+                <dt><span class="tex" data-tex="A">A</span></dt><dd>A table of numbers built from the frame times</dd>
+                <dt><span class="tex" data-tex="\mathbf y"><b>y</b></span></dt><dd>The list of all the tracked heights (px)</dd>
+                <dt><span class="tex" data-tex="\hat\beta">β̂</span></dt><dd>The best-fit answers: y<sub>0</sub>, v<sub>y</sub> and g (the hat means “estimated”)</dd>
+                <dt><span class="tex" data-tex="A^{\mathsf T}">Aᵀ</span></dt><dd>A flipped so its rows become columns (T for transpose, not time)</dd>
+                <dt><span class="tex" data-tex="(A^{\mathsf T}A)^{-1}">(AᵀA)⁻¹</span></dt><dd>The matrix inverse, the matrix version of dividing</dd>
+              </dl>
+            </div>
           </div>
         </li>
 
@@ -244,6 +295,18 @@
             <p class="math-item__example"><strong>Example.</strong> Times the scale: v<sub>x</sub> = <span data-imperial="8.89 ft/s">2.71 m/s</span>,
               v<sub>y</sub> = <span data-imperial="6.04 ft/s">1.84 m/s</span>, so v = <span data-imperial="10.7 ft/s">3.28 m/s</span>; θ = atan2(662.8, 974.7) = 34.2°
               (the same in any units); the center of mass rose <span data-imperial="6.8 in">17 cm</span>.</p>
+            <div class="math-legend">
+              <h4 class="math-legend__title">What the letters mean</h4>
+              <dl class="math-legend__list">
+                <dt><span class="tex" data-tex="v">v</span></dt><dd>Total takeoff speed (<span data-imperial="ft/s">m/s</span>)</dd>
+                <dt><span class="tex" data-tex="v_x,\ v_y">v<sub>x</sub>, v<sub>y</sub></span></dt><dd>Forward and upward speed, from step 4</dd>
+                <dt><span class="tex" data-tex="\theta">θ</span></dt><dd>The launch angle above horizontal (degrees)</dd>
+                <dt><span class="tex" data-tex="\operatorname{atan2}">atan2</span></dt><dd>Inverse tangent that keeps track of direction</dd>
+                <dt><span class="tex" data-tex="h">h</span></dt><dd>How high the center of mass rises (<span data-imperial="in">cm</span>). Not the ankle height from step 3</dd>
+                <dt><span class="tex" data-tex="g">g</span></dt><dd>Gravity, from step 4</dd>
+                <dt><span class="tex" data-tex="v_{y,\text{top}}">v<sub>y,top</sub></span></dt><dd>Upward speed at the top of the jump, which is 0</dd>
+              </dl>
+            </div>
           </div>
         </li>
 
@@ -263,6 +326,17 @@
             <p class="math-item__example"><strong>Example.</strong> <span class="tex" data-tex="s_g = 9.81 / 3522 = 2.785\ \text{mm/px}">s<sub>g</sub> = 9.81 ÷ 3522 = 2.785 mm/px</span>
               against the tape's 2.779: 0.2% apart. Put the other way, the fit found <span data-imperial="g = 32.1 ft/s²">g = 9.79 m/s²</span>. Fitting the hip instead of the
               center of mass gave <span data-imperial="24.1 ft/s²">7.34 m/s²</span>: arms and legs swing, only the center of mass is a true parabola.</p>
+            <div class="math-legend">
+              <h4 class="math-legend__title">What the letters mean</h4>
+              <dl class="math-legend__list">
+                <dt><span class="tex" data-tex="s">s</span></dt><dd>The scale from the tape, step 1</dd>
+                <dt><span class="tex" data-tex="s_g">s<sub>g</sub></span></dt><dd>The scale worked out from gravity alone</dd>
+                <dt><span class="tex" data-tex="g_{\text{px}}">g<sub>px</sub></span></dt><dd>The g fitted in step 4 (px/s²)</dd>
+                <dt><span class="tex" data-tex="|\ |">| |</span></dt><dd>Absolute value: ignores plus or minus</dd>
+                <dt><span class="tex" data-tex="0.15">0.15</span></dt><dd>The limit: a 15% disagreement</dd>
+                <dt><span class="tex" data-tex="k">k</span></dt><dd>How many times the time is stretched, in slow motion</dd>
+              </dl>
+            </div>
           </div>
         </li>
 
@@ -280,6 +354,15 @@
               data-tex="\begin{gathered} T = t_{\text{land}} - t_{\text{takeoff}} \\[4pt] \delta T = \pm\dfrac{1}{\text{fps}} \end{gathered}" data-display>T = t<sub>land</sub> − t<sub>takeoff</sub>, δT = ±1/fps</div>
             <p class="math-item__example"><strong>Example.</strong> T = 0.468 s at 30 fps, so ±0.033 s. At 240 fps it would be ±0.004 s. That's why slow motion
               matters for timing and hardly at all for distance.</p>
+            <div class="math-legend">
+              <h4 class="math-legend__title">What the letters mean</h4>
+              <dl class="math-legend__list">
+                <dt><span class="tex" data-tex="T">T</span></dt><dd>Flight time (s)</dd>
+                <dt><span class="tex" data-tex="t_{\text{land}},\ t_{\text{takeoff}}">t<sub>land</sub>, t<sub>takeoff</sub></span></dt><dd>The times of the landing and takeoff frames (s)</dd>
+                <dt><span class="tex" data-tex="\delta T">δT</span></dt><dd>How far off the time could be (s)</dd>
+                <dt><span class="tex" data-tex="\text{fps}">fps</span></dt><dd>Frames per second</dd>
+              </dl>
+            </div>
           </div>
         </li>
 
@@ -298,6 +381,18 @@
               data-tex="\begin{gathered} \mathbf r_{\text{CoM}} = \dfrac{\sum_i m_i\, \mathbf r_i}{\sum_i m_i} \\[4pt] \mathbf r_i = \mathbf p_i + c_i\,(\mathbf q_i - \mathbf p_i) \end{gathered}" data-display>r<sub>CoM</sub> = Σ m<sub>i</sub>r<sub>i</sub> ÷ Σ m<sub>i</sub>, r<sub>i</sub> = p<sub>i</sub> + c<sub>i</sub>(q<sub>i</sub> − p<sub>i</sub>)</div>
             <p class="math-item__example"><strong>Example.</strong> The trunk is 49.7% of body mass, centered halfway from hip to shoulder; a thigh 10.0%, 43.3% of the
               way from hip to knee.</p>
+            <div class="math-legend">
+              <h4 class="math-legend__title">What the letters mean</h4>
+              <dl class="math-legend__list">
+                <dt><span class="tex" data-tex="i">i</span></dt><dd>Which body part: trunk, thigh and so on</dd>
+                <dt><span class="tex" data-tex="\mathbf r_{\text{CoM}}"><b>r</b><sub>CoM</sub></span></dt><dd>The whole body's center of mass (px)</dd>
+                <dt><span class="tex" data-tex="\mathbf r_i"><b>r</b><sub>i</sub></span></dt><dd>The center of body part i (px)</dd>
+                <dt><span class="tex" data-tex="m_i">m<sub>i</sub></span></dt><dd>That part's share of the body's mass (the trunk is 0.497)</dd>
+                <dt><span class="tex" data-tex="\mathbf p_i"><b>p</b><sub>i</sub></span></dt><dd>The joint at one end of the part (px)</dd>
+                <dt><span class="tex" data-tex="\mathbf q_i"><b>q</b><sub>i</sub></span></dt><dd>The joint at the other end (px)</dd>
+                <dt><span class="tex" data-tex="c_i">c<sub>i</sub></span></dt><dd>How far from <b>p</b> to <b>q</b> the part's center sits (0.5 is halfway)</dd>
+              </dl>
+            </div>
           </div>
         </li>
 
@@ -319,6 +414,20 @@
               f ≈ 1402 px, so Z = 1402 × 2.779 mm = <span data-imperial="12.8 ft">3.9 m</span>, and the far toe should show up
               650 × 0.25 / 3.9 = 42 px = <span data-imperial="4.6 in">11.6 cm</span> nearer the middle. We measured
               <span data-imperial="5–6.7 in">12.5–17 cm</span> on all ten jumps, with the feet side by side; before this correction, every one was called staggered.</p>
+            <div class="math-legend">
+              <h4 class="math-legend__title">What the letters mean</h4>
+              <dl class="math-legend__list">
+                <dt><span class="tex" data-tex="x_{\text{near}},\ x_{\text{far}}">x<sub>near</sub>, x<sub>far</sub></span></dt><dd>Where the near and far foot show up across the picture (px)</dd>
+                <dt><span class="tex" data-tex="x">x</span></dt><dd>The near foot's position across the picture (px)</dd>
+                <dt><span class="tex" data-tex="c_x">c<sub>x</sub></span></dt><dd>The middle of the picture, across (px)</dd>
+                <dt><span class="tex" data-tex="\Delta z">Δz</span></dt><dd>How much further from the camera the far foot is (<span data-imperial="about 10 in">0.25 m</span>)</dd>
+                <dt><span class="tex" data-tex="Z">Z</span></dt><dd>The distance from the camera to the jumper (<span data-imperial="ft">m</span>)</dd>
+                <dt><span class="tex" data-tex="f">f</span></dt><dd>The lens's focal length, measured in pixels</dd>
+                <dt><span class="tex" data-tex="s">s</span></dt><dd>The scale from step 1</dd>
+                <dt><span class="tex" data-tex="W">W</span></dt><dd>The long side of the picture (px)</dd>
+                <dt><span class="tex" data-tex="34.5^\circ">34.5°</span></dt><dd>Half of the phone camera's 69° view</dd>
+              </dl>
+            </div>
           </div>
         </li>
 
@@ -343,6 +452,12 @@
                   <tr><th scope="row">Fell</th><td>a knee within 0.07<var>H</var> or the hips within 0.09<var>H</var> of the floor for 0.15 s</td></tr>
                 </tbody>
               </table>
+            </div>
+            <div class="math-legend">
+              <h4 class="math-legend__title">What the letters mean</h4>
+              <dl class="math-legend__list">
+                <dt><span class="tex" data-tex="H">H</span></dt><dd>The jumper's standing height, so 0.22H is 22% of their height</dd>
+              </dl>
             </div>
           </div>
         </li>
