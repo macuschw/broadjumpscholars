@@ -477,6 +477,8 @@
 table.data.math-fouls td, table.data.math-fouls th { white-space: normal; }
 table.data.math-fouls td { min-width: 16ch; }
 .math-fouls caption { white-space: normal; }
+.math-item__steps { display: flex; flex-direction: column; gap: var(--s-2); padding-top: var(--s-3); border-top: 1px solid var(--line); }
+.math-item__steps .math-legend__title { margin: 0; }
 .math-legend { padding-top: var(--s-3); border-top: 1px solid var(--line); }
 .math-legend__title { font-family: var(--font-body, inherit); font-size: var(--step-0); font-weight: 600; margin: 0 0 var(--s-2); }
 .math-legend__list { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px var(--s-3); margin: 0; font-size: 0.95rem; }

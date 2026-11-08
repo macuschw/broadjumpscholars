@@ -295,6 +295,14 @@
             <p class="math-item__example"><strong>Example.</strong> Times the scale: v<sub>x</sub> = <span data-imperial="8.89 ft/s">2.71 m/s</span>,
               v<sub>y</sub> = <span data-imperial="6.04 ft/s">1.84 m/s</span>, so v = <span data-imperial="10.7 ft/s">3.28 m/s</span>; θ = tan⁻¹(662.8 / 974.7) = 34.2°
               (the same in any units); the center of mass rose <span data-imperial="6.8 in">17 cm</span>.</p>
+            <div class="math-item__steps">
+              <h4 class="math-legend__title">Where the height comes from</h4>
+              <p class="math-item__example">Height gained is the integral of the upward velocity, from takeoff until that velocity reaches zero at the top.</p>
+              <div class="formula formula--small" role="math" aria-label="y prime of t equals v y minus g t equals 0, so t top equals v y over g. h equals the integral from 0 to t top of v y minus g t, d t, which equals v y squared over g minus v y squared over 2 g, which equals v y squared over 2 g"
+                data-tex="\begin{gathered} y'(t) = v_y - g t = 0 \;\Rightarrow\; t_{\text{top}} = \dfrac{v_y}{g} \\[8pt] h = \int_0^{t_{\text{top}}} (v_y - g t)\, dt \\[8pt] = \Bigl[\, v_y t - \tfrac{1}{2} g t^2 \,\Bigr]_0^{t_{\text{top}}} \\[8pt] = \dfrac{v_y^2}{g} - \dfrac{v_y^2}{2g} = \dfrac{v_y^2}{2g} \end{gathered}" data-display>y′(t) = v<sub>y</sub> − gt = 0, so t<sub>top</sub> = v<sub>y</sub> / g; h = ∫ (v<sub>y</sub> − gt) dt from 0 to t<sub>top</sub> = v<sub>y</sub>²/g − v<sub>y</sub>²/2g = v<sub>y</sub>²/2g</div>
+              <p class="math-item__example">On a graph, the upward velocity is a straight line falling from v<sub>y</sub> to 0, so the integral is the area of a triangle: ½ × (v<sub>y</sub>/g) × v<sub>y</sub>, the same answer.
+                <strong>Example.</strong> t<sub>top</sub> = 662.8 / 3522 = 0.188 s, and h = 662.8² / (2 × 3522) = 62.4 px, which the scale makes <span data-imperial="6.8 in">17 cm</span>.</p>
+            </div>
             <div class="math-legend">
               <h4 class="math-legend__title">What the letters mean</h4>
               <dl class="math-legend__list">
@@ -305,6 +313,9 @@
                 <dt><span class="tex" data-tex="h">h</span></dt><dd>How high the center of mass rises (<span data-imperial="in">cm</span>). Not the ankle height from step 3</dd>
                 <dt><span class="tex" data-tex="g">g</span></dt><dd>Gravity, from step 4</dd>
                 <dt><span class="tex" data-tex="v_{y,\text{top}}">v<sub>y,top</sub></span></dt><dd>Upward speed at the top of the jump, which is 0</dd>
+                <dt><span class="tex" data-tex="y'(t)">y′(t)</span></dt><dd>The derivative of height: the upward velocity at time t</dd>
+                <dt><span class="tex" data-tex="t_{\text{top}}">t<sub>top</sub></span></dt><dd>The time from takeoff to the top of the jump (s)</dd>
+                <dt><span class="tex" data-tex="\int_0^{t_{\text{top}}} dt">∫ dt</span></dt><dd>Add up the velocity over time, from takeoff (0) to the top</dd>
               </dl>
             </div>
           </div>
