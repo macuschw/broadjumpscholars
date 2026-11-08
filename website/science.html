@@ -70,7 +70,7 @@
             <var>x</var>(<var>t</var>) = <var>x</var><sub>0</sub> + <var>v</var><sub><var>x</var></sub><var>t</var><br>
             <var>y</var>(<var>t</var>) = <var>y</var><sub>0</sub> + <var>v</var><sub><var>y</var></sub><var>t</var> − ½<var>g</var><var>t</var><sup>2</sup>
           </span></div>
-          <p class="pipeline__note"><span class="tex" data-tex="\theta = \operatorname{atan2}(v_y, v_x),\ \ h = v_y^2/2g" role="math" aria-label="launch angle theta equals atan2 of v y and v x, and peak height h equals v y squared over 2 g">θ = atan2(<var>v</var><sub><var>y</var></sub>, <var>v</var><sub><var>x</var></sub>), <var>h</var> = <var>v</var><sub><var>y</var></sub><sup>2</sup>/2<var>g</var></span></p>
+          <p class="pipeline__note"><span class="tex" data-tex="\theta = \tan^{-1}(v_y / v_x),\ \ h = v_y^2/2g" role="math" aria-label="launch angle theta equals the inverse tangent of v y over v x, and peak height h equals v y squared over 2 g">θ = tan⁻¹(<var>v</var><sub><var>y</var></sub>/<var>v</var><sub><var>x</var></sub>), <var>h</var> = <var>v</var><sub><var>y</var></sub><sup>2</sup>/2<var>g</var></span></p>
         </li>
         <li class="pipeline__step">
           <span class="num">4</span>
@@ -131,7 +131,7 @@
             <h3><span class="num">3</span> Combine</h3>
             <p class="fit-steps__result fit-steps__result--stack">
               <span>Speed <span class="tex" data-tex="\sqrt{v_x^2 + v_y^2}">√(<var>v</var><sub><var>x</var></sub><sup>2</sup> + <var>v</var><sub><var>y</var></sub><sup>2</sup>)</span> = <output id="fit-speed">–</output> <span data-imperial="ft/s">m/s</span></span>
-              <span>Launch angle <span class="tex" data-tex="\operatorname{atan2}(v_y, v_x)">atan2(<var>v</var><sub><var>y</var></sub>, <var>v</var><sub><var>x</var></sub>)</span> = <output id="fit-angle">–</output>°</span>
+              <span>Launch angle <span class="tex" data-tex="\tan^{-1}(v_y / v_x)">tan⁻¹(<var>v</var><sub><var>y</var></sub>/<var>v</var><sub><var>x</var></sub>)</span> = <output id="fit-angle">–</output>°</span>
               <span>Peak height <span class="tex" data-tex="v_y^2/2g"><var>v</var><sub><var>y</var></sub><sup>2</sup> / 2<var>g</var></span> = <output id="fit-peak">–</output> <span data-imperial="in">cm</span></span>
             </p>
           </li>
@@ -290,10 +290,10 @@
             <p class="math-item__code">In the code: <code>jumplab/physics.py</code>, <code>jumplab/pipeline.py</code></p>
           </div>
           <div class="math-item__math">
-            <div class="formula formula--small" role="math" aria-label="v equals the square root of v x squared plus v y squared; theta equals atan2 of v y and v x; h equals v y squared over 2 g"
-              data-tex="\begin{gathered} v = \sqrt{v_x^2 + v_y^2} \\[4pt] \theta = \operatorname{atan2}(v_y, v_x) \\[4pt] h = \dfrac{v_y^2}{2g} \end{gathered}" data-display>v = √(v<sub>x</sub>² + v<sub>y</sub>²), θ = atan2(v<sub>y</sub>, v<sub>x</sub>), h = v<sub>y</sub>² / 2g</div>
+            <div class="formula formula--small" role="math" aria-label="v equals the square root of v x squared plus v y squared; theta equals the inverse tangent of v y over v x; h equals v y squared over 2 g"
+              data-tex="\begin{gathered} v = \sqrt{v_x^2 + v_y^2} \\[4pt] \theta = \tan^{-1}\!\left(\dfrac{v_y}{v_x}\right) \\[4pt] h = \dfrac{v_y^2}{2g} \end{gathered}" data-display>v = √(v<sub>x</sub>² + v<sub>y</sub>²), θ = tan⁻¹(v<sub>y</sub> / v<sub>x</sub>), h = v<sub>y</sub>² / 2g</div>
             <p class="math-item__example"><strong>Example.</strong> Times the scale: v<sub>x</sub> = <span data-imperial="8.89 ft/s">2.71 m/s</span>,
-              v<sub>y</sub> = <span data-imperial="6.04 ft/s">1.84 m/s</span>, so v = <span data-imperial="10.7 ft/s">3.28 m/s</span>; θ = atan2(662.8, 974.7) = 34.2°
+              v<sub>y</sub> = <span data-imperial="6.04 ft/s">1.84 m/s</span>, so v = <span data-imperial="10.7 ft/s">3.28 m/s</span>; θ = tan⁻¹(662.8 / 974.7) = 34.2°
               (the same in any units); the center of mass rose <span data-imperial="6.8 in">17 cm</span>.</p>
             <div class="math-legend">
               <h4 class="math-legend__title">What the letters mean</h4>
@@ -301,7 +301,7 @@
                 <dt><span class="tex" data-tex="v">v</span></dt><dd>Total takeoff speed (<span data-imperial="ft/s">m/s</span>)</dd>
                 <dt><span class="tex" data-tex="v_x,\ v_y">v<sub>x</sub>, v<sub>y</sub></span></dt><dd>Forward and upward speed, from step 4</dd>
                 <dt><span class="tex" data-tex="\theta">θ</span></dt><dd>The launch angle above horizontal (degrees)</dd>
-                <dt><span class="tex" data-tex="\operatorname{atan2}">atan2</span></dt><dd>Inverse tangent that keeps track of direction</dd>
+                <dt><span class="tex" data-tex="\tan^{-1}">tan⁻¹</span></dt><dd>Inverse tangent: turns the up ÷ forward ratio into an angle</dd>
                 <dt><span class="tex" data-tex="h">h</span></dt><dd>How high the center of mass rises (<span data-imperial="in">cm</span>). Not the ankle height from step 3</dd>
                 <dt><span class="tex" data-tex="g">g</span></dt><dd>Gravity, from step 4</dd>
                 <dt><span class="tex" data-tex="v_{y,\text{top}}">v<sub>y,top</sub></span></dt><dd>Upward speed at the top of the jump, which is 0</dd>
